@@ -1,0 +1,4 @@
+{
+	"turnstile": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+	"recaptcha": "https://www.google.com/recaptcha/api/siteverify"
+}

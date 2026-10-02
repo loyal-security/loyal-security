@@ -1,0 +1,65 @@
+<?php
+/**
+ * Theme integrity verification.
+ *
+ * @package TotalSecurityWP
+ */
+
+namespace TotalSecurityWP\Modules\Integrity;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * WordPress.org does not expose per-file theme checksums, so theme integrity relies on the
+ * custom {@see Baseline}: the operator snapshots each theme, and subsequent runs report any
+ * drift. This wrapper provides a theme-oriented API over the baseline.
+ */
+class ThemeChecksums {
+
+	private Baseline $baseline;
+
+	public function __construct( ?Baseline $baseline = null ) {
+		$this->baseline = $baseline ?? new Baseline();
+	}
+
+	/**
+	 * Snapshot all installed themes.
+	 *
+	 * @return int Total files recorded.
+	 */
+	public function snapshot_all(): int {
+		$total = 0;
+		foreach ( $this->theme_roots() as $source => $root ) {
+			$total += $this->baseline->snapshot( $source, $root );
+		}
+		return $total;
+	}
+
+	/**
+	 * Diff all themes against their baselines.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function verify_all(): array {
+		$out = array();
+		foreach ( $this->theme_roots() as $source => $root ) {
+			$diff           = $this->baseline->diff( $source, $root );
+			$diff['source'] = $source;
+			$out[]          = $diff;
+		}
+		return $out;
+	}
+
+	/**
+	 * Map of source-key => theme directory.
+	 *
+	 * @return array<string, string>
+	 */
+	private function theme_roots(): array {
+		$roots = array();
+		foreach ( wp_get_themes() as $stylesheet => $theme ) {
+			$roots[ 'theme:' . $stylesheet ] = $theme->get_stylesheet_directory();
+		}
+		return $roots;
+	}
+}

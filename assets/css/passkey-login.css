@@ -1,0 +1,16 @@
+/**
+ * Loyal Security — "Sign in with a passkey" button on wp-login.php.
+ */
+.totalsecwp-passkey {
+	margin-top: 12px;
+}
+.totalsecwp-passkey .button {
+	width: 100%;
+}
+.totalsecwp-passkey-msg {
+	margin-top: 6px;
+	color: #2271b1;
+}
+.totalsecwp-passkey-msg.is-error {
+	color: #d63638;
+}

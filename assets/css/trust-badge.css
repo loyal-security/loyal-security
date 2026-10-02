@@ -1,0 +1,57 @@
+/**
+ * Loyal Security — public "Protected by" trust badge (shortcode + optional floating widget).
+ * Loaded on the front end only while the badge is enabled.
+ */
+.loysec-badge-float {
+	position: fixed;
+	bottom: 20px;
+	z-index: 999999;
+	pointer-events: none;
+}
+.loysec-badge-float--left {
+	left: 20px;
+}
+.loysec-badge-float--right {
+	right: 20px;
+}
+.loysec-badge-float .loysec-badge {
+	pointer-events: auto;
+}
+
+.loysec-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 14px;
+	border-radius: 999px;
+	border: 1px solid;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1;
+	text-decoration: none;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+.loysec-badge:hover,
+.loysec-badge:focus {
+	text-decoration: none;
+}
+.loysec-badge__icon {
+	flex-shrink: 0;
+	stroke: #4db3ff;
+}
+.loysec-badge strong {
+	color: #4db3ff;
+	font-weight: 600;
+}
+
+.loysec-badge--dark {
+	background: #05070c;
+	border-color: #1b2836;
+	color: #cbd5e1;
+}
+.loysec-badge--light {
+	background: #ffffff;
+	border-color: #e2e8f0;
+	color: #1e293b;
+}

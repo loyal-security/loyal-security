@@ -1,0 +1,191 @@
+{
+	"wordpress": {
+		"label": "WordPress core (required)",
+		"always": true,
+		"color": "#3858e9",
+		"directives": {
+			"script-src": ["'unsafe-inline'", "'unsafe-eval'"],
+			"style-src": ["'self'", "'unsafe-inline'"],
+			"img-src": ["'self'", "data:", "blob:", "https://secure.gravatar.com", "https://s.w.org"],
+			"font-src": ["'self'", "data:"],
+			"worker-src": ["'self'", "blob:"]
+		}
+	},
+	"google-analytics": {
+		"label": "Google Analytics / GTM",
+		"color": "#E37400",
+		"directives": {
+			"script-src": ["*.google-analytics.com", "*.googletagmanager.com", "*.google.com"],
+			"img-src": ["*.google-analytics.com", "*.googletagmanager.com"],
+			"connect-src": ["*.google-analytics.com", "*.analytics.google.com", "*.googletagmanager.com"]
+		}
+	},
+	"google-fonts": {
+		"label": "Google Fonts",
+		"color": "#4285F4",
+		"directives": {
+			"style-src": ["https://fonts.googleapis.com"],
+			"font-src": ["https://fonts.gstatic.com"]
+		}
+	},
+	"google-maps": {
+		"label": "Google Maps",
+		"color": "#34A853",
+		"directives": {
+			"script-src": ["*.googleapis.com", "*.gstatic.com"],
+			"img-src": ["*.googleapis.com", "*.gstatic.com", "*.google.com"],
+			"frame-src": ["*.google.com"],
+			"connect-src": ["*.googleapis.com"]
+		}
+	},
+	"recaptcha": {
+		"label": "Google reCAPTCHA / Turnstile",
+		"color": "#EA4335",
+		"directives": {
+			"script-src": ["*.google.com", "*.gstatic.com", "challenges.cloudflare.com"],
+			"frame-src": ["*.google.com", "challenges.cloudflare.com"],
+			"style-src": ["*.googleapis.com"]
+		}
+	},
+	"facebook-meta": {
+		"label": "Facebook / Meta Pixel",
+		"color": "#1877F2",
+		"directives": {
+			"script-src": ["connect.facebook.net", "*.facebook.com"],
+			"img-src": ["*.facebook.com", "*.facebook.net", "*.fbcdn.net"],
+			"connect-src": ["*.facebook.com", "*.facebook.net"]
+		}
+	},
+	"cloudflare": {
+		"label": "Cloudflare (Insights / Turnstile)",
+		"color": "#F48120",
+		"directives": {
+			"script-src": ["*.cloudflareinsights.com", "challenges.cloudflare.com", "static.cloudflareinsights.com"],
+			"connect-src": ["*.cloudflareinsights.com"],
+			"frame-src": ["challenges.cloudflare.com"]
+		}
+	},
+	"stripe": {
+		"label": "Stripe",
+		"color": "#635BFF",
+		"directives": {
+			"script-src": ["*.stripe.com", "*.stripe.network"],
+			"frame-src": ["*.stripe.com"],
+			"connect-src": ["*.stripe.com", "*.stripe.network"],
+			"img-src": ["*.stripe.com"]
+		}
+	},
+	"paypal": {
+		"label": "PayPal",
+		"color": "#003087",
+		"directives": {
+			"script-src": ["*.paypal.com", "*.paypalobjects.com"],
+			"frame-src": ["*.paypal.com"],
+			"img-src": ["*.paypal.com", "*.paypalobjects.com"],
+			"connect-src": ["*.paypal.com"]
+		}
+	},
+	"hotjar": {
+		"label": "Hotjar",
+		"color": "#FD3A5C",
+		"directives": {
+			"script-src": ["*.hotjar.com"],
+			"img-src": ["*.hotjar.com"],
+			"connect-src": ["*.hotjar.com", "vc.hotjar.io"],
+			"font-src": ["*.hotjar.com"],
+			"frame-src": ["*.hotjar.com"]
+		}
+	},
+	"intercom": {
+		"label": "Intercom",
+		"color": "#1F8DED",
+		"directives": {
+			"script-src": ["*.intercom.io", "widget.intercom.io", "*.intercomcdn.com"],
+			"img-src": ["*.intercom.io", "*.intercomcdn.com", "*.intercomassets.com"],
+			"connect-src": ["*.intercom.io", "nexus-websocket-a.intercom.io"],
+			"frame-src": ["*.intercom.io"],
+			"font-src": ["*.intercomcdn.com"]
+		}
+	},
+	"youtube": {
+		"label": "YouTube embeds",
+		"color": "#FF0000",
+		"directives": {
+			"frame-src": ["*.youtube.com", "*.youtube-nocookie.com"],
+			"img-src": ["*.ytimg.com", "*.ggpht.com"]
+		}
+	},
+	"vimeo": {
+		"label": "Vimeo embeds",
+		"color": "#1AB7EA",
+		"directives": {
+			"frame-src": ["player.vimeo.com", "*.vimeo.com"],
+			"connect-src": ["*.vimeo.com"],
+			"img-src": ["*.vimeocdn.com"]
+		}
+	},
+	"woocommerce": {
+		"label": "WooCommerce",
+		"color": "#7F54B3",
+		"directives": {
+			"script-src": ["'unsafe-inline'", "'unsafe-eval'"],
+			"style-src": ["'unsafe-inline'"],
+			"img-src": ["data:", "blob:"],
+			"connect-src": ["woocommerce.com"]
+		}
+	},
+	"gravatar": {
+		"label": "Gravatar / WordPress.com",
+		"color": "#1E8CBE",
+		"directives": {
+			"img-src": ["*.gravatar.com", "*.wp.com", "*.wordpress.com"]
+		}
+	},
+	"tiktok": {
+		"label": "TikTok Pixel",
+		"color": "#161823",
+		"directives": {
+			"script-src": ["*.tiktok.com", "*.tiktokcdn.com"],
+			"img-src": ["*.tiktok.com"],
+			"connect-src": ["*.tiktok.com"]
+		}
+	},
+	"twitter-x": {
+		"label": "X (Twitter) embeds",
+		"color": "#14171A",
+		"directives": {
+			"script-src": ["platform.twitter.com", "*.twimg.com"],
+			"frame-src": ["*.twitter.com", "platform.twitter.com"],
+			"img-src": ["*.twimg.com", "*.twitter.com"]
+		}
+	},
+	"linkedin": {
+		"label": "LinkedIn Insight",
+		"color": "#0A66C2",
+		"directives": {
+			"script-src": ["*.linkedin.com", "*.licdn.com"],
+			"img-src": ["*.linkedin.com", "*.licdn.com"],
+			"connect-src": ["*.linkedin.com"]
+		}
+	},
+	"hubspot": {
+		"label": "HubSpot",
+		"color": "#FF7A59",
+		"directives": {
+			"script-src": ["*.hs-scripts.com", "*.hubspot.com", "*.hsforms.com", "*.hsappstatic.net"],
+			"frame-src": ["*.hubspot.com", "*.hsforms.com"],
+			"connect-src": ["*.hubspot.com", "*.hubapi.com"],
+			"img-src": ["*.hubspot.com"]
+		}
+	},
+	"mailchimp": {
+		"label": "Mailchimp",
+		"color": "#241C15",
+		"directives": {
+			"script-src": ["*.mailchimp.com", "*.list-manage.com"],
+			"frame-src": ["*.mailchimp.com"],
+			"img-src": ["*.mailchimp.com"],
+			"connect-src": ["*.mailchimp.com", "*.list-manage.com"]
+		}
+	}
+}

@@ -1,0 +1,79 @@
+# Files/directories excluded when building the distributable zip for WordPress.org (via
+# `wp dist-archive`, the 10up/action-wordpress-plugin-deploy GitHub Action, or an equivalent
+# rsync --exclude-from build step). Syntax matches .gitignore.
+#
+# Nothing in this plugin's own source tree currently needs excluding — no build step, no
+# Composer/npm dev dependencies, no test suite. This file exists as a standing safeguard against
+# future additions (a git repo, a linter config, a docs folder) accidentally shipping to users,
+# and to give any future CI/deploy tooling the standard file it expects.
+#
+# Bundled runtime libraries are never excluded here: src/Vendor/WebAuthn (passkey support) and
+# assets/js/vendor/qrcode.js are vendored source the plugin actually loads, not dev tooling.
+
+# Version control
+.git
+.gitattributes
+.gitignore
+.github
+
+# This file itself
+.distignore
+
+# Editor / IDE
+.editorconfig
+.vscode
+.idea
+*.sublime-project
+*.sublime-workspace
+
+# AI assistant / dev-session config (never present in a clean checkout, listed defensively)
+.claude
+CLAUDE.md
+
+# Dev documentation — internal notes, not user-facing
+docs
+*.md
+!readme.txt
+
+# Build tooling / dependency manifests (none are needed at runtime — see plugin header)
+composer.json
+composer.lock
+package.json
+package-lock.json
+node_modules
+vendor/bin
+
+# Linting / static analysis config
+phpcs.xml
+phpcs.xml.dist
+phpstan.neon
+phpstan.neon.dist
+.eslintrc
+.eslintrc.js
+.eslintrc.json
+.stylelintrc
+.stylelintrc.json
+.prettierrc
+.prettierrc.json
+
+# Tests
+tests
+Tests
+phpunit.xml
+phpunit.xml.dist
+.phpunit.result.cache
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log
+*.bak
+*.orig
+*~
+
+# Local environment / secrets (never belong in a plugin regardless)
+.env
+.env.*
+
+# Archives that shouldn't be nested inside themselves
+*.zip

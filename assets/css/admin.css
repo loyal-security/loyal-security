@@ -1,0 +1,3773 @@
+/**
+ * Loyal Security — admin dashboard styles.
+ * Hand-tuned, dependency-free (no PostCSS/Tailwind build). Tailwind-spirit utility tokens.
+ */
+
+:root {
+  --ts-bg: #f6f7fb;
+  --ts-surface: #ffffff;
+  --ts-ink: #1d2327;
+  /* Alias — a handful of older rules reference --ts-text instead of --ts-ink. `color` is always
+     an inherited property, so var(--ts-text) with no fallback was already resolving correctly
+     via CSS's inherit-on-invalid-var behavior; defining it for real removes the ambiguity. */
+  --ts-text: var(--ts-ink);
+  --ts-muted: #646970;
+  --ts-line: #e3e6ec;
+  /* Alias — many rules reference --ts-border (with a hardcoded light fallback, for when this
+     alias didn't exist yet) instead of --ts-line. Defining it for real, rather than leaving it
+     to fall back, means every var(--ts-border, #hardcoded) usage in this file correctly follows
+     --ts-line's dark-mode value too, instead of being stuck on its light fallback forever. */
+  --ts-border: var(--ts-line);
+  --ts-brand: #2b59ff;
+  --ts-brand-ink: #fff;
+  --ts-good: #16a34a;
+  --ts-mid: #d97706;
+  --ts-bad: #dc2626;
+  --ts-info: #0ea5e9;
+  --ts-radius: 12px;
+  --ts-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
+}
+
+/* Dark mode — two independent triggers, same palette:
+ *  1. The visitor's OS/browser is set to dark (prefers-color-scheme), regardless of which
+ *     WP admin color scheme they picked.
+ *  2. The visitor picked WordPress core's own "Midnight" admin color scheme
+ *     (Users → Profile), the one bundled color scheme that's actually dark — independent of
+ *     their OS setting.
+ * Only the ~13 tokens below are redefined; every component in this file is built on top of
+ * them (background/color pairs that flip together), so this is the single source of truth —
+ * never add a component-specific dark override elsewhere in this file.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ts-bg: #10141c;
+    --ts-surface: #1a212c;
+    --ts-ink: #e6e9ee;
+    --ts-muted: #96a1b0;
+    --ts-line: #2a323f;
+  }
+  /* Scoped to our own app, not :root/body — this tells the BROWSER (not just our CSS) to render
+     native form controls (text/number/date inputs, checkboxes, select dropdowns, scrollbars)
+     with their built-in dark appearance. Without it, every plain <input>/<select>/<textarea> in
+     the app keeps the OS's native white control face regardless of how dark everything around it
+     is — the single biggest remaining "why is this input white" gap that per-component color
+     overrides can't practically cover one at a time. Scoped to #totalsecwp-app specifically so it
+     never touches WordPress's own unrelated admin UI elsewhere on the page. */
+  #totalsecwp-app {
+    color-scheme: dark;
+  }
+}
+/* Custom properties cascade to every descendant regardless of which element defines them —
+ * defining them on body (where WP puts the admin-color-* class) reaches the whole plugin UI,
+ * which lives inside body. `:root` (the <html> element) can never be a descendant of <body>,
+ * so it is deliberately not targeted here. */
+body.admin-color-midnight {
+  --ts-bg: #10141c;
+  --ts-surface: #1a212c;
+  --ts-ink: #e6e9ee;
+  --ts-muted: #96a1b0;
+  --ts-line: #2a323f;
+}
+body.admin-color-midnight #totalsecwp-app {
+  color-scheme: dark;
+}
+
+/* Explicit in-app theme choice (Sidebar footer switch) — beats both triggers above regardless
+ * of source order, since an ID + attribute selector (1,1,0) outranks both the bare :root media
+ * block (0,1,0) and body.admin-color-midnight (0,1,1). "System" leaves data-theme unset/"system"
+ * so neither rule below matches and the ambient triggers above decide, unchanged. "Light" needs
+ * its own explicit block (not just "absence of dark") so it can override an OS/WP-core dark
+ * preference the visitor wants overridden for this app specifically. */
+#totalsecwp-app[data-theme='dark'] {
+  --ts-bg: #10141c;
+  --ts-surface: #1a212c;
+  --ts-ink: #e6e9ee;
+  --ts-muted: #96a1b0;
+  --ts-line: #2a323f;
+  color-scheme: dark;
+}
+#totalsecwp-app[data-theme='light'] {
+  --ts-bg: #f6f7fb;
+  --ts-surface: #ffffff;
+  --ts-ink: #1d2327;
+  --ts-muted: #646970;
+  --ts-line: #e3e6ec;
+  color-scheme: light;
+}
+
+/* Reset within our wrap so WP admin styles don't bleed too much. */
+.totalsecwp-wrap {
+  margin: 16px 20px 40px 0;
+}
+.totalsecwp-wrap * {
+  box-sizing: border-box;
+}
+
+/* WordPress core's own admin.css sets a hardcoded color directly on bare h1/h2/h3 elements
+   (wp-admin/css/common.min.css) — the exact light-mode ink shade, coincidentally, but never
+   dark-mode-aware. Every title class in this file (.ts-card__title, .ts-modal__title, etc.)
+   relies on INHERITING --ts-ink rather than setting its own color, so without this override WP
+   core's rule wins the cascade (same specificity tier, loaded after) and every heading in the
+   plugin stays stuck in light-mode ink even when everything around it correctly went dark. One
+   ID-scoped rule (specificity 1,0,1) beats WP core's bare element selector (0,0,1) and covers
+   every heading anywhere in the app in one place, instead of patching each title class. */
+#totalsecwp-app h1,
+#totalsecwp-app h2,
+#totalsecwp-app h3,
+#totalsecwp-app h4 {
+  color: var(--ts-ink);
+}
+
+/* Same WP-core-bleed problem as the headings above, for form fields: wp-admin/css/forms.css
+   sets an explicit `background-color: #fff; color: #2c3338;` directly on input[type=text] and
+   friends, select, and textarea. That's explicit (not just native-UA-default) styling, so the
+   color-scheme: dark declared above — which only re-skins controls with NO author-specified
+   colors — has no effect on these; the visitor is left with a white field and dark-on-dark or
+   light-on-light text depending on which of the two rules the browser happens to paint over the
+   other. One ID-scoped rule (1,0,1) beats WP core's `input[type=...]`/bare `select`/`textarea`
+   selectors (0,1,1 at most) regardless of source order. Checkbox/radio/range are excluded since
+   Toggle (ui.js) renders a visually-hidden checkbox and paints its own switch via sibling spans —
+   giving the hidden input a background would be a no-op but is excluded for clarity. */
+#totalsecwp-app input:not([type='checkbox']):not([type='radio']):not([type='range']),
+#totalsecwp-app select,
+#totalsecwp-app textarea {
+  background-color: var(--ts-surface);
+  color: var(--ts-ink);
+}
+
+#totalsecwp-app {
+  /* Boot placeholder. */
+  .totalsecwp-boot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 80px 0;
+    color: var(--ts-muted);
+  }
+  .totalsecwp-spinner,
+  .ts-spinner {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 3px solid var(--ts-line);
+    border-top-color: var(--ts-brand);
+    display: inline-block;
+    animation: ts-spin 0.8s linear infinite;
+  }
+  @keyframes ts-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* App shell. */
+  .ts-app {
+    display: grid;
+    grid-template-columns: 232px 1fr;
+    gap: 0;
+    background: var(--ts-bg);
+    border: 1px solid var(--ts-line);
+    border-radius: var(--ts-radius);
+    overflow: hidden;
+    min-height: 70vh;
+    font-size: 14px;
+    color: var(--ts-ink);
+  }
+
+  /* Sidebar. */
+  .ts-sidebar {
+    background: #0f172a;
+    color: #cbd5e1;
+    padding: 18px 12px;
+    display: flex;
+    flex-direction: column;
+  }
+  .ts-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #fff;
+    font-size: 15px;
+    padding: 6px 8px 14px;
+  }
+  .ts-brand__mark {
+    font-size: 18px;
+  }
+  .ts-scorechip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin: 0 8px 14px;
+    font-weight: 700;
+  }
+  .ts-scorechip.is-good {
+    background: rgba(22, 163, 74, 0.18);
+    color: #4ade80;
+  }
+  .ts-scorechip.is-mid {
+    background: rgba(217, 119, 6, 0.18);
+    color: #fbbf24;
+  }
+  .ts-scorechip.is-bad {
+    background: rgba(220, 38, 38, 0.18);
+    color: #f87171;
+  }
+  .ts-scorechip span {
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  .ts-view-toggle {
+    display: flex;
+    margin: 0 8px 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .ts-view-toggle__opt {
+    flex: 1;
+    border: 0;
+    background: none;
+    color: #94a3b8;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 5px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+  }
+  .ts-view-toggle__opt.is-active {
+    background: var(--ts-brand);
+    color: #fff;
+  }
+  /* Anchored to the bottom of the sidebar (.ts-sidebar is now a column flex box) via
+     margin-top: auto on this footer, rather than the nav items themselves — so it reads as a
+     persistent app-level control, not one more item in the scrolling route list above it. */
+  .ts-sidebar__footer {
+    margin-top: auto;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .ts-theme-toggle__label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin: 0 8px 6px;
+  }
+  .ts-theme-toggle {
+    display: flex;
+    margin: 0 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .ts-theme-toggle__opt {
+    flex: 1;
+    border: 0;
+    background: none;
+    color: #94a3b8;
+    font-size: 13px;
+    padding: 6px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+  }
+  .ts-theme-toggle__opt.is-active {
+    background: var(--ts-brand);
+    color: #fff;
+  }
+  .ts-nav {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ts-nav__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: #cbd5e1;
+    text-decoration: none;
+    margin-bottom: 2px;
+    transition: background 0.12s;
+  }
+  .ts-nav__item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+  }
+  .ts-nav__item.is-active {
+    background: var(--ts-brand);
+    color: #fff;
+  }
+  .ts-nav__icon {
+    width: 18px;
+    text-align: center;
+  }
+
+  /* Main column. */
+  .ts-main {
+    display: flex;
+    flex-direction: column;
+  }
+  .ts-topbar {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--ts-line);
+    background: var(--ts-surface);
+  }
+  .ts-topbar h1 {
+    margin: 0;
+    font-size: 20px;
+  }
+  .ts-content {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Plan banner. */
+  .ts-plan-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 1px solid transparent;
+  }
+  .ts-plan-banner--free {
+    background: linear-gradient(135deg, #eff6ff, #f8f6ff);
+    border-color: #bfdbfe;
+    color: #1e293b;
+  }
+  .ts-plan-banner--pro {
+    background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+    border-color: #bbf7d0;
+    color: #1e293b;
+  }
+  .ts-plan-banner__left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .ts-plan-badge {
+    font-weight: 700;
+    font-size: 13px;
+    padding: 2px 10px;
+    border-radius: 99px;
+    background: var(--ts-brand);
+    color: #fff;
+    white-space: nowrap;
+  }
+  .ts-plan-banner--pro .ts-plan-badge {
+    background: #059669;
+  }
+  .ts-plan-banner__text {
+    font-size: 13px;
+    color: var(--ts-text);
+  }
+  .ts-plan-banner__cta {
+    display: inline-block;
+    background: var(--ts-brand);
+    color: #fff !important;
+    padding: 6px 16px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .ts-plan-banner__cta:hover {
+    background: #005a99;
+  }
+
+  /* Layout grids. */
+  .ts-grid {
+    display: grid;
+    gap: 20px;
+  }
+  .ts-grid--top {
+    grid-template-columns: 280px 1fr;
+    align-items: stretch;
+  }
+  .ts-grid--cols {
+    grid-template-columns: 1fr 1fr;
+  }
+  @media (max-width: 1100px) {
+    .ts-grid--top,
+    .ts-grid--cols {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Score hero. */
+  .ts-score {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 24px;
+    border-radius: var(--ts-radius);
+    color: #fff;
+    box-shadow: var(--ts-shadow);
+  }
+  .ts-score--success {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+  }
+  .ts-score--warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+  }
+  .ts-score--danger {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+  }
+  .ts-score__num {
+    font-size: 54px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .ts-score__grade {
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .ts-score__trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 2px 9px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .ts-score__trend.is-flat {
+    opacity: 0.85;
+    font-weight: 600;
+  }
+  .ts-score__sub {
+    opacity: 0.85;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Counter tiles. */
+  .ts-tiles {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 900px) {
+    .ts-tiles {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  .ts-tile {
+    background: var(--ts-surface);
+    border: 1px solid var(--ts-line);
+    border-radius: var(--ts-radius);
+    padding: 14px;
+    text-align: center;
+    box-shadow: var(--ts-shadow);
+  }
+  .ts-tile--link {
+    cursor: pointer;
+    font: inherit;
+    width: 100%;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
+  }
+  .ts-tile--link:hover {
+    border-color: var(--ts-accent, #2271b1);
+    box-shadow: 0 0 0 1px var(--ts-accent, #2271b1);
+  }
+  .ts-tile__icon {
+    font-size: 18px;
+  }
+  .ts-tile__value {
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .ts-tile__label {
+    color: var(--ts-muted);
+    font-size: 12px;
+  }
+
+  /* Cards. */
+  .ts-card {
+    background: var(--ts-surface);
+    border: 1px solid var(--ts-line);
+    border-radius: var(--ts-radius);
+    box-shadow: var(--ts-shadow);
+  }
+  .ts-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--ts-line);
+  }
+  .ts-card__title {
+    margin: 0;
+    font-size: 15px;
+  }
+  .ts-card__body {
+    padding: 18px;
+  }
+  .ts-card__actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Lists. */
+  .ts-reclist {
+    margin: 0;
+    padding-left: 18px;
+  }
+  .ts-reclist li {
+    margin-bottom: 8px;
+  }
+  .ts-modlist,
+  .ts-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ts-modlist__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ts-line);
+  }
+  .ts-modlist__item:last-child {
+    border-bottom: 0;
+  }
+
+  /* Tables. */
+  .ts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .ts-table th,
+  .ts-table td {
+    text-align: left;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--ts-line);
+  }
+  .ts-table th {
+    color: var(--ts-muted);
+    font-weight: 600;
+  }
+  .ts-table code {
+    background: var(--ts-bg);
+    color: var(--ts-ink);
+    padding: 1px 6px;
+    border-radius: 6px;
+  }
+
+  /* Badges. */
+  .ts-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .ts-badge--neutral {
+    background: #eef2f7;
+    color: #475569;
+  }
+  .ts-badge--success {
+    background: #dcfce7;
+    color: #15803d;
+  }
+  .ts-badge--info {
+    background: #e0f2fe;
+    color: #0369a1;
+  }
+  .ts-badge--warning {
+    background: #fef3c7;
+    color: #b45309;
+  }
+  .ts-badge--danger {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  /* Buttons. */
+  .ts-btn {
+    border: 1px solid var(--ts-line);
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    text-decoration: none; /* .ts-btn also renders on <a> tags — without this they inherit WP-admin's default underline. */
+    transition:
+      filter 0.12s,
+      background 0.12s;
+  }
+  .ts-btn:hover {
+    filter: brightness(0.98);
+  }
+  .ts-btn--primary {
+    background: var(--ts-brand);
+    border-color: var(--ts-brand);
+    color: #fff;
+  }
+  .ts-btn--danger {
+    background: var(--ts-bad);
+    border-color: var(--ts-bad);
+    color: #fff;
+  }
+  .ts-btn--ghost {
+    background: transparent;
+    border-color: transparent;
+  }
+  .ts-btn.is-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  /* Toggle switch. */
+  .ts-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .ts-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .ts-toggle__track {
+    width: 40px;
+    height: 22px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    position: relative;
+    transition: background 0.15s;
+  }
+  .ts-toggle__thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.15s;
+    box-shadow: var(--ts-shadow);
+  }
+  .ts-toggle input:checked + .ts-toggle__track {
+    background: var(--ts-brand);
+  }
+  .ts-toggle input:checked + .ts-toggle__track .ts-toggle__thumb {
+    transform: translateX(18px);
+  }
+  .ts-toggle--disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Pro teaser inline blocks */
+  .ts-pro-teaser-block {
+    background: linear-gradient(135deg, #f8f6ff 0%, #eff6ff 100%);
+    border: 1px solid #ddd6fe;
+    border-radius: 8px;
+    padding: 16px 20px;
+    color: #1e293b;
+  }
+  .ts-pro-cta-inline {
+    display: inline-block;
+    background: var(--ts-brand);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .ts-pro-cta-inline:hover {
+    background: #005a99;
+    color: #fff;
+  }
+
+  /* Empty + loading + error. */
+  .ts-empty {
+    text-align: center;
+    color: var(--ts-muted);
+    padding: 28px 10px;
+  }
+  .ts-empty__icon {
+    font-size: 30px;
+  }
+  .ts-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ts-muted);
+    padding: 40px;
+    justify-content: center;
+  }
+  .ts-error {
+    color: var(--ts-bad);
+  }
+
+  /* Toasts. */
+  .ts-toasts {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100000;
+  }
+  .ts-toast {
+    padding: 10px 16px;
+    border-radius: 10px;
+    color: #fff;
+    box-shadow: var(--ts-shadow);
+    cursor: pointer;
+    max-width: 360px;
+  }
+  .ts-toast--info {
+    background: #334155;
+  }
+  .ts-toast--success {
+    background: var(--ts-good);
+  }
+  .ts-toast--warning {
+    background: var(--ts-mid);
+  }
+  .ts-toast--error {
+    background: var(--ts-bad);
+  }
+
+  /* Forms. */
+  .ts-field {
+    margin-bottom: 16px;
+  }
+  .ts-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+  .ts-field input[type='text'],
+  .ts-field input[type='number'],
+  .ts-field textarea,
+  .ts-field select {
+    width: 100%;
+    max-width: 460px;
+    padding: 8px 10px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  /* WP core draws its own chevron background-icon on <select> (~16px, ~8px from the right) —
+   the shared 10px padding above is enough for a text input but lets the icon overlap a
+   select's own text, since WP core's matching padding-right gets overridden here. */
+  .ts-field select {
+    padding-right: 28px;
+  }
+  .ts-field .ts-hint {
+    color: var(--ts-muted);
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .ts-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--ts-line);
+  }
+  .ts-row:last-child {
+    border-bottom: 0;
+  }
+  .ts-row__label strong {
+    display: block;
+  }
+  .ts-row__label span {
+    color: var(--ts-muted);
+    font-size: 12px;
+  }
+  .ts-row__name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ts-ink);
+    font-size: 14px;
+  }
+  .ts-row__name strong {
+    display: inline;
+  }
+
+  /* Info ( i ) help tip + popover. */
+  .ts-infotip {
+    position: relative;
+    display: inline-flex;
+  }
+  .ts-infotip__btn {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--ts-line);
+    background: var(--ts-bg);
+    color: var(--ts-muted);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 11px;
+    line-height: 1;
+    font-family: Georgia, 'Times New Roman', serif;
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      background 0.12s,
+      color 0.12s,
+      border-color 0.12s;
+  }
+  .ts-infotip__btn:hover,
+  .ts-infotip__btn[aria-expanded='true'] {
+    background: var(--ts-brand);
+    color: #fff;
+    border-color: var(--ts-brand);
+  }
+  .ts-infotip__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+  }
+  .ts-infotip__pop {
+    position: absolute;
+    z-index: 41;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 320px;
+    max-width: 80vw;
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    border: 1px solid var(--ts-line);
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(16, 24, 40, 0.18);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    font-weight: 400;
+  }
+  .ts-infotip__pop::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 6px;
+    width: 10px;
+    height: 10px;
+    background: var(--ts-surface);
+    border-left: 1px solid var(--ts-line);
+    border-top: 1px solid var(--ts-line);
+    transform: rotate(45deg);
+  }
+  /* Flipped anchoring (ui.js measures after paint and adds these) for an icon sitting near the
+     right edge or bottom of its container — the last column of a settings grid, or a row near
+     the bottom of a scrollable Modal — where the default top-left anchor would push the 320px
+     popover past the viewport and force an unwanted scrollbar on an ancestor Modal. */
+  .ts-infotip__pop--right {
+    left: auto;
+    right: 0;
+  }
+  .ts-infotip__pop--right::before {
+    left: auto;
+    right: 6px;
+  }
+  .ts-infotip__pop--up {
+    top: auto;
+    bottom: calc(100% + 8px);
+  }
+  .ts-infotip__pop--up::before {
+    top: auto;
+    bottom: -6px;
+    border-left: none;
+    border-top: none;
+    border-right: 1px solid var(--ts-line);
+    border-bottom: 1px solid var(--ts-line);
+  }
+  .ts-infotip__title {
+    font-weight: 700;
+    font-size: 13px;
+    padding-right: 18px;
+  }
+  .ts-infotip__what {
+    color: var(--ts-ink);
+  }
+  .ts-infotip__row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 7px 9px;
+    border-radius: 8px;
+  }
+  /* Fixed light tint + pinned dark text regardless of theme — small, infrequent on/off rows;
+     simpler and safer than re-deriving a dark-mode-tinted version of each semantic color. */
+  .ts-infotip__row--on {
+    background: #f0fdf4;
+    color: #1e293b;
+  }
+  .ts-infotip__row--off {
+    background: #fef2f2;
+    color: #1e293b;
+  }
+  .ts-infotip__tag {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ts-infotip__row--on .ts-infotip__tag {
+    color: var(--ts-good);
+  }
+  .ts-infotip__row--off .ts-infotip__tag {
+    color: var(--ts-bad);
+  }
+  .ts-infotip__close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--ts-muted);
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px;
+  }
+  .ts-infotip__close:hover {
+    color: var(--ts-ink);
+  }
+
+  /* Shared confirm-before-acting modal — see ui.js ConfirmDialog. z-index (300/301) is
+     deliberately ABOVE .ts-modal (200/201): a ConfirmDialog opened from a setting inside a Modal
+     popup (e.g. Sentinel AI's "Let Sentinel trigger Under-Attack mode?" prompt) must render on
+     top of that Modal, not trapped behind it and unreachable — a real bug once shipped the other
+     way around, caught via live testing. */
+  .ts-confirm {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ts-confirm__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(16, 24, 40, 0.45);
+  }
+  .ts-confirm__panel {
+    position: relative;
+    z-index: 301;
+    width: 420px;
+    max-width: calc(100vw - 32px);
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    border-radius: var(--ts-radius);
+    box-shadow: 0 24px 60px rgba(16, 24, 40, 0.32);
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ts-confirm__title {
+    margin: 0;
+    font-size: 16px;
+  }
+  .ts-confirm__message {
+    margin: 0;
+    color: var(--ts-ink);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  .ts-confirm__consequence {
+    margin: 0;
+    color: var(--ts-muted);
+    font-size: 12.5px;
+    line-height: 1.5;
+    background: var(--ts-bg);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .ts-confirm__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  /* Generic detail-popup (Modal in ui.js) — collapses a cluster of cards behind one summary card.
+     z-index (200/201) sits below .ts-confirm (300/301, see above) so a confirm dialog opened from
+     a setting inside a Modal renders on top of it, and below .ts-pro-modal-overlay (9999) so a
+     ProGate upgrade prompt opened from inside a Modal also still renders on top. */
+  .ts-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .ts-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(16, 24, 40, 0.5);
+  }
+  .ts-modal__panel {
+    position: relative;
+    z-index: 201;
+    width: 560px;
+    max-width: 100%;
+    max-height: calc(100vh - 48px);
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    border-radius: var(--ts-radius);
+    box-shadow: 0 24px 60px rgba(16, 24, 40, 0.35);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .ts-modal__panel--lg {
+    width: 900px;
+  }
+  .ts-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--ts-border, #dcdcde);
+    flex-shrink: 0;
+  }
+  .ts-modal__title {
+    margin: 0;
+    font-size: 16px;
+  }
+  .ts-modal__close {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--ts-muted);
+    padding: 4px;
+  }
+  .ts-modal__close:hover {
+    color: var(--ts-ink);
+  }
+  .ts-modal__body {
+    padding: 20px;
+    overflow-y: auto;
+    /* Explicit, not left to default: `overflow-y: auto` alone makes the computed overflow-x
+       auto too (CSS overflow spec), so any child that overflows sideways — an InfoTip popover
+       opened by an icon near the right edge of a 2-column settings grid, most commonly — silently
+       grew a second, horizontal scrollbar on top of the modal's normal vertical one. Real bug,
+       caught via live testing: a popup that needs scrolling in both directions to read is not
+       usable. InfoTip now measures and flips itself to stay on-screen (see ui.js/admin.css
+       .ts-infotip__pop--right) instead of relying on this to bail it out, but this stays as the
+       backstop for anything else that ever overflows sideways in here. */
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Firewall ban form + action rows. */
+  .ts-banform {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: end;
+  }
+  .ts-banform .ts-field {
+    margin-bottom: 0;
+  }
+  .ts-banform .ts-btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  @media (max-width: 700px) {
+    .ts-banform {
+      grid-template-columns: 1fr;
+    }
+  }
+  .ts-actions-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+  }
+  .ts-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 6px 0 10px;
+  }
+  .ts-pills a {
+    color: inherit;
+    text-decoration: none;
+    margin-left: 4px;
+    font-weight: 700;
+  }
+
+  /* Log table filters + pager + detail. */
+  .ts-filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .ts-filters input[type='text'] {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 10px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+  }
+  .ts-filters select {
+    padding: 0px 28px 0px 10px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    flex-shrink: 0;
+    min-width: max-content;
+  }
+  .ts-uri {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ts-detail td {
+    background: var(--ts-bg);
+  }
+  .ts-detail pre {
+    margin: 0;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 280px;
+    overflow: auto;
+  }
+  /* Shared fixed-height scroll container — see ScrollPanel in ui.js. Keeps a long list/table
+     inside its own scrollbar instead of stretching the whole admin page. */
+  .ts-scroll-panel {
+    overflow-y: auto;
+    border: 1px solid var(--ts-border, #dcdcde);
+    border-radius: 4px;
+  }
+  .ts-scroll-panel table.ts-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--ts-surface);
+    z-index: 1;
+  }
+  .ts-pager {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+    justify-content: center;
+    color: var(--ts-muted);
+  }
+  .ts-pager__btn {
+    background: var(--ts-surface, #fff);
+    border: 1px solid var(--ts-border, #dcdcde);
+    border-radius: 4px;
+    padding: 5px 12px;
+    cursor: pointer;
+    color: inherit;
+    font-size: 13px;
+  }
+  .ts-pager__btn:hover:not(:disabled) {
+    border-color: #2271b1;
+    color: #2271b1;
+  }
+  .ts-pager__btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .ts-pager__info {
+    font-size: 13px;
+  }
+
+  /* Reusable list search box (PaginatedList.js). */
+  .ts-listsearch {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 200px;
+  }
+  .ts-listsearch__icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .ts-listsearch__input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px 10px 7px 32px;
+    border: 1px solid var(--ts-border, #dcdcde);
+    border-radius: 4px;
+  }
+
+  /* Scan progress bar. */
+  .ts-progress {
+    margin-top: 16px;
+  }
+  .ts-progress__bar {
+    height: 10px;
+    background: var(--ts-line);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .ts-progress__bar span {
+    display: block;
+    height: 100%;
+    background: var(--ts-brand);
+    transition: width 0.3s ease;
+  }
+  .ts-progress__meta {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--ts-muted);
+  }
+
+  /* Details/snippet blocks. */
+  .ts-details {
+    margin-top: 14px;
+  }
+  .ts-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--ts-brand);
+  }
+  .ts-details pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 14px;
+    border-radius: 8px;
+    overflow: auto;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+
+  /* 2FA enrollment. */
+  .ts-enroll {
+    padding-left: 20px;
+  }
+  .ts-enroll li {
+    margin-bottom: 10px;
+  }
+  .ts-key {
+    font-family: monospace;
+    font-size: 20px;
+    letter-spacing: 2px;
+    background: #0f172a;
+    color: #4ade80;
+    padding: 10px 14px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-top: 6px;
+  }
+  .ts-otpauth {
+    width: 100%;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 8px;
+    border: 1px solid var(--ts-line);
+    border-radius: 6px;
+    margin-top: 6px;
+  }
+  .ts-codeinput {
+    font-size: 18px;
+    letter-spacing: 4px;
+    width: 140px;
+    padding: 8px 10px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    text-align: center;
+  }
+  .ts-warn {
+    color: var(--ts-bad);
+    font-weight: 600;
+  }
+  .ts-backup {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    max-width: 360px;
+    margin: 14px 0;
+  }
+  .ts-backup code {
+    background: var(--ts-bg);
+    color: var(--ts-ink);
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 15px;
+  }
+
+  /* Settings tabs. */
+  .ts-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ts-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .ts-tab {
+    padding: 8px 14px;
+    border: 1px solid var(--ts-line);
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .ts-tab.is-active {
+    background: var(--ts-brand);
+    border-color: var(--ts-brand);
+    color: #fff;
+  }
+  .ts-tab--danger {
+    color: #d63638;
+    border-color: #d63638;
+    margin-left: auto;
+  }
+  .ts-tab--danger.is-active {
+    background: #d63638;
+    border-color: #d63638;
+    color: #fff;
+  }
+  .ts-row__control input[type='text'],
+  .ts-row__control input[type='number'],
+  .ts-row__control input[type='password'],
+  .ts-row__control select,
+  .ts-row__control textarea {
+    padding: 8px 10px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    font-size: 13px;
+    min-width: 240px;
+  }
+  .ts-row__control textarea {
+    width: 320px;
+    font-family: monospace;
+  }
+
+  /* Card header link (e.g. "View all"). */
+  .ts-card__link {
+    color: var(--ts-brand);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .ts-card__link:hover {
+    text-decoration: underline;
+  }
+
+  /* Human-readable activity feed (dashboard "Recent critical activity"). */
+  .ts-feed {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ts-feed__item {
+    border-bottom: 1px solid var(--ts-line);
+  }
+  .ts-feed__item:last-child {
+    border-bottom: 0;
+  }
+  .ts-feed__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 12px 4px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+  .ts-feed__row:hover {
+    background: var(--ts-bg);
+  }
+  .ts-feed__icon {
+    font-size: 20px;
+    line-height: 1.3;
+    flex: 0 0 auto;
+  }
+  .ts-feed__main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .ts-feed__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .ts-feed__title {
+    font-weight: 600;
+    color: var(--ts-ink);
+  }
+  .ts-feed__summary {
+    color: var(--ts-muted);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .ts-feed__meta {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    color: var(--ts-muted);
+    font-size: 12px;
+  }
+  .ts-feed__meta code {
+    background: var(--ts-bg);
+    padding: 0 5px;
+    border-radius: 5px;
+  }
+  .ts-feed__chevron {
+    color: var(--ts-muted);
+    flex: 0 0 auto;
+    padding-top: 2px;
+  }
+
+  /* Expanded incident report (shared by feed + audit log). */
+  .ts-incident {
+    padding: 4px 4px 16px 46px;
+  }
+  .ts-detail .ts-incident {
+    padding: 14px 16px;
+  }
+  .ts-incident__summary {
+    margin: 0 0 12px;
+    color: var(--ts-ink);
+  }
+  .ts-incident__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px 18px;
+    margin: 0 0 14px;
+  }
+  .ts-incident__pair {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .ts-incident__pair dt {
+    color: var(--ts-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .ts-incident__pair dd {
+    margin: 0;
+    color: var(--ts-ink);
+    font-size: 13px;
+    word-break: break-word;
+  }
+  .ts-incident__matches {
+    margin-top: 10px;
+  }
+  .ts-incident__matches h4 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: var(--ts-ink);
+  }
+  .ts-incident__raw {
+    margin-top: 12px;
+  }
+  .ts-incident__raw summary {
+    cursor: pointer;
+    color: var(--ts-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .ts-incident__raw pre {
+    margin: 8px 0 0;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 280px;
+    overflow: auto;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  /* Audit-log "Type" cell: human title over the raw code. */
+  .ts-evt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ts-evt__icon {
+    font-size: 16px;
+  }
+  .ts-evt__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+  .ts-evt__title {
+    font-weight: 600;
+  }
+  .ts-evt__code {
+    background: none;
+    padding: 0;
+    color: var(--ts-muted);
+    font-size: 11px;
+  }
+
+  /* Repair Center. */
+  .ts-hint {
+    color: var(--ts-muted);
+    font-size: 13px;
+    margin: 0 0 10px;
+  }
+  .ts-repair-summary {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 12px 14px;
+    background: var(--ts-surface-2, #0f172a0a);
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    font-size: 13px;
+  }
+  .ts-repair-summary li {
+    color: var(--ts-ink);
+  }
+  .ts-manual-row {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--ts-border, #e2e8f0);
+  }
+  .ts-manual-row:last-child {
+    border-bottom: 0;
+  }
+  .ts-manual-row__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .ts-issue-list {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ts-issue-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+  }
+  .ts-issue-list .ts-uri {
+    max-width: 420px;
+  }
+
+  /* Scanner "Recommended fixes" rows. */
+  .ts-rec {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--ts-border, #e2e8f0);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .ts-rec:last-child {
+    margin-bottom: 0;
+  }
+  .ts-rec__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  /* Notifications panel. */
+  .ts-notif-intro {
+    color: var(--ts-muted);
+    font-size: 13px;
+    margin: 0 0 12px;
+  }
+  .ts-notif-counters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .ts-notif-section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .ts-notif-section-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .ts-notif-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .ts-notif-field__label {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ts-ink);
+  }
+  .ts-notif-field__hint {
+    font-weight: 400;
+    color: var(--ts-muted);
+    font-size: 12px;
+    display: block;
+    margin-top: 2px;
+  }
+  .ts-notif-field__control {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ts-notif-cats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+  }
+  .ts-notif-cat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .ts-input {
+    padding: 8px 10px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    font-size: 13px;
+    width: 100%;
+    max-width: 400px;
+  }
+  .ts-input--short {
+    max-width: 120px;
+  }
+  .ts-select {
+    padding: 8px 28px 8px 10px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    font-size: 13px;
+    flex-shrink: 0;
+    min-width: max-content;
+  }
+  .ts-card__footer {
+    padding-top: 12px;
+    border-top: 1px solid var(--ts-line);
+    margin-top: 8px;
+  }
+
+  /* Notification centre — tabs, history guidance, muted list. */
+  .ts-app .ts-tabs {
+    margin-bottom: 14px;
+  }
+
+  .ts-guide {
+    padding: 4px 2px 2px;
+  }
+  .ts-guide__sev {
+    margin-bottom: 12px;
+  }
+  .ts-guide__block {
+    margin: 0 0 14px;
+  }
+  .ts-guide__block h4 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ts-ink);
+  }
+  .ts-guide__block p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ts-ink);
+  }
+  .ts-guide__steps {
+    margin: 0;
+    padding-left: 20px;
+  }
+  .ts-guide__steps li {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 3px 0;
+    color: var(--ts-ink);
+  }
+  .ts-guide__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ts-line);
+  }
+  .ts-guide__fp-done {
+    font-size: 13px;
+    color: var(--ts-good);
+    font-weight: 500;
+  }
+
+  .ts-muted-list {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ts-muted-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+  }
+  .ts-muted-item__icon {
+    font-size: 18px;
+  }
+  .ts-muted-item__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+    min-width: 0;
+    flex: 1;
+  }
+  .ts-muted-item__label {
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  /* QR code for 2FA enrollment */
+  .ts-qrcode {
+    display: inline-block;
+    margin: 0.75rem 0;
+    line-height: 0;
+  }
+  .ts-qrcode svg {
+    max-width: 200px;
+    height: auto;
+    display: block;
+    border: 4px solid #fff;
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px #ddd;
+  }
+  .ts-otpauth-details {
+    margin-top: 0.5rem;
+  }
+  .ts-otpauth-details summary {
+    cursor: pointer;
+    color: var(--ts-link, #2563eb);
+    font-size: 0.85rem;
+  }
+  .ts-otpauth-details summary:hover {
+    text-decoration: underline;
+  }
+
+  /* Login activity timeline (Logs panel) */
+  .ts-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ts-timeline__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--ts-line);
+    font-size: 13px;
+  }
+  .ts-timeline__item:last-child {
+    border-bottom: 0;
+  }
+  .ts-timeline__user {
+    font-weight: 600;
+  }
+  .ts-timeline__ip {
+    font-family: monospace;
+  }
+  .ts-timeline__time {
+    margin-left: auto;
+    font-size: 12px;
+  }
+  .ts-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    display: inline-block;
+  }
+  .ts-dot--ok {
+    background: #16a34a;
+  }
+  .ts-dot--bad {
+    background: #dc2626;
+  }
+
+  /* ---------------------------- Health score widget ---------------------------- */
+  .ts-health__toggle {
+    background: none;
+    border: 0;
+    color: var(--ts-brand);
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .ts-health__summary {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .ts-health__grade {
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--ts-radius);
+    color: #fff;
+  }
+  .ts-health__grade.is-good {
+    background: var(--ts-good);
+  }
+  .ts-health__grade.is-mid {
+    background: var(--ts-mid);
+  }
+  .ts-health__grade.is-bad {
+    background: var(--ts-bad);
+  }
+  .ts-health__score strong {
+    font-size: 28px;
+  }
+  .ts-health__score span {
+    color: var(--ts-muted);
+  }
+  .ts-health__checks {
+    list-style: none;
+    margin: 14px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ts-health__checks li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .ts-health__checks li.is-pass .ts-health__icon {
+    color: var(--ts-good);
+  }
+  .ts-health__checks li.is-fail .ts-health__icon {
+    color: var(--ts-bad);
+  }
+  .ts-health__icon {
+    font-weight: 700;
+    width: 16px;
+    text-align: center;
+  }
+  .ts-health__impact {
+    margin-left: auto;
+    color: var(--ts-bad);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ----------------------------- Onboarding banner ----------------------------- */
+  .ts-onboarding {
+    background: var(--ts-surface);
+    border: 1px solid var(--ts-line);
+    border-radius: var(--ts-radius);
+    box-shadow: var(--ts-shadow);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+  }
+  .ts-onboarding--done {
+    border-left: 4px solid var(--ts-good);
+  }
+  .ts-onboarding--done .ts-onboarding__hint {
+    margin: 0;
+  }
+  .ts-onboarding__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ts-onboarding__title {
+    margin: 0;
+    font-size: 15px;
+  }
+  .ts-onboarding__dismiss {
+    background: none;
+    border: 0;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--ts-muted);
+  }
+  .ts-onboarding__progress {
+    position: relative;
+    height: 8px;
+    background: var(--ts-line);
+    border-radius: 999px;
+    margin: 12px 0;
+    overflow: hidden;
+  }
+  .ts-onboarding__bar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--ts-brand);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+  .ts-onboarding__percent {
+    position: absolute;
+    right: 0;
+    top: 12px;
+    font-size: 12px;
+    color: var(--ts-muted);
+  }
+  .ts-onboarding__next {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 18px;
+  }
+  .ts-onboarding__hint {
+    margin: 2px 0 0;
+    color: var(--ts-muted);
+    font-size: 13px;
+  }
+
+  /* -------------------------------- Agency panel ------------------------------- */
+  .ts-agency {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ts-agency-field {
+    margin-bottom: 14px;
+  }
+  .ts-agency-field__label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .ts-agency-field__hint {
+    margin: 4px 0 0;
+    color: var(--ts-muted);
+    font-size: 12px;
+  }
+  .ts-agency-actions {
+    margin-top: 12px;
+  }
+
+  /* ----------------------------- Pro teaser (ProGate) -------------------------- */
+  /* A static card describing a feature of the separate Loyal Security Pro plugin. */
+  .ts-pro-gate {
+    position: relative;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 12px 0;
+    padding: 16px 18px;
+    border: 1px dashed var(--ts-border);
+    border-radius: var(--ts-radius);
+    background: var(--ts-surface);
+  }
+  .ts-pro-teaser__title {
+    margin: 0 64px 4px 0;
+    font-size: 14px;
+  }
+  .ts-pro-gate .ts-pro-badge {
+    top: 14px;
+    right: 14px;
+  }
+  .ts-pro-gate .ts-pro-cta {
+    display: inline-block;
+    margin-top: 10px;
+    font-weight: 600;
+  }
+  .ts-nav__tag {
+    margin-left: auto;
+    background: #f59e0b;
+    color: #fff;
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    border-radius: 999px;
+    padding: 1px 6px;
+    line-height: 1.4;
+  }
+  .ts-pro-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 5;
+    background: #f59e0b;
+    color: #fff;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    border-radius: 999px;
+    padding: 2px 7px;
+    line-height: 1.4;
+  }
+
+  .ts-teaser-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ts-teaser-list li {
+    padding-left: 1.4em;
+    position: relative;
+    font-size: 13px;
+    color: var(--ts-muted, #646970);
+  }
+  .ts-teaser-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--ts-brand, #2b59ff);
+  }
+
+  .ts-pro-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ts-pro-modal {
+    position: relative;
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    max-width: 460px;
+    width: calc(100% - 32px);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 20px 60px rgba(16, 24, 40, 0.35);
+  }
+  .ts-pro-modal h2 {
+    font-size: 1.3rem;
+    margin: 0 0 0.5rem;
+  }
+  .ts-pro-modal ul {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+  }
+  .ts-pro-modal li {
+    margin: 0.35rem 0;
+  }
+  .ts-pro-modal li::before {
+    content: '✓ ';
+    color: #16a34a;
+    font-weight: 700;
+  }
+  .ts-pro-modal .ts-pro-cta {
+    display: block;
+    width: 100%;
+    background: #f59e0b;
+    color: #fff;
+    font-weight: 700;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    border: none;
+  }
+  .ts-pro-modal .ts-pro-cta:hover {
+    background: #d97706;
+  }
+  .ts-pro-modal .ts-pro-later {
+    display: block;
+    width: 100%;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    background: none;
+    border: none;
+  }
+  .ts-pro-modal .ts-pro-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #6b7280;
+    line-height: 1;
+  }
+
+  /* Bypass-telemetry consent modal + panel. Reuses .ts-pro-modal shell with wider layout. */
+  .ts-consent-modal {
+    max-width: 560px;
+  }
+  .ts-consent-list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+  }
+  .ts-consent-list li {
+    margin: 0.4rem 0;
+  }
+  .ts-consent-list li::before {
+    content: '';
+  } /* override the ✓ from .ts-pro-modal li */
+  .ts-consent-transparency {
+    margin: 0.25rem 0 0.5rem;
+    font-size: 0.85rem;
+  }
+  .ts-consent-sample {
+    max-height: 280px;
+    overflow: auto;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 11px;
+    line-height: 1.45;
+    white-space: pre;
+    margin: 0.5rem 0 0;
+  }
+  .ts-consent-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  /* Field inputs added by newer panels (url/password) share the text-input styling. */
+  .ts-field input[type='url'],
+  .ts-field input[type='password'] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+
+  /* Admin bar security score */
+  #wpadminbar #wp-admin-bar-totalsecwp-score .ab-item {
+    font-weight: 700;
+    padding: 0 10px;
+  }
+  #wpadminbar #wp-admin-bar-totalsecwp-score.is-good .ab-item {
+    color: #46b450 !important;
+  }
+  #wpadminbar #wp-admin-bar-totalsecwp-score.is-mid .ab-item {
+    color: #f0b849 !important;
+  }
+  #wpadminbar #wp-admin-bar-totalsecwp-score.is-bad .ab-item {
+    color: #dc3232 !important;
+  }
+
+  /* Login activity timeline */
+  .ts-login-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ts-login-timeline__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--ts-line);
+    font-size: 13px;
+  }
+  .ts-login-timeline__row:last-child {
+    border-bottom: 0;
+  }
+  .ts-login-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .ts-login-dot--success {
+    background: var(--ts-good);
+  }
+  .ts-login-dot--fail {
+    background: var(--ts-bad);
+  }
+  .ts-login-dot--blocked {
+    background: var(--ts-mid);
+  }
+  .ts-login-timeline__user {
+    font-weight: 600;
+    min-width: 80px;
+  }
+  .ts-login-timeline__ip {
+    color: var(--ts-muted);
+    font-family: monospace;
+  }
+  .ts-login-timeline__time {
+    color: var(--ts-muted);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* Cleanup modal overlay */
+  .ts-cleanup-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9990;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ts-cleanup-modal__box {
+    background: var(--ts-surface);
+    border-radius: var(--ts-radius);
+    padding: 28px 32px;
+    max-width: 520px;
+    width: calc(100% - 40px);
+    box-shadow: 0 16px 48px rgba(16, 24, 40, 0.3);
+  }
+  .ts-cleanup-modal__title {
+    margin: 0 0 20px;
+    font-size: 17px;
+  }
+  .ts-cleanup-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .ts-cleanup-stat {
+    background: var(--ts-bg);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .ts-cleanup-stat__value {
+    font-size: 26px;
+    font-weight: 800;
+  }
+  .ts-cleanup-stat__label {
+    font-size: 12px;
+    color: var(--ts-muted);
+  }
+  .ts-manual-review {
+    margin-top: 16px;
+  }
+  .ts-manual-review__title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .ts-manual-review__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ts-manual-review__item {
+    font-family: monospace;
+    font-size: 12px;
+    padding: 3px 0;
+    color: var(--ts-muted);
+  }
+
+  /* Notification Pro-locked sections */
+  .ts-notif-pro-locked {
+    opacity: 0.65;
+  }
+  .ts-notif-pro-locked input,
+  .ts-notif-pro-locked select,
+  .ts-notif-pro-locked button {
+    pointer-events: none;
+  }
+
+  /* Agency panel subsections */
+  .ts-agency-subsection {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--ts-line);
+  }
+  .ts-agency-subsection:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+  .ts-agency-subsection__title {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 12px;
+  }
+
+  /* Generic notice variants */
+  .ts-notice {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    border-left: 3px solid;
+  }
+  .ts-notice--success {
+    background: #f0fdf4;
+    border-color: var(--ts-good);
+    color: #15803d;
+  }
+  .ts-notice--error {
+    background: #fef2f2;
+    border-color: var(--ts-bad);
+    color: #b91c1c;
+  }
+  .ts-notice--info {
+    background: #eff6ff;
+    border-color: var(--ts-info);
+    color: #0369a1;
+  }
+  .ts-notice--warn {
+    background: #fffbeb;
+    border-color: var(--ts-mid);
+    color: #92400e;
+  }
+
+  /* Auto-drafted virtual-patch suggestion item (FirewallPanel) */
+  .ts-patch-suggestion__box {
+    background: #eff6ff;
+    color: #1e293b;
+    border-left: 3px solid var(--ts-info);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  /* Hub dashboard site grid */
+  .ts-hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .ts-hub-site {
+    border-radius: var(--ts-radius);
+    border: 2px solid var(--ts-line);
+    padding: 16px;
+    background: var(--ts-surface);
+  }
+  .ts-hub-site__url {
+    font-weight: 600;
+    font-size: 13px;
+    word-break: break-all;
+  }
+  .ts-hub-site__meta {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ts-muted);
+  }
+
+  /* Uptime panel */
+  .ts-uptime-bar {
+    display: flex;
+    height: 16px;
+    border-radius: 999px;
+    overflow: hidden;
+    gap: 2px;
+    margin: 12px 0;
+  }
+  .ts-uptime-bar__seg {
+    flex: 1;
+    border-radius: 2px;
+  }
+  .ts-uptime-bar__seg--up {
+    background: var(--ts-good);
+  }
+  .ts-uptime-bar__seg--down {
+    background: var(--ts-bad);
+  }
+  .ts-uptime-bar__seg--unknown {
+    background: var(--ts-line);
+  }
+
+  /* Compliance panel */
+  .ts-compliance-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ts-compliance-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    background: var(--ts-bg);
+  }
+  .ts-compliance-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .ts-compliance-detail {
+    font-size: 12px;
+    color: var(--ts-muted);
+    margin-top: 2px;
+  }
+
+  /* REST Inventory panel */
+  .ts-rest-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .ts-rest-table th {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--ts-line);
+    font-size: 12px;
+    color: var(--ts-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ts-rest-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--ts-line);
+    vertical-align: middle;
+  }
+  .ts-rest-table tr:last-child td {
+    border-bottom: 0;
+  }
+  .ts-rest-type--core {
+    color: var(--ts-muted);
+  }
+  .ts-rest-type--plugin {
+    color: var(--ts-brand);
+  }
+  .ts-rest-type--theme {
+    color: var(--ts-good);
+  }
+  .ts-rest-type--unknown {
+    color: var(--ts-mid);
+  }
+
+  /* Threat hunting panel */
+  .ts-incident-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ts-incident-row {
+    border-radius: 8px;
+    border: 1px solid var(--ts-line);
+    background: var(--ts-surface);
+    overflow: hidden;
+  }
+  .ts-incident-row__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+  .ts-incident-row__head:hover {
+    background: var(--ts-bg);
+  }
+  .ts-incident-score {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ts-incident-score__bar {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--ts-brand);
+    min-width: 4px;
+    max-width: 80px;
+  }
+  .ts-incident-row__detail {
+    padding: 10px 14px;
+    border-top: 1px solid var(--ts-line);
+    background: var(--ts-bg);
+  }
+  .ts-incident-events {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ts-incident-event {
+    font-size: 12px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .ts-incident-event__time {
+    color: var(--ts-muted);
+    width: 140px;
+    flex-shrink: 0;
+  }
+
+  /* Live traffic panel */
+  .ts-traffic-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .ts-traffic-table th {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--ts-line);
+    font-size: 11px;
+    color: var(--ts-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ts-traffic-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--ts-line);
+    vertical-align: top;
+  }
+  .ts-traffic-table tr:last-child td {
+    border-bottom: 0;
+  }
+  .ts-traffic-table tr.is-expanded td {
+    background: var(--ts-bg);
+  }
+  .ts-traffic-payload {
+    font-family: monospace;
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 120px;
+    overflow: auto;
+    margin: 8px 0 4px;
+    padding: 8px;
+    background: #1e293b;
+    color: #e2e8f0;
+    border-radius: 6px;
+  }
+  .ts-traffic-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .ts-traffic-status {
+    font-size: 12px;
+    color: var(--ts-muted);
+    margin-left: auto;
+  }
+
+  /* ── Live Traffic v2 ─────────────────────────────────────────────────── */
+
+  /* Stat bar */
+  .ts-traffic-statbar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 0 14px;
+    border-bottom: 1px solid var(--ts-line);
+    margin-bottom: 14px;
+  }
+  .ts-traffic-statbar--loading {
+    align-items: center;
+  }
+  .ts-traffic-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: var(--ts-bg);
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    padding: 10px 16px;
+    min-width: 90px;
+  }
+  .ts-traffic-stat--danger {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #1e293b;
+  }
+  .ts-traffic-stat--warning {
+    border-color: #fcd34d;
+    background: #fffbeb;
+    color: #1e293b;
+  }
+  .ts-traffic-stat--info {
+    border-color: #bae6fd;
+    background: #f0f9ff;
+    color: #1e293b;
+  }
+  .ts-traffic-stat__value {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .ts-traffic-stat__label {
+    font-size: 11px;
+    color: var(--ts-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+
+  /* Filter bar — extends .ts-filters base */
+  .ts-traffic-filters {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .ts-traffic-filters--pro {
+    gap: 6px;
+  }
+  .ts-input--sm {
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    height: 34px;
+  }
+  .ts-input--wide {
+    flex: 1;
+    min-width: 160px;
+  }
+  .ts-select--sm {
+    padding: 6px 28px 6px 10px;
+    font-size: 13px;
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    height: 34px;
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    flex-shrink: 0;
+    min-width: max-content;
+  }
+
+  /* Table tweaks for the traffic view */
+  .ts-table--traffic {
+    font-size: 12px;
+  }
+  .ts-table--traffic th {
+    font-size: 11px;
+    color: var(--ts-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ts-col--time {
+    white-space: nowrap;
+    color: var(--ts-muted);
+    font-size: 11px;
+  }
+  .ts-col--ip {
+    font-family: monospace;
+    font-size: 12px;
+  }
+  .ts-col--uri {
+    max-width: 200px;
+  }
+  .ts-col--toggle {
+    width: 28px;
+    text-align: center;
+    color: var(--ts-muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .ts-table-wrap {
+    overflow-x: auto;
+  }
+
+  /* Row colour coding by severity */
+  .ts-row--danger {
+    background: #fff5f5;
+    color: #1e293b;
+  }
+  .ts-row--warning {
+    background: #fffdf0;
+    color: #1e293b;
+  }
+  .ts-row--clickable {
+    cursor: pointer;
+  }
+  .ts-row--clickable:hover {
+    filter: brightness(0.97);
+  }
+
+  /* Incident detail (reused for traffic row expansion) */
+  .ts-incident__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--ts-line);
+  }
+
+  /* Top IPs / Top URIs widgets */
+  .ts-traffic-widgets {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .ts-traffic-toplist {
+    background: var(--ts-bg);
+    border: 1px solid var(--ts-line);
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 180px;
+    flex: 1;
+  }
+  .ts-traffic-toplist__title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ts-muted);
+    margin: 0 0 8px;
+  }
+  .ts-traffic-toplist__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ts-traffic-toplist__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--ts-line);
+    font-size: 12px;
+  }
+  .ts-traffic-toplist__item:last-child {
+    border-bottom: 0;
+  }
+  .ts-traffic-toplist__label {
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+    color: var(--ts-ink);
+  }
+  .ts-traffic-toplist__count {
+    font-weight: 700;
+    color: var(--ts-muted);
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Tab bar actions row */
+  .ts-traffic-tabbar-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  /* Notice variant we missed */
+  .ts-notice--danger {
+    background: #fef2f2;
+    border-color: var(--ts-bad);
+    color: #b91c1c;
+  }
+
+  /* Staging panel */
+  .ts-staging-card {
+    border: 2px solid var(--ts-brand);
+    border-radius: var(--ts-radius);
+    padding: 16px;
+    background: #eff6ff;
+    color: #1e293b;
+    margin-top: 16px;
+  }
+  .ts-staging-url {
+    font-family: monospace;
+    font-size: 13px;
+    word-break: break-all;
+    color: var(--ts-brand);
+  }
+  .ts-staging-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--ts-muted);
+    margin-top: 8px;
+  }
+
+  /* ── CSP Manager ─────────────────────────────────────────────────────── */
+  .ts-csp-section {
+    margin-top: 20px;
+  }
+  .ts-csp-section + .ts-csp-section {
+    margin-top: 16px;
+  }
+  .ts-csp-section--row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ts-csp-section__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ts-text);
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Mode toggle */
+  .ts-csp-modes {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ts-csp-mode {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 14px;
+    border: 2px solid var(--ts-border, var(--ts-line));
+    border-radius: var(--ts-radius);
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    cursor: pointer;
+    text-align: left;
+    transition:
+      border-color 0.15s,
+      background 0.15s;
+  }
+  .ts-csp-mode:hover {
+    border-color: var(--ts-brand);
+  }
+  /* Active-state tints stay a fixed light color with pinned dark text regardless of theme —
+     small, infrequent selection states, simpler and safer than re-deriving a dark-mode-tinted
+     version of each semantic color. */
+  .ts-csp-mode--active {
+    border-color: var(--ts-brand);
+    background: #eff6ff;
+    color: #1e293b;
+  }
+  .ts-csp-mode--enforce.ts-csp-mode--active {
+    border-color: var(--ts-bad);
+    background: #fef2f2;
+    color: #1e293b;
+  }
+  .ts-csp-mode--report-only.ts-csp-mode--active {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #1e293b;
+  }
+  .ts-csp-mode__label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: inherit;
+  }
+  .ts-csp-mode__hint {
+    display: block;
+    font-size: 11px;
+    color: var(--ts-muted);
+    margin-top: 3px;
+  }
+
+  /* Preset grid */
+  .ts-csp-presets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+  }
+  .ts-csp-preset {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px;
+    border: 2px solid var(--ts-border, var(--ts-line));
+    border-radius: var(--ts-radius);
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    cursor: pointer;
+    transition:
+      border-color 0.15s,
+      background 0.15s;
+    text-align: center;
+  }
+  .ts-csp-preset:hover {
+    border-color: var(--ts-brand);
+  }
+  .ts-csp-preset--active {
+    border-color: var(--ts-ok);
+    background: #f0fdf4;
+    color: #1e293b;
+  }
+  .ts-csp-preset__logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .ts-csp-preset__label {
+    font-size: 12px;
+    color: inherit;
+    line-height: 1.3;
+  }
+  .ts-csp-preset__check {
+    position: absolute;
+    top: 5px;
+    right: 6px;
+    font-size: 12px;
+    color: var(--ts-ok);
+    font-weight: 700;
+  }
+
+  /* Scan results */
+  .ts-csp-scan-running {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
+  }
+  .ts-csp-scan-results {
+    padding: 4px 0;
+  }
+  .ts-csp-domain-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+    padding: 8px;
+    background: #f9fafb;
+    color: #1e293b;
+    border-radius: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .ts-csp-domain {
+    font-size: 11px;
+    background: #e5e7eb;
+    color: #1e293b;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  /* Custom directives */
+  .ts-csp-custom__entries {
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ts-csp-custom__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .ts-csp-custom__directive {
+    display: inline-block;
+    min-width: 130px;
+    font-size: 12px;
+    background: #f3f4f6;
+    color: #1e293b;
+    padding: 3px 7px;
+    border-radius: 3px;
+  }
+  .ts-csp-custom__values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .ts-csp-custom__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    background: #dbeafe;
+    color: #1e293b;
+    padding: 2px 6px;
+    border-radius: 12px;
+  }
+  .ts-csp-custom__remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+  }
+  .ts-csp-custom__remove:hover {
+    color: var(--ts-bad);
+  }
+  .ts-csp-custom__add {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  /* Policy preview */
+  .ts-csp-preview {
+    font-size: 11px;
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  /* Pending-domain review list */
+  .ts-csp-pending-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ts-csp-pending-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--ts-border, #e5e7eb);
+    border-radius: 6px;
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    flex-wrap: wrap;
+  }
+  .ts-csp-pending-item__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+  }
+  .ts-csp-pending-item__domain {
+    font-size: 13px;
+    font-weight: 600;
+    word-break: break-all;
+  }
+  .ts-csp-pending-item__directives {
+    font-size: 11px;
+  }
+  .ts-csp-pending-item__count {
+    font-size: 11px;
+  }
+  .ts-csp-pending-item__actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    align-items: center;
+  }
+
+  /* Alert badge on tab when there are pending items */
+  .ts-tab--alert {
+    color: #b45309;
+    font-weight: 600;
+  }
+  .ts-tab--alert.ts-tab--active {
+    border-bottom-color: #b45309;
+  }
+
+  /* Tab bar (shared but used here too) */
+  .ts-tabbar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--ts-border);
+    margin: 16px 0 0;
+  }
+  .ts-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--ts-muted);
+  }
+  .ts-tab:hover {
+    color: var(--ts-text);
+  }
+  .ts-tab--active {
+    color: var(--ts-brand);
+    border-bottom-color: var(--ts-brand);
+    font-weight: 600;
+  }
+
+  /* Checkbox label */
+  .ts-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--ts-text);
+    cursor: pointer;
+  }
+
+  /* ===================================================================== *
+ * Grouped sidebar navigation (collapsible sections).
+ * ===================================================================== */
+  .ts-nav-group {
+    margin-bottom: 6px;
+  }
+  .ts-nav-group__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    padding: 8px 10px 4px;
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .ts-nav-group__title:hover {
+    color: #94a3b8;
+  }
+  .ts-nav-group__toggle {
+    font-size: 10px;
+    opacity: 0.8;
+  }
+  .ts-nav-group__items {
+    list-style: none;
+    margin: 0 0 4px;
+    padding: 0;
+  }
+
+  /* ===================================================================== *
+ * Onboarding wizard (full-panel).
+ * ===================================================================== */
+  .ts-plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 8px;
+  }
+  @media (max-width: 900px) {
+    .ts-plan-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .ts-plan-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--ts-border, #e2e8f0);
+    border-radius: 10px;
+    padding: 18px;
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+  }
+  .ts-plan-card--featured {
+    border-color: var(--ts-brand);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.08);
+  }
+  .ts-plan-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .ts-plan-card__name {
+    margin: 0;
+    font-size: 18px;
+  }
+  .ts-plan-card__list {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    flex: 1;
+  }
+  .ts-plan-card__list li {
+    padding: 5px 0 5px 22px;
+    position: relative;
+    font-size: 13px;
+  }
+  .ts-plan-card__list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--ts-good);
+    font-weight: 700;
+  }
+  .ts-plan-card__cta {
+    width: 100%;
+    background: var(--ts-brand);
+    color: #fff;
+    border: 0;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .ts-plan-card__cta:hover {
+    background: #005a99;
+  }
+  .ts-onboard-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .ts-onboard-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .ts-onboard-check input {
+    width: 16px;
+    height: 16px;
+  }
+  .ts-onboard-success {
+    text-align: center;
+    padding: 24px 8px;
+  }
+  .ts-onboard-success__icon {
+    font-size: 56px;
+    line-height: 1;
+  }
+  .ts-onboard-success h2 {
+    margin: 12px 0 4px;
+  }
+  .ts-onboard-proof {
+    display: inline-block;
+    margin: 4px auto 0;
+    padding: 8px 16px;
+    background: var(--ts-bg);
+    border-radius: 100px;
+    font-size: 13.5px;
+  }
+  .ts-onboard-summary {
+    list-style: none;
+    display: inline-block;
+    text-align: left;
+    margin: 12px auto 0;
+    padding: 0;
+  }
+  .ts-onboard-summary li {
+    padding: 4px 0;
+    font-size: 14px;
+  }
+  .ts-onboard-dismiss {
+    display: block;
+    margin: 22px auto 0;
+    background: none;
+    border: 0;
+    color: var(--ts-muted);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  /* ===================================================================== *
+ * Backup: schedule + guided recovery flow.
+ * ===================================================================== */
+  .ts-schedule-row {
+    padding: 8px 0;
+  }
+  .ts-recovery-step {
+    margin-top: 12px;
+  }
+  .ts-token-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--ts-bg);
+    border: 1px solid var(--ts-border, #dcdcde);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .ts-token-box code {
+    flex: 1;
+  }
+  .ts-recovery-otp {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 13px;
+  }
+  .ts-recovery-otp input {
+    width: auto;
+  }
+  .ts-linkbtn {
+    background: none;
+    border: 0;
+    color: var(--ts-brand);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    font-size: 13px;
+  }
+
+  /* ===================================================================== *
+ * Settings: collapsible module groups.
+ * ===================================================================== */
+  .ts-settings-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ts-settings-group {
+    border: 1px solid var(--ts-border, #e2e8f0);
+    border-radius: 10px;
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+    overflow: hidden;
+  }
+  .ts-settings-group__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    list-style: none;
+    font-weight: 600;
+  }
+  .ts-settings-group__summary::-webkit-details-marker {
+    display: none;
+  }
+  .ts-settings-group[open] .ts-settings-group__summary {
+    border-bottom: 1px solid var(--ts-border, #f0f0f1);
+  }
+  .ts-settings-group__title {
+    font-size: 14px;
+  }
+  .ts-settings-group__body {
+    padding: 12px 16px;
+  }
+
+  /* Floating "you have unsaved changes" bar. Fixed (not sticky) on purpose: this renders once,
+   * after every module's <details>, so a sticky position only starts adhering once you scroll
+   * near the very bottom of the whole settings page — no better than the Save button that was
+   * already down there. Fixed pins it to the viewport immediately, the moment any module goes
+   * dirty, regardless of where on the page you're actually looking. Centered rather than
+   * full-width so it never has to reason about the WP admin sidebar's (variable, collapsible)
+   * width, and sits below the toast stack's z-index so a toast never hides behind it. */
+  .ts-settings-savebar {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    z-index: 9990;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(480px, calc(100vw - 40px));
+    padding: 10px 14px;
+    background: #1d2327;
+    color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(16, 24, 40, 0.35);
+  }
+  .ts-settings-savebar__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .ts-settings-savebar__label {
+    font-size: 13px;
+    opacity: 0.9;
+  }
+  .ts-settings-cfstatus {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ts-card--danger {
+    border-color: #f1aeb5;
+  }
+
+  /* ===================================================================== *
+ * Async job progress (backup, scan, integrity, repair).
+ * ===================================================================== */
+  .ts-job-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ts-job-progress__title {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .ts-job-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--ts-line);
+    overflow: hidden;
+  }
+  .ts-job-bar__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--ts-brand);
+    transition: width 0.4s ease;
+    min-width: 4px;
+  }
+  .ts-job-bar__fill--done {
+    background: var(--ts-good);
+  }
+  .ts-job-bar__fill--err {
+    background: var(--ts-bad);
+  }
+  /* Indeterminate animation for operations where we can't measure progress (integrity check). */
+  .ts-job-bar__fill--indeterminate {
+    width: 40% !important;
+    animation: ts-indeterminate 1.6s ease-in-out infinite;
+  }
+  @keyframes ts-indeterminate {
+    0% {
+      margin-left: 0;
+      width: 40%;
+    }
+    50% {
+      margin-left: 30%;
+      width: 50%;
+    }
+    100% {
+      margin-left: 60%;
+      width: 40%;
+    }
+  }
+  .ts-job-progress__footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .ts-job-progress__step {
+    flex: 1;
+    color: var(--ts-ink);
+  }
+  .ts-job-progress__step--err {
+    color: var(--ts-bad);
+  }
+  .ts-job-progress__pct {
+    font-size: 12px;
+    color: var(--ts-muted);
+    white-space: nowrap;
+  }
+  .ts-job-progress__warn {
+    font-size: 12px;
+    color: var(--ts-mid);
+    margin: 0;
+  }
+  .ts-job-icon--done {
+    color: var(--ts-good);
+    font-weight: 700;
+  }
+  .ts-job-icon--err {
+    color: var(--ts-bad);
+    font-weight: 700;
+  }
+  .ts-job-steps {
+    list-style: none;
+    margin: 2px 0 0;
+    padding: 0;
+  }
+  .ts-job-steps__past {
+    font-size: 12px;
+    color: var(--ts-muted);
+    padding: 1px 0;
+  }
+  /* Small spinner variant used inside progress footers. */
+  .ts-spinner--sm {
+    width: 14px !important;
+    height: 14px !important;
+    border-width: 2px !important;
+    flex-shrink: 0;
+  }
+
+  /* ===================================================================== *
+ * Upgrade / Pro page — native plan cards (live data from LicenseKit via
+ * GET /upgrade/pricing; see UpgradePanel.js for why this isn't an iframe).
+ * ===================================================================== */
+  .ts-upgrade-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 48px;
+    justify-content: center;
+    color: var(--ts-muted);
+    font-size: 14px;
+  }
+  .ts-upgrade-plans {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .ts-upgrade-plan {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px;
+    border: 1px solid var(--ts-border);
+    border-radius: 10px;
+    background: var(--ts-surface);
+  }
+  .ts-upgrade-plan--best {
+    border-color: var(--ts-accent, #2271b1);
+  }
+  .ts-upgrade-plan__ribbon {
+    position: absolute;
+    top: -10px;
+    right: 16px;
+    background: var(--ts-accent, #2271b1);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .ts-upgrade-plan__name {
+    font-size: 13px;
+    color: var(--ts-muted);
+    text-transform: capitalize;
+  }
+  .ts-upgrade-plan__price {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--ts-text);
+  }
+  .ts-upgrade-plan__suffix {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--ts-muted);
+    margin-left: 2px;
+  }
+  .ts-upgrade-plan__meta {
+    font-size: 13px;
+    color: var(--ts-muted);
+    margin-bottom: 8px;
+  }
+  .ts-upgrade-footnote {
+    font-size: 12px;
+    color: var(--ts-muted);
+    margin-top: 16px;
+  }
+  .ts-upgrade-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ts-upgrade-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+  }
+  .ts-upgrade-feature {
+    padding: 16px;
+    border: 1px solid var(--ts-border);
+    border-radius: 10px;
+    background: var(--ts-surface);
+  }
+  .ts-upgrade-feature__icon {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+  .ts-upgrade-feature__title {
+    font-weight: 600;
+    color: var(--ts-text);
+    margin-bottom: 4px;
+  }
+  .ts-upgrade-feature__body {
+    font-size: 13px;
+    color: var(--ts-muted);
+    margin: 0;
+  }
+
+  /* ===================================================================== *
+ * Sentinel AI panel.
+ * ===================================================================== */
+  .ts-btn-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ts-toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    gap: 8px 16px;
+  }
+  @media (max-width: 700px) {
+    .ts-toggle-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .ts-badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .ts-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    word-break: break-all;
+  }
+  .ts-table--compact td {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+  .ts-incident-detail {
+    padding: 6px 2px 2px;
+  }
+  .ts-detail-section {
+    margin: 14px 0;
+  }
+  .ts-detail-section h4 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ts-incident-detail .ts-timeline {
+    max-height: 320px;
+    overflow: auto;
+  }
+  .ts-cloud-status {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ts-border, #e2e8f0);
+  }
+  .ts-cloud-note {
+    margin: 8px 0 0;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ts-cloud-alert {
+    margin-top: 10px;
+  }
+  .ts-cloud-alert__head {
+    display: block;
+    font-size: 14px;
+  }
+  .ts-cloud-alert__body {
+    margin: 6px 0 0;
+    font-size: 13px;
+    opacity: 0.95;
+  }
+  .ts-cloud-alert__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .ts-cloud-alert__cta {
+    display: inline-block;
+    background: var(--ts-brand, #0073aa);
+    color: #fff !important;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .ts-cloud-alert__cta:hover {
+    background: #005a99;
+  }
+}
