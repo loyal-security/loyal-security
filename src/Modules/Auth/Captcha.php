@@ -2,16 +2,15 @@
 /**
  * Login/register/lost-password CAPTCHA (Cloudflare Turnstile / reCAPTCHA v3).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Support\Http;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Support\Http;
 
 /**
  * Adds a bot-deterrent challenge to wp-login.php's three credential-adjacent forms — login,
@@ -66,19 +65,19 @@ class Captcha {
 
 	public function enqueue(): void {
 		if ( 'turnstile' === $this->provider() ) {
-			wp_enqueue_script( 'totalsecwp-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js', array(), null, true ); // phpcs:ignore
+			wp_enqueue_script( 'loyalsec-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js', array(), null, true ); // phpcs:ignore
 		} elseif ( 'recaptcha_v3' === $this->provider() ) {
 			// Whitelist before embedding in a URL — reCAPTCHA site keys are alphanumeric/-/_.
 			$site = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $this->settings->get( 'auth', 'captcha_site_key', '' ) );
-			wp_enqueue_script( 'totalsecwp-recaptcha', 'https://www.google.com/recaptcha/api.js?render=' . rawurlencode( $site ), array(), null, true ); // phpcs:ignore
+			wp_enqueue_script( 'loyalsec-recaptcha', 'https://www.google.com/recaptcha/api.js?render=' . rawurlencode( $site ), array(), null, true ); // phpcs:ignore
 
 			// Attached to the handle above rather than echoed inline on the form: the token field
 			// id is the same regardless of which of the three forms is active, so one inline
 			// script (fired once, at enqueue time) covers login/register/lost-password alike.
 			$site_js = wp_json_encode( $site );
 			wp_add_inline_script(
-				'totalsecwp-recaptcha',
-				'document.addEventListener("DOMContentLoaded",function(){if(window.grecaptcha){grecaptcha.ready(function(){grecaptcha.execute(' . $site_js . ',{action:"login"}).then(function(t){var e=document.getElementById("totalsecwp_captcha_token");if(e)e.value=t;});});}});'
+				'loyalsec-recaptcha',
+				'document.addEventListener("DOMContentLoaded",function(){if(window.grecaptcha){grecaptcha.ready(function(){grecaptcha.execute(' . $site_js . ',{action:"login"}).then(function(t){var e=document.getElementById("loyalsec_captcha_token");if(e)e.value=t;});});}});'
 			);
 		}
 	}
@@ -91,10 +90,10 @@ class Captcha {
 		$site_raw = (string) $this->settings->get( 'auth', 'captcha_site_key', '' );
 		if ( 'turnstile' === $this->provider() ) {
 			// Turnstile key goes into an HTML attribute — esc_attr() is correct here.
-			echo '<div class="cf-turnstile" data-sitekey="' . esc_attr( $site_raw ) . '" data-response-field-name="totalsecwp_captcha"></div>';
+			echo '<div class="cf-turnstile" data-sitekey="' . esc_attr( $site_raw ) . '" data-response-field-name="loyalsec_captcha"></div>';
 		} elseif ( 'recaptcha_v3' === $this->provider() ) {
 			// The script that fills this field's value is enqueued once in enqueue(), not here.
-			echo '<input type="hidden" name="totalsecwp_captcha" id="totalsecwp_captcha_token" />';
+			echo '<input type="hidden" name="loyalsec_captcha" id="loyalsec_captcha_token" />';
 		}
 	}
 
@@ -152,9 +151,9 @@ class Captcha {
 	 */
 	private function check_token(): ?\WP_Error {
 		// phpcs:ignore WordPress.Security.NonceVerification
-		$token = isset( $_POST['totalsecwp_captcha'] ) ? sanitize_text_field( wp_unslash( $_POST['totalsecwp_captcha'] ) ) : '';
+		$token = isset( $_POST['loyalsec_captcha'] ) ? sanitize_text_field( wp_unslash( $_POST['loyalsec_captcha'] ) ) : '';
 		if ( '' === $token || ! $this->verify_token( $token ) ) {
-			return new \WP_Error( 'totalsecwp_captcha', __( 'CAPTCHA verification failed. Please try again.', 'loyal-security' ) );
+			return new \WP_Error( 'loyalsec_captcha', __( 'CAPTCHA verification failed. Please try again.', 'loyal-security' ) );
 		}
 		return null;
 	}
@@ -169,7 +168,7 @@ class Captcha {
 	 */
 	private static function verify_endpoint( string $provider ): string {
 		if ( null === self::$provider_endpoints ) {
-			$json    = file_get_contents( TOTALSECWP_PATH . 'assets/data/captcha-providers.json' );
+			$json    = file_get_contents( LOYALSEC_PATH . 'assets/data/captcha-providers.json' );
 			$decoded = is_string( $json ) ? json_decode( $json, true ) : null;
 			self::$provider_endpoints = is_array( $decoded ) ? $decoded : array();
 		}
@@ -187,7 +186,7 @@ class Captcha {
 		$result = Http::post_json( $endpoint, array(
 			'secret'   => $secret,
 			'response' => $token,
-			'remoteip' => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ),
+			'remoteip' => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip(),
 		) );
 
 		if ( ! is_array( $result ) || empty( $result['success'] ) ) {

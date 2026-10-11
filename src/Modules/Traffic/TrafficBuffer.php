@@ -2,10 +2,10 @@
 /**
  * Circular flat-file traffic buffer — no database, no bloat.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Traffic;
+namespace LoyalSecurity\Modules\Traffic;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -17,8 +17,8 @@ defined( 'ABSPATH' ) || exit;
  * – Compaction happens automatically when the file exceeds MAX_FILE_BYTES; it trims to the
  *   cap, so the buffer never grows unboundedly.
  * – Reads are full-file (`file_get_contents`) because the cap keeps the file small (≤ ~2 MB).
- * – flock(LOCK_EX | LOCK_NB) on writes; if the lock cannot be obtained the entry is simply
- *   skipped — fail-open, no site impact.
+ * – flock(LOCK_EX | LOCK_NB) on writes; if another request holds the lock the entry is simply
+ *   skipped — fail-open, no site impact. Filesystems without locking still get every entry.
  */
 class TrafficBuffer {
 
@@ -58,10 +58,18 @@ class TrafficBuffer {
 		if ( ! $fh ) {
 			return;
 		}
+		// Skip the entry only when another request holds the lock. A filesystem without locking
+		// (NFS, some shared hosts, WordPress Playground) fails flock() without $wouldblock, and
+		// dropping every write there left Live Traffic permanently empty. One short line in
+		// append mode is written whole even without the lock.
+		$wouldblock = 0;
 		// phpcs:ignore WordPress.WP.AlternativeFunctions
-		if ( flock( $fh, LOCK_EX | LOCK_NB ) ) {
+		$locked = flock( $fh, LOCK_EX | LOCK_NB, $wouldblock );
+		if ( $locked || ! $wouldblock ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions
 			fwrite( $fh, $line );
+		}
+		if ( $locked ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions
 			flock( $fh, LOCK_UN );
 		}
@@ -165,7 +173,9 @@ class TrafficBuffer {
 		$timeline  = array();
 
 		foreach ( $all as $e ) {
-			if ( (int) ( $e['severity'] ?? 0 ) >= 30 ) {
+			// Blocked = a security event on a request that was refused. A failed sign-in is a
+			// warning too, but its page loaded normally.
+			if ( (int) ( $e['severity'] ?? 0 ) >= 30 && (int) ( $e['status'] ?? 200 ) >= 400 ) {
 				++$blocked;
 			}
 			$ua_t = $e['ua_type'] ?? '';
@@ -242,7 +252,7 @@ class TrafficBuffer {
 	 * Buffer file inside the plugin's private storage directory ('' when uploads is unavailable).
 	 */
 	public static function buffer_path(): string {
-		$dir = \TotalSecurityWP\Modules\Firewall\BanStore::storage_dir();
+		$dir = \LoyalSecurity\Modules\Firewall\BanStore::storage_dir();
 		return '' === $dir ? '' : $dir . '/traffic/buffer.jsonl';
 	}
 

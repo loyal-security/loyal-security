@@ -6,10 +6,10 @@
  * plugin, lets the administrator decide whether to wipe all security data, saves that
  * preference via an AJAX endpoint, then hands control back to WordPress's own delete flow.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Admin;
+namespace LoyalSecurity\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,7 +21,7 @@ class UninstallPrompt {
 
 	public function register_hooks(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue' ) );
-		add_action( 'wp_ajax_totalsecwp_set_delete_flag', array( $this, 'ajax_set_delete_flag' ) );
+		add_action( 'wp_ajax_loyalsec_set_delete_flag', array( $this, 'ajax_set_delete_flag' ) );
 	}
 
 	/**
@@ -33,21 +33,21 @@ class UninstallPrompt {
 		}
 
 		wp_enqueue_script(
-			'totalsecwp-uninstall-prompt',
-			TOTALSECWP_URL . 'assets/js/uninstall-prompt.js',
+			'loyalsec-uninstall-prompt',
+			LOYALSEC_URL . 'assets/js/uninstall-prompt.js',
 			array(),
-			TOTALSECWP_VERSION,
+			LOYALSEC_VERSION,
 			true
 		);
 
 		wp_localize_script(
-			'totalsecwp-uninstall-prompt',
-			'TotalSecWPUninstall',
+			'loyalsec-uninstall-prompt',
+			'LoyalSecUninstall',
 			array(
 				'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
-				'nonce'             => wp_create_nonce( 'totalsecwp_uninstall' ),
-				'plugin'            => TOTALSECWP_BASENAME,
-				'deleteOnUninstall' => (bool) get_option( 'totalsecwp_delete_on_uninstall', false ),
+				'nonce'             => wp_create_nonce( 'loyalsec_uninstall' ),
+				'plugin'            => LOYALSEC_BASENAME,
+				'deleteOnUninstall' => (bool) get_option( 'loyalsec_delete_on_uninstall', false ),
 			)
 		);
 	}
@@ -62,14 +62,14 @@ class UninstallPrompt {
 		// Explicit query_arg: the JS posts the nonce as `nonce`, and without naming it here
 		// check_ajax_referer() only ever looks at `_ajax_nonce`/`_wpnonce` — same mismatch found
 		// and fixed in TwoFactorEnrollPrompt::ajax_snooze(), same root cause here.
-		check_ajax_referer( 'totalsecwp_uninstall', 'nonce' );
+		check_ajax_referer( 'loyalsec_uninstall', 'nonce' );
 
 		if ( ! current_user_can( 'delete_plugins' ) ) {
 			wp_die( -1 );
 		}
 
 		$delete = isset( $_POST['delete_data'] ) && 'true' === sanitize_key( wp_unslash( $_POST['delete_data'] ) );
-		update_option( 'totalsecwp_delete_on_uninstall', $delete, false );
+		update_option( 'loyalsec_delete_on_uninstall', $delete, false );
 
 		wp_die( 1 );
 	}

@@ -5,10 +5,10 @@
  * Used by BOTH the standalone pre-WordPress prepend bootstrapper and the in-plugin
  * Standard-Mode firewall. Has zero WordPress dependency.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Waf;
+namespace LoyalSecurity\Waf;
 
 defined( 'ABSPATH' ) || exit;
 

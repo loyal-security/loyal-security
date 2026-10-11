@@ -13,15 +13,15 @@ const StoreContext = createContext( null );
 // PHP side stamps on page load (see Assets.php) so the very first render already has the
 // right value instead of flashing Advanced-then-Basic while the preference fetch is in flight.
 function initialViewMode() {
-	const root = document.getElementById( 'totalsecwp-app' );
+	const root = document.getElementById( 'loyalsec-app' );
 	return root && 'basic' === root.dataset.uiView ? 'basic' : 'advanced';
 }
 
 // Same data-attribute-seed trick as the view mode above, so an explicit dark/light choice is
-// already applied to #totalsecwp-app (see admin.css's [data-theme] rules) before React's first
+// already applied to #loyalsec-app (see admin.css's [data-theme] rules) before React's first
 // render — no flash of the ambient (OS/WP-core) theme first.
 function initialTheme() {
-	const root = document.getElementById( 'totalsecwp-app' );
+	const root = document.getElementById( 'loyalsec-app' );
 	const t = root && root.dataset.theme;
 	return 'light' === t || 'dark' === t ? t : 'system';
 }
@@ -30,7 +30,7 @@ function initialTheme() {
 // off of (see [data-theme='dark']/[data-theme='light'] in admin.css). 'system' clears it so the
 // ambient prefers-color-scheme / admin-color-midnight triggers decide, unchanged.
 function applyThemeAttr( theme ) {
-	const root = document.getElementById( 'totalsecwp-app' );
+	const root = document.getElementById( 'loyalsec-app' );
 	if ( ! root ) return;
 	if ( 'light' === theme || 'dark' === theme ) {
 		root.dataset.theme = theme;

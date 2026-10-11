@@ -2,15 +2,15 @@
 /**
  * Admin menu registration.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Admin;
+namespace LoyalSecurity\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Container;
-use TotalSecurityWP\Core\Assets;
+use LoyalSecurity\Container;
+use LoyalSecurity\Core\Assets;
 
 /**
  * Registers the top-level "Loyal Security" menu. The whole dashboard is a single-page
@@ -30,8 +30,9 @@ class AdminMenu {
 	}
 
 	public function register_menu(): void {
-		$cap  = current_user_can( TOTALSECWP_CAP ) ? TOTALSECWP_CAP : 'manage_options';
-		$name = \TotalSecurityWP\Support\Brand::name();
+		// On multisite only super admins manage the plugin (see Capabilities::can_manage()).
+		$cap  = is_multisite() ? 'manage_network_options' : ( current_user_can( LOYALSEC_CAP ) ? LOYALSEC_CAP : 'manage_options' );
+		$name = \LoyalSecurity\Support\Brand::name();
 
 		$hook = add_menu_page(
 			$name,

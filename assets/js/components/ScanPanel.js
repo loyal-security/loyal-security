@@ -85,11 +85,11 @@ export function ScanPanel( { defaultTab } ) {
 		// Another driver (this or another mount) already owns the loop — don't start a second,
 		// but DON'T leave this instance's button stuck on "running" either: clear it, since the
 		// owning driver updates progress via the shared /scan/progress the effect reads.
-		if ( window.__totalsecDriving ) {
+		if ( window.__loyalsecDriving ) {
 			setRunning( false );
 			return;
 		}
-		window.__totalsecDriving = scanId;
+		window.__loyalsecDriving = scanId;
 		setRunning( true );
 		try {
 			let state = { scan_id: scanId, status: 'running' };
@@ -102,7 +102,7 @@ export function ScanPanel( { defaultTab } ) {
 			}
 			if ( state.status !== 'running' ) {
 				// "Run your first scan" is a setup step: let the setup banner re-check.
-				window.dispatchEvent( new Event( 'totalsecwp:setup-changed' ) );
+				window.dispatchEvent( new Event( 'loyalsec:setup-changed' ) );
 			}
 			if ( alive.current && state.status !== 'running' ) {
 				store.toast( `Scan complete — ${ state.findings } finding(s).`, state.findings ? 'warning' : 'success' );
@@ -112,7 +112,7 @@ export function ScanPanel( { defaultTab } ) {
 			if ( alive.current ) store.toast( e.message, 'error' );
 		} finally {
 			if ( alive.current ) setRunning( false );
-			window.__totalsecDriving = null;
+			window.__loyalsecDriving = null;
 		}
 	};
 
@@ -649,7 +649,7 @@ function sevLabel( s ) {
 }
 
 function isFile( path ) {
-	return ! /^(post:|option:|user:|theme:|comment:|usermeta:|mu:|dropin:|plugin:|core:)/.test( path );
+	return ! /^(post:|postmeta:|term:|termmeta:|option:|user:|theme:|comment:|usermeta:|snippet:|mu:|dropin:|plugin:|core:|db:)/.test( path );
 }
 
 // Database findings store a locator (e.g. "user:4", "option:foo") instead of a file path
@@ -661,6 +661,10 @@ function locationLabel( path ) {
 	if ( ( m = path.match( /^user:(.+)$/ ) ) )   return '👤 Database · User #' + m[ 1 ];
 	if ( ( m = path.match( /^option:(.+)$/ ) ) ) return '⚙️ Database · Option “' + m[ 1 ] + '”';
 	if ( ( m = path.match( /^post:(.+)$/ ) ) )   return '📝 Database · Post #' + m[ 1 ];
+	if ( ( m = path.match( /^postmeta:(\d+):(.+)$/ ) ) ) return '📝 Database · Post #' + m[ 1 ] + ' field “' + m[ 2 ] + '”';
+	if ( ( m = path.match( /^term:(.+)$/ ) ) )     return '🏷️ Database · Term #' + m[ 1 ] + ' description';
+	if ( ( m = path.match( /^termmeta:(\d+):(.+)$/ ) ) ) return '🏷️ Database · Term #' + m[ 1 ] + ' field “' + m[ 2 ] + '”';
+	if ( ( m = path.match( /^snippet:(.+)$/ ) ) )  return '🧩 Database · Code snippet #' + m[ 1 ];
 	if ( ( m = path.match( /^theme:(.+)$/ ) ) )  return '🎨 Theme · ' + m[ 1 ];
 	if ( ( m = path.match( /^comment:(.+)$/ ) ) )  return '💬 Database · Comment #' + m[ 1 ];
 	if ( ( m = path.match( /^usermeta:(.+)$/ ) ) ) return '🗄️ Database · Usermeta ' + m[ 1 ];

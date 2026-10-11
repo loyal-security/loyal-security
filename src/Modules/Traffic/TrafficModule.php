@@ -2,14 +2,14 @@
 /**
  * Live Traffic Monitor module.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Traffic;
+namespace LoyalSecurity\Modules\Traffic;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
+use LoyalSecurity\Core\AbstractModule;
 
 /**
  * Owns the Live Traffic feature's settings and boots the all-traffic capture hook. The REST
@@ -54,6 +54,7 @@ class TrafficModule extends AbstractModule {
 			return;
 		}
 		( new TrafficCapture( $this->buffer() ) )->register( (bool) $this->setting( 'skip_static', true ) );
+		add_action( 'loyalsec_event_logged', array( TrafficCapture::class, 'on_event' ), 10, 2 );
 	}
 
 	/** Whether every request is being recorded into the Live Traffic buffer. */

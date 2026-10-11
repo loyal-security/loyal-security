@@ -2,15 +2,15 @@
 /**
  * Safe file quarantine.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Firewall\BanStore;
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Modules\Firewall\BanStore;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * Isolates suspicious files instead of deleting them: each file is moved into a private,
@@ -21,7 +21,7 @@ class Quarantine {
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_quarantine';
+		return $wpdb->prefix . 'loyalsec_quarantine';
 	}
 
 	private function dir(): string {
@@ -47,7 +47,7 @@ class Quarantine {
 			return array( 'ok' => false, 'message' => __( 'File not found.', 'loyal-security' ) );
 		}
 		// Refuse to quarantine our own files or obvious core bootstrap to avoid self-harm.
-		if ( false !== strpos( $path, wp_normalize_path( TOTALSECWP_PATH ) ) ) {
+		if ( false !== strpos( $path, wp_normalize_path( LOYALSEC_PATH ) ) ) {
 			return array( 'ok' => false, 'message' => __( 'Refusing to quarantine plugin files.', 'loyal-security' ) );
 		}
 
@@ -165,7 +165,7 @@ class Quarantine {
 		}
 		global $wpdb;
 		$wpdb->update( // phpcs:ignore WordPress.DB
-			$wpdb->prefix . 'totalsecwp_scan_findings',
+			$wpdb->prefix . 'loyalsec_scan_findings',
 			array( 'status' => $status ),
 			array( 'id' => $finding_id )
 		);

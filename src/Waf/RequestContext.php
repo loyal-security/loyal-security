@@ -4,12 +4,12 @@
  *
  * Zero WordPress dependency so it works inside the pre-WordPress WAF prepend.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Waf;
+namespace LoyalSecurity\Waf;
 
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Support\Ip;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -172,6 +172,35 @@ class RequestContext {
 		}
 
 		return $ctx;
+	}
+
+	/**
+	 * Whether the request comes from this server itself: WP-Cron spawns, Site Health and other
+	 * loopback requests. Volume limits (rate, query cardinality) must not count these, or a
+	 * burst of the site's own background requests gets it 429s from itself. Content checks
+	 * (bans, signatures, virtual patches) still apply to them.
+	 *
+	 * @param string[] $server_ips Extra addresses of this server (e.g. a public address behind NAT).
+	 */
+	public function from_own_server( array $server_ips = array() ): bool {
+		$own = array( '127.0.0.1', '::1' );
+		foreach ( array( 'SERVER_ADDR', 'LOCAL_ADDR' ) as $key ) {
+			if ( ! empty( $this->server[ $key ] ) && is_string( $this->server[ $key ] ) ) {
+				$own[] = $this->server[ $key ];
+			}
+		}
+		$own    = array_merge( $own, array_map( 'strval', $server_ips ) );
+		$remote = isset( $this->server['REMOTE_ADDR'] ) ? (string) $this->server['REMOTE_ADDR'] : '';
+		return in_array( $this->ip, $own, true ) || in_array( $remote, array( '127.0.0.1', '::1' ), true );
+	}
+
+	/**
+	 * Whether this is a request for wp-cron.php. Every cron spawn carries a fresh
+	 * `doing_wp_cron` timestamp, so each one looks like a new query string to the
+	 * query-cardinality limiter.
+	 */
+	public function is_cron_request(): bool {
+		return '/wp-cron.php' === substr( $this->path, -12 );
 	}
 
 	/**

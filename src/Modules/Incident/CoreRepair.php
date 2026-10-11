@@ -2,14 +2,14 @@
 /**
  * Clean reinstall of WordPress core for the running version.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * Restores a pristine core: it downloads the official "no-content" package for the *exact*
@@ -25,8 +25,19 @@ class CoreRepair {
 	/** Executable extensions that are auto-removed when found foreign inside core dirs. */
 	private const CODE_EXT = array( 'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'phps', 'phar', 'pht', 'inc' );
 
-	/** Core directories that are 100% core-owned and safe to prune foreign code from. */
-	private const CORE_DIRS = array( 'wp-admin', WPINC );
+	/**
+	 * Core directories that are 100% core-owned and safe to prune foreign code from, as
+	 * absolute paths. A method rather than a constant because the locations come from
+	 * {@see \LoyalSecurity\Support\Paths}, which resolves them against this install.
+	 *
+	 * @return string[]
+	 */
+	private static function core_dirs(): array {
+		return array(
+			\LoyalSecurity\Support\Paths::admin(),
+			\LoyalSecurity\Support\Paths::includes(),
+		);
+	}
 
 	/**
 	 * Run the repair.
@@ -76,7 +87,7 @@ class CoreRepair {
 			}
 			$allow[ $rel ] = true;
 
-			$live = \TotalSecurityWP\Support\Paths::root() . $rel;
+			$live = \LoyalSecurity\Support\Paths::root() . $rel;
 			if ( is_file( $live ) && md5_file( $live ) === $md5 ) {
 				continue; // Already pristine.
 			}
@@ -97,8 +108,8 @@ class CoreRepair {
 
 		// 2) Remove malware-dropped files from inside the core directories.
 		if ( $remove_extras ) {
-			foreach ( self::CORE_DIRS as $core_dir ) {
-				$this->prune_foreign( \TotalSecurityWP\Support\Paths::root() . $core_dir, $allow, $out );
+			foreach ( self::core_dirs() as $core_dir ) {
+				$this->prune_foreign( $core_dir, $allow, $out );
 			}
 			// Web-root: report-only (legitimate user files live here).
 			$this->report_root_extras( $allow, $out );
@@ -142,7 +153,7 @@ class CoreRepair {
 			if ( ! $item->isFile() ) {
 				continue;
 			}
-			$rel = \TotalSecurityWP\Support\Paths::relative( $item->getPathname() );
+			$rel = \LoyalSecurity\Support\Paths::relative( $item->getPathname() );
 			if ( isset( $allow[ $rel ] ) ) {
 				continue; // Legitimate core file.
 			}
@@ -173,7 +184,7 @@ class CoreRepair {
 		// Files a normal install legitimately adds at the root.
 		$known = array( 'wp-config.php', '.htaccess', '.htaccess.bak', 'robots.txt', 'php.ini', '.user.ini', 'web.config', 'sitemap.xml', 'sitemap.xml.gz' );
 
-		$entries = glob( \TotalSecurityWP\Support\Paths::root() . '*' );
+		$entries = glob( \LoyalSecurity\Support\Paths::root() . '*' );
 		if ( ! is_array( $entries ) ) {
 			return;
 		}

@@ -2,16 +2,16 @@
 /**
  * Base class for all security modules.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Container;
-use TotalSecurityWP\Contracts\ModuleInterface;
-use TotalSecurityWP\Modules\Audit\Logger;
+use LoyalSecurity\Container;
+use LoyalSecurity\Contracts\ModuleInterface;
+use LoyalSecurity\Modules\Audit\Logger;
 
 /**
  * Provides shared plumbing (settings access, logging, enable gate) so concrete modules

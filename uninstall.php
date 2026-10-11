@@ -12,7 +12,7 @@
  * mid-uninstall and leave wp-config.php/.htaccess/.user.ini half-reverted. Direct filesystem
  * calls below are intentional for that reason.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
@@ -20,17 +20,17 @@ defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 require_once __DIR__ . '/src/Support/Paths.php';
 require_once __DIR__ . '/src/Support/Markers.php';
 
-totalsecwp_run_uninstall();
+loyalsec_run_uninstall();
 
 /**
  * Runs the full teardown. Wrapped in a single prefixed function (rather than running loose at
  * file scope) so every local of this routine is function-scoped instead of a global variable.
  */
-function totalsecwp_run_uninstall() {
+function loyalsec_run_uninstall() {
 	global $wpdb;
 
-	$paths   = '\TotalSecurityWP\Support\Paths';
-	$markers = '\TotalSecurityWP\Support\Markers';
+	$paths   = '\LoyalSecurity\Support\Paths';
+	$markers = '\LoyalSecurity\Support\Markers';
 	$root    = $paths::root();
 
 	/* ---------------------------------------------------------------------
@@ -53,7 +53,7 @@ function totalsecwp_run_uninstall() {
 		$kept    = array();
 		$changed = false;
 		foreach ( $lines as $line ) {
-			if ( preg_match( '/^\s*auto_prepend_file\s*=/i', $line ) && preg_match( '/totalsecwp|loyal-security|total-security-wp/i', $line ) ) {
+			if ( preg_match( '/^\s*auto_prepend_file\s*=/i', $line ) && preg_match( '/loyalsec|loyal-security/i', $line ) ) {
 				$changed = true;
 				continue;
 			}
@@ -66,15 +66,11 @@ function totalsecwp_run_uninstall() {
 		}
 	}
 
-	// 2. Remove every marked block the plugin wrote to .htaccess files — under the current
-	// name and the earlier "Total Security WP" name.
+	// 2. Remove every marked block the plugin wrote to .htaccess files.
 	$htaccess_markers = array(
 		array( '# BEGIN Loyal Security WAF', '# END Loyal Security WAF' ),
 		array( '# BEGIN Loyal Security Login URL', '# END Loyal Security Login URL' ),
 		array( '# BEGIN Loyal Security', '# END Loyal Security' ),
-		array( '# BEGIN Total Security WP WAF', '# END Total Security WP WAF' ),
-		array( '# BEGIN Total Security WP Login URL', '# END Total Security WP Login URL' ),
-		array( '# BEGIN Total Security WP', '# END Total Security WP' ),
 	);
 	$htaccess_targets = array( $root . '.htaccess', $paths::includes() . '/.htaccess' );
 	$uploads_dir      = $paths::uploads();
@@ -104,8 +100,6 @@ function totalsecwp_run_uninstall() {
 			array(
 				array( '/* BEGIN Loyal Security */', '/* END Loyal Security */' ),
 				array( '/* BEGIN Loyal Security debug.log */', '/* END Loyal Security debug.log */' ),
-				array( '/* BEGIN Total Security WP */', '/* END Total Security WP */' ),
-				array( '/* BEGIN Total Security WP debug.log */', '/* END Total Security WP debug.log */' ),
 			)
 		);
 		if ( $cleaned !== $content ) {
@@ -114,7 +108,40 @@ function totalsecwp_run_uninstall() {
 		}
 	}
 
-	// 4. Clear every scheduled event the plugin owns. All plugin hooks share the `totalsecwp_`
+	// The delete-data preference is the main site's (on multisite the plugin is managed by
+	// super admins from there).
+	$delete_data = (bool) get_option( 'loyalsec_delete_on_uninstall', false );
+
+	// Per-site cleanup: scheduled events always, data when asked. On a network every site has
+	// its own tables, options, roles and uploads folder.
+	if ( is_multisite() ) {
+		foreach ( get_sites( array( 'fields' => 'ids', 'number' => 0 ) ) as $site_id ) {
+			switch_to_blog( (int) $site_id );
+			loyalsec_uninstall_site( $delete_data );
+			restore_current_blog();
+		}
+	} else {
+		loyalsec_uninstall_site( $delete_data );
+	}
+
+	// 3. Per-user data (2FA secrets, passkeys, notice dismissals — all prefixed `loyalsec_`).
+	// The usermeta table is shared by the whole network, so once.
+	if ( $delete_data ) {
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall.
+			$wpdb->prepare( 'DELETE FROM %i WHERE meta_key LIKE %s', $wpdb->usermeta, $wpdb->esc_like( 'loyalsec_' ) . '%' )
+		);
+	}
+}
+
+/**
+ * Remove one site's scheduled events, and its data when the owner asked for that.
+ *
+ * @param bool $delete_data Whether to delete tables, options, the capability and stored files.
+ */
+function loyalsec_uninstall_site( bool $delete_data ) {
+	global $wpdb;
+
+	// 4. Clear every scheduled event the plugin owns. All plugin hooks share the `loyalsec_`
 	// prefix; force-delete paths can skip the deactivation hook that normally does this.
 	$crons = _get_cron_array();
 	if ( is_array( $crons ) ) {
@@ -124,7 +151,7 @@ function totalsecwp_run_uninstall() {
 				continue;
 			}
 			foreach ( array_keys( $bucket ) as $hook ) {
-				if ( is_string( $hook ) && 0 === strpos( $hook, 'totalsecwp_' ) ) {
+				if ( is_string( $hook ) && 0 === strpos( $hook, 'loyalsec_' ) ) {
 					$cron_hooks[ $hook ] = true;
 				}
 			}
@@ -138,54 +165,50 @@ function totalsecwp_run_uninstall() {
 	 * Data teardown (only when the admin enabled "Delete all data on uninstall").
 	 * ------------------------------------------------------------------ */
 
-	$delete_data = (bool) get_option( 'totalsecwp_delete_on_uninstall', false );
-
 	// The preference flag itself has no value once the plugin is gone.
-	delete_option( 'totalsecwp_delete_on_uninstall' );
-	delete_option( 'totalsecwp_onboarding_dismissed' );
+	delete_option( 'loyalsec_delete_on_uninstall' );
+	delete_option( 'loyalsec_onboarding_dismissed' );
 
 	if ( ! $delete_data ) {
 		return; // Keep security data so it survives a re-install.
 	}
 
-	// 1. Drop every plugin table (current and ones earlier versions created).
+	// 1. Drop every plugin table.
 	$tables = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall.
-		$wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix . 'totalsecwp_' ) . '%' )
+		$wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix . 'loyalsec_' ) . '%' )
 	);
 	foreach ( (array) $tables as $table ) {
 		$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', (string) $table ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- uninstall.
 	}
 
-	// 2. Options and transients (all prefixed `totalsecwp_`).
+	// 2. Options and transients (all prefixed `loyalsec_`).
 	$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall.
 		$wpdb->prepare(
 			'DELETE FROM %i WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s',
 			$wpdb->options,
-			$wpdb->esc_like( 'totalsecwp_' ) . '%',
-			$wpdb->esc_like( '_transient_totalsecwp_' ) . '%',
-			$wpdb->esc_like( '_transient_timeout_totalsecwp_' ) . '%'
+			$wpdb->esc_like( 'loyalsec_' ) . '%',
+			$wpdb->esc_like( '_transient_loyalsec_' ) . '%',
+			$wpdb->esc_like( '_transient_timeout_loyalsec_' ) . '%'
 		)
 	);
 	wp_cache_flush();
-
-	// 3. Per-user data (2FA secrets, passkeys, notice dismissals — all prefixed `totalsecwp_`).
-	$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall.
-		$wpdb->prepare( 'DELETE FROM %i WHERE meta_key LIKE %s', $wpdb->usermeta, $wpdb->esc_like( 'totalsecwp_' ) . '%' )
-	);
 
 	// 4. Remove the management capability from all roles.
 	if ( function_exists( 'wp_roles' ) ) {
 		foreach ( array_keys( wp_roles()->roles ) as $slug ) {
 			$role = get_role( $slug );
-			if ( $role && $role->has_cap( 'manage_total_security_wp' ) ) {
-				$role->remove_cap( 'manage_total_security_wp' );
+			if ( $role && $role->has_cap( 'manage_loyal_security' ) ) {
+				$role->remove_cap( 'manage_loyal_security' );
 			}
 		}
 	}
 
-	// 5. Private storage folders in uploads (current, plus the ones earlier versions used).
+	// 5. Private storage folders in uploads (current, plus the ones earlier versions used). On a
+	// network this is the current site's own uploads folder.
+	$paths       = '\LoyalSecurity\Support\Paths';
+	$uploads_dir = $paths::uploads();
 	if ( '' !== $uploads_dir ) {
-		foreach ( array( 'loyal-security', 'total-security-wp', 'total-security-wp-backups' ) as $folder ) {
+		foreach ( array( 'loyal-security' ) as $folder ) {
 			$dir = trailingslashit( $uploads_dir ) . $folder;
 			if ( ! is_dir( $dir ) ) {
 				continue;

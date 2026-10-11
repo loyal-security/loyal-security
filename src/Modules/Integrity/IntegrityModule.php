@@ -2,17 +2,17 @@
 /**
  * File Integrity Monitoring module.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Integrity;
+namespace LoyalSecurity\Modules\Integrity;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Core\Cron;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Scanner\Finding;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Core\Cron;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Scanner\Finding;
 
 /**
  * Coordinates core/plugin/theme integrity verification and records drift as findings so it
@@ -39,13 +39,47 @@ class IntegrityModule extends AbstractModule {
 		);
 	}
 
+	/** Findings the current run() recorded that were not already open. */
+	private int $new_findings = 0;
+
 	public function register_hooks(): void {
 		add_action( Cron::REFRESH_SUMS, array( $this, 'run_scheduled' ) );
+		add_action( 'upgrader_process_complete', array( $this, 'refresh_after_update' ), 20, 2 );
+	}
+
+	/**
+	 * `upgrader_process_complete`: re-take the baseline of each plugin or theme WordPress just
+	 * updated (or reinstalled from a zip), for those that have one. A premium plugin or a theme
+	 * otherwise showed every legitimate update as tampering, with a critical alert. Changes
+	 * made outside WordPress's updater are still reported.
+	 *
+	 * @param mixed $upgrader Upgrader instance (unused).
+	 * @param mixed $extra    Details of what was upgraded.
+	 */
+	public function refresh_after_update( $upgrader, $extra = array() ): void {
+		unset( $upgrader );
+		if ( ! is_array( $extra ) || ! in_array( $extra['action'] ?? '', array( 'update', 'install' ), true ) ) {
+			return;
+		}
+		$type = (string) ( $extra['type'] ?? '' );
+		if ( 'plugin' === $type ) {
+			$items   = isset( $extra['plugins'] ) ? (array) $extra['plugins'] : array( $extra['plugin'] ?? '' );
+			$checker = new PluginChecksums();
+			foreach ( array_filter( array_map( 'strval', $items ) ) as $file ) {
+				$checker->refresh_baseline( $file );
+			}
+		} elseif ( 'theme' === $type ) {
+			$items   = isset( $extra['themes'] ) ? (array) $extra['themes'] : array( $extra['theme'] ?? '' );
+			$checker = new ThemeChecksums();
+			foreach ( array_filter( array_map( 'strval', $items ) ) as $stylesheet ) {
+				$checker->refresh_baseline( $stylesheet );
+			}
+		}
 	}
 
 	private function findings_table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_scan_findings';
+		return $wpdb->prefix . 'loyalsec_scan_findings';
 	}
 
 	/**
@@ -54,7 +88,8 @@ class IntegrityModule extends AbstractModule {
 	 * @return array<string, mixed>
 	 */
 	public function run(): array {
-		$scan_id = 'fim_' . gmdate( 'YmdHis' );
+		$this->new_findings = 0;
+		$scan_id            = 'fim_' . gmdate( 'YmdHis' );
 		$summary = array( 'scan_id' => $scan_id, 'core' => null, 'plugins' => null, 'themes' => null, 'mu' => null );
 		$changed = 0;
 
@@ -77,7 +112,9 @@ class IntegrityModule extends AbstractModule {
 			// content for malware signatures (the heuristic scanner skips core locations by
 			// default). This surfaces *what* the tampering is — e.g. an injected webshell or
 			// the EICAR test string — alongside the bare "modified/unknown" signal.
-			$changed += $this->deep_scan_core( $scan_id, array_merge( $core['modified'], $core['unknown'] ) );
+			$deep                = $this->deep_scan_core( $scan_id, array_merge( $core['modified'], $core['unknown'] ) );
+			$changed            += $deep;
+			$this->new_findings += $deep; // deep_scan_core() only ever inserts findings not already open.
 		}
 
 		if ( $this->setting( 'verify_plugins', true ) ) {
@@ -146,8 +183,10 @@ class IntegrityModule extends AbstractModule {
 			}
 		}
 
-		if ( $changed > 0 ) {
-			$this->logger()->log( EventCatalog::INTEGRITY_CHANGED, array( 'scan_id' => $scan_id, 'changed' => $changed ) );
+		// Alert only when this run found something not already open; a change the owner has
+		// not dealt with yet should not send the same critical email every run.
+		if ( $this->new_findings > 0 ) {
+			$this->logger()->log( EventCatalog::INTEGRITY_CHANGED, array( 'scan_id' => $scan_id, 'changed' => $changed, 'new' => $this->new_findings ) );
 		}
 
 		$summary['changed'] = $changed;
@@ -165,8 +204,17 @@ class IntegrityModule extends AbstractModule {
 
 	private function record( string $scan_id, string $path, string $rule, int $score, string $desc ): void {
 		global $wpdb;
+		// One open finding per file and rule: every scheduled run used to add another copy.
+		$open = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- live findings state.
+			$wpdb->prepare( "SELECT id FROM %i WHERE status = 'open' AND path = %s AND rule = %s LIMIT 1", $this->findings_table(), $path, $rule )
+		);
+		if ( $open ) {
+			return;
+		}
 		$finding = new Finding( $path, $rule, 'integrity', $score, 0, $desc );
-		$wpdb->insert( $this->findings_table(), $finding->to_row( $scan_id ) ); // phpcs:ignore WordPress.DB
+		if ( false !== $wpdb->insert( $this->findings_table(), $finding->to_row( $scan_id ) ) ) { // phpcs:ignore WordPress.DB
+			++$this->new_findings;
+		}
 	}
 
 	/**
@@ -183,8 +231,8 @@ class IntegrityModule extends AbstractModule {
 			return 0;
 		}
 		global $wpdb;
-		$scanner = new \TotalSecurityWP\Modules\Scanner\HeuristicScanner();
-		$abspath = untrailingslashit( \TotalSecurityWP\Support\Paths::root() );
+		$scanner = new \LoyalSecurity\Modules\Scanner\HeuristicScanner();
+		$abspath = untrailingslashit( \LoyalSecurity\Support\Paths::root() );
 		$n       = 0;
 		$table = $this->findings_table();
 		foreach ( array_unique( $rel_paths ) as $rel ) {

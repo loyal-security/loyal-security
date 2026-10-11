@@ -2,17 +2,17 @@
 /**
  * Settings read/write endpoint.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Modules\Audit\Logger;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 use WP_REST_Request;
 
 /**
@@ -172,7 +172,7 @@ class SettingsController extends AbstractController {
 	public function get_global( WP_REST_Request $request ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
 		return $this->ok(
 			array(
-				'delete_on_uninstall' => (bool) get_option( 'totalsecwp_delete_on_uninstall', false ),
+				'delete_on_uninstall' => (bool) get_option( 'loyalsec_delete_on_uninstall', false ),
 			)
 		);
 	}
@@ -187,12 +187,12 @@ class SettingsController extends AbstractController {
 		}
 
 		if ( array_key_exists( 'delete_on_uninstall', $params ) ) {
-			update_option( 'totalsecwp_delete_on_uninstall', (bool) $params['delete_on_uninstall'], false );
+			update_option( 'loyalsec_delete_on_uninstall', (bool) $params['delete_on_uninstall'], false );
 		}
 
 		return $this->ok(
 			array(
-				'delete_on_uninstall' => (bool) get_option( 'totalsecwp_delete_on_uninstall', false ),
+				'delete_on_uninstall' => (bool) get_option( 'loyalsec_delete_on_uninstall', false ),
 			)
 		);
 	}
@@ -202,7 +202,7 @@ class SettingsController extends AbstractController {
 	 *  at the density that suits them without fighting over one shared setting. Mirrors the
 	 *  existing user_meta pattern used by the Auth modules (passkeys, trusted devices, 2FA
 	 *  grace period) rather than introducing a new storage abstraction. */
-	private const VIEW_META_KEY = 'totalsecwp_ui_view';
+	private const VIEW_META_KEY = 'loyalsec_ui_view';
 
 	/**
 	 * Read the current admin's Basic/Advanced dashboard view preference.
@@ -225,7 +225,7 @@ class SettingsController extends AbstractController {
 	 *  both the visitor's OS setting and WordPress core's own admin color scheme, so a user can
 	 *  explicitly override either of those just for this app. Same user_meta pattern as the
 	 *  Basic/Advanced view preference above. */
-	private const THEME_META_KEY = 'totalsecwp_theme';
+	private const THEME_META_KEY = 'loyalsec_theme';
 	private const VALID_THEMES   = array( 'system', 'light', 'dark' );
 
 	/**
@@ -260,7 +260,7 @@ class SettingsController extends AbstractController {
 		$modules  = ( isset( $params['settings'] ) && is_array( $params['settings'] ) ) ? $params['settings'] : array();
 
 		if ( empty( $modules ) ) {
-			return $this->fail( 'totalsecwp_empty_batch', __( 'No settings provided.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_empty_batch', __( 'No settings provided.', 'loyal-security' ), 422 );
 		}
 
 		$applied = array();
@@ -285,7 +285,7 @@ class SettingsController extends AbstractController {
 		}
 
 		if ( empty( $applied ) ) {
-			return $this->fail( 'totalsecwp_no_valid_keys', __( 'No recognised settings were provided.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_valid_keys', __( 'No recognised settings were provided.', 'loyal-security' ), 422 );
 		}
 
 		/** @var Logger $logger */
@@ -317,7 +317,7 @@ class SettingsController extends AbstractController {
 		}
 
 		if ( empty( $cleaned ) ) {
-			return $this->fail( 'totalsecwp_no_valid_keys', __( 'No recognised settings were provided.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_valid_keys', __( 'No recognised settings were provided.', 'loyal-security' ), 422 );
 		}
 
 		$settings->update_module( $module, $cleaned );

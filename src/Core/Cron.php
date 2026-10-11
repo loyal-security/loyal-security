@@ -2,10 +2,10 @@
 /**
  * Scheduled task registration.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,11 +16,11 @@ defined( 'ABSPATH' ) || exit;
  */
 class Cron {
 
-	public const SCAN             = 'totalsecwp_cron_scan';
-	public const PRUNE_LOGS       = 'totalsecwp_cron_prune_logs';
-	public const GC_BANS          = 'totalsecwp_cron_gc_bans';
-	public const REFRESH_SUMS     = 'totalsecwp_cron_refresh_checksums';
-	public const THREATINTEL_SYNC = 'totalsecwp_threatintel_sync';
+	public const SCAN             = 'loyalsec_cron_scan';
+	public const PRUNE_LOGS       = 'loyalsec_cron_prune_logs';
+	public const GC_BANS          = 'loyalsec_cron_gc_bans';
+	public const REFRESH_SUMS     = 'loyalsec_cron_refresh_checksums';
+	public const THREATINTEL_SYNC = 'loyalsec_threatintel_sync';
 
 	/**
 	 * Events scheduled by earlier versions that nothing in this plugin handles any more.
@@ -28,9 +28,9 @@ class Cron {
 	 * @var string[]
 	 */
 	private const RETIRED_EVENTS = array(
-		'totalsecwp_reputation_flush',
-		'totalsecwp_sentinel_analyze',
-		'totalsecwp_sentinel_profile',
+		'loyalsec_reputation_flush',
+		'loyalsec_sentinel_analyze',
+		'loyalsec_sentinel_profile',
 	);
 
 	/**
@@ -60,8 +60,8 @@ class Cron {
 				'display'  => $translate ? __( 'Once Weekly', 'loyal-security' ) : 'Once Weekly',
 			);
 		}
-		if ( ! isset( $schedules['totalsecwp_5min'] ) ) {
-			$schedules['totalsecwp_5min'] = array(
+		if ( ! isset( $schedules['loyalsec_5min'] ) ) {
+			$schedules['loyalsec_5min'] = array(
 				'interval' => 5 * MINUTE_IN_SECONDS,
 				'display'  => $translate ? __( 'Every 5 Minutes (Loyal Security)', 'loyal-security' ) : 'Every 5 Minutes (Loyal Security)',
 			);
@@ -114,7 +114,7 @@ class Cron {
 		 *
 		 * @param string $recurrence A registered cron schedule name. Default 'twicedaily'.
 		 */
-		$recurrence = (string) apply_filters( 'totalsecwp_threatintel_sync_recurrence', 'twicedaily' );
+		$recurrence = (string) apply_filters( 'loyalsec_threatintel_sync_recurrence', 'twicedaily' );
 		return isset( wp_get_schedules()[ $recurrence ] ) ? $recurrence : 'twicedaily';
 	}
 
@@ -134,7 +134,7 @@ class Cron {
 	 * Clear every scheduled event owned by the plugin — the core events above plus the
 	 * recurring/single events modules schedule themselves (telemetry flush, CSP notify,
 	 * queued jobs, …).
-	 * All plugin hooks share the `totalsecwp_` prefix, so sweep the cron array rather than
+	 * All plugin hooks share the `loyalsec_` prefix, so sweep the cron array rather than
 	 * maintaining a hook list that drifts as modules are added.
 	 */
 	public static function unschedule_all(): void {
@@ -146,7 +146,7 @@ class Cron {
 					continue;
 				}
 				foreach ( array_keys( $bucket ) as $hook ) {
-					if ( is_string( $hook ) && 0 === strpos( $hook, 'totalsecwp_' ) ) {
+					if ( is_string( $hook ) && 0 === strpos( $hook, 'loyalsec_' ) ) {
 						$hooks[ $hook ] = true;
 					}
 				}
@@ -162,8 +162,8 @@ class Cron {
 	 */
 	public function prune_logs(): void {
 		global $wpdb;
-		$days  = (int) apply_filters( 'totalsecwp_log_retention_days', 90 );
-		$table = $wpdb->prefix . 'totalsecwp_events';
+		$days  = (int) apply_filters( 'loyalsec_log_retention_days', 90 );
+		$table = $wpdb->prefix . 'loyalsec_events';
 		$wpdb->query( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name built from $wpdb->prefix, not user input.
 			$wpdb->prepare(
 				"DELETE FROM %i WHERE created_at < %s", $table,
@@ -175,8 +175,8 @@ class Cron {
 		// BruteForce only ever COUNTs a short recent window (minutes), and the status screen
 		// reads the last 24h, so anything older than the retention below is dead weight that
 		// slows the per-failed-login COUNT(*) as the table reaches millions of rows.
-		$attempts_days = (int) apply_filters( 'totalsecwp_login_attempts_retention_days', 30 );
-		$attempts      = $wpdb->prefix . 'totalsecwp_login_attempts';
+		$attempts_days = (int) apply_filters( 'loyalsec_login_attempts_retention_days', 30 );
+		$attempts      = $wpdb->prefix . 'loyalsec_login_attempts';
 		$wpdb->query( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name built from $wpdb->prefix, not user input.
 			$wpdb->prepare(
 				"DELETE FROM %i WHERE created_at < %s", $attempts,
@@ -186,8 +186,8 @@ class Cron {
 
 		// CSP violation reports: grouping by (directive, blocked_uri) at write time already
 		// bounds row count, but a long-idle site would otherwise keep stale rows forever.
-		$csp_days = (int) apply_filters( 'totalsecwp_csp_violations_retention_days', 90 );
-		$csp      = $wpdb->prefix . 'totalsecwp_csp_violations';
+		$csp_days = (int) apply_filters( 'loyalsec_csp_violations_retention_days', 90 );
+		$csp      = $wpdb->prefix . 'loyalsec_csp_violations';
 		$wpdb->query( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name built from $wpdb->prefix, not user input.
 			$wpdb->prepare(
 				"DELETE FROM %i WHERE last_seen < %s", $csp,
@@ -201,7 +201,7 @@ class Cron {
 	 */
 	public function gc_bans(): void {
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_bans';
+		$table = $wpdb->prefix . 'loyalsec_bans';
 		$wpdb->query( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name built from $wpdb->prefix, not user input.
 			$wpdb->prepare(
 				"DELETE FROM %i WHERE type = %s AND expires_at IS NOT NULL AND expires_at < %s", $table,

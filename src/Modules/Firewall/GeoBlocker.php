@@ -2,27 +2,27 @@
 /**
  * Geolocation / country-based blocking.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Support\Ip;
 
 /**
- * Resolves a request's country and enforces an allow-list or block-list. Country resolution
- * prefers CDN-provided headers (Cloudflare / CloudFront / Akamai) and falls back to an
- * optional bundled CIDR→country table when present.
+ * Resolves a request's country and enforces an allow-list or block-list.
+ *
+ * A country header from a CDN (Cloudflare's CF-IPCountry, CloudFront's viewer country, or a
+ * proxy's X-Geo-Country) is believed only when the request really came from that CDN or proxy:
+ * anyone can send those headers straight to the server. Otherwise the client address is looked
+ * up in the bundled table ({@see CountryTable}), so country rules work without any CDN.
  */
 class GeoBlocker {
 
 	private Settings $settings;
-
-	/** @var array<int, array{0:string,1:string,2:string}>|null Cached CIDR table. */
-	private static ?array $cidr_table = null;
 
 	public function __construct( Settings $settings ) {
 		$this->settings = $settings;
@@ -52,43 +52,56 @@ class GeoBlocker {
 	}
 
 	/**
-	 * Resolve an ISO country code for an IP.
+	 * Resolve an ISO country code for an IP ('' when unknown).
+	 *
+	 * @param string $ip     Client IP.
+	 * @param array  $server Country headers of the current request ({@see RequestVars::geo_headers()}),
+	 *                       or an empty array to use the table only (e.g. for a past event's IP).
 	 */
 	public function country( string $ip, array $server ): string {
-		// 1) CDN headers (most reliable when fronted by a CDN).
-		$header_map = array(
-			'HTTP_CF_IPCOUNTRY',            // Cloudflare.
-			'HTTP_CLOUDFRONT_VIEWER_COUNTRY', // CloudFront.
-			'HTTP_X_GEO_COUNTRY',
-		);
-		foreach ( $header_map as $h ) {
-			if ( ! empty( $server[ $h ] ) ) {
-				$code = strtoupper( substr( (string) $server[ $h ], 0, 2 ) );
-				if ( ctype_alpha( $code ) && 'XX' !== $code ) {
-					return $code;
-				}
-			}
+		$code = $this->trusted_header_country( $server );
+		if ( '' !== $code ) {
+			return $code;
 		}
-
-		// 2) Optional bundled CIDR table.
-		return $this->lookup_cidr( $ip );
+		// A proxy's own address says where the proxy is, not the visitor: unknown.
+		if ( BanStore::is_proxy_address( $ip ) ) {
+			return '';
+		}
+		return CountryTable::lookup( $ip );
 	}
 
 	/**
-	 * Lookup an IP in the optional bundled country CIDR table.
+	 * The country a CDN or proxy reported for this request, only when the request came from
+	 * that CDN or proxy (checked against the direct connection's address).
+	 *
+	 * @param array $server Country headers of the current request.
 	 */
-	private function lookup_cidr( string $ip ): string {
-		if ( null === self::$cidr_table ) {
-			$file             = TOTALSECWP_PATH . 'data/geo/country-cidr.php';
-			self::$cidr_table = is_file( $file ) ? (array) include $file : array();
-		}
-		if ( empty( self::$cidr_table ) ) {
+	private function trusted_header_country( array $server ): string {
+		if ( ! $server ) {
 			return '';
 		}
-		foreach ( self::$cidr_table as $entry ) {
-			// Each entry: [ cidr, country ].
-			if ( isset( $entry[0], $entry[1] ) && Ip::cidr_match( $ip, $entry[0] ) ) {
-				return strtoupper( (string) $entry[1] );
+		$peer = \LoyalSecurity\Support\RequestVars::text( 'REMOTE_ADDR' );
+		if ( '' === $peer ) {
+			return '';
+		}
+
+		$headers = array();
+		if ( Ip::is_cloudflare( $peer ) ) {
+			$headers[] = 'HTTP_CF_IPCOUNTRY';
+		}
+		$proxies = array_filter( array_map( 'trim', array_map( 'strval', (array) $this->settings->get( 'firewall', 'trusted_proxies', array() ) ) ) );
+		if ( $proxies && Ip::in_ranges( $peer, $proxies ) ) {
+			$headers = array_merge( $headers, array( 'HTTP_CF_IPCOUNTRY', 'HTTP_CLOUDFRONT_VIEWER_COUNTRY', 'HTTP_X_GEO_COUNTRY' ) );
+		}
+
+		foreach ( array_unique( $headers ) as $h ) {
+			if ( empty( $server[ $h ] ) ) {
+				continue;
+			}
+			$code = strtoupper( substr( (string) $server[ $h ], 0, 2 ) );
+			// XX = unknown and T1 = Tor (Cloudflare): fall through to the table.
+			if ( 2 === strlen( $code ) && ctype_alpha( $code ) && 'XX' !== $code ) {
+				return $code;
 			}
 		}
 		return '';

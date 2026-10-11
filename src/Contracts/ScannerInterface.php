@@ -2,14 +2,14 @@
 /**
  * Scanner contract.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Contracts;
+namespace LoyalSecurity\Contracts;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Scanner\Finding;
+use LoyalSecurity\Modules\Scanner\Finding;
 
 /**
  * Implemented by file/content analysers that produce {@see Finding} objects.

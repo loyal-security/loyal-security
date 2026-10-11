@@ -2,14 +2,14 @@
 /**
  * Two-factor authentication manager.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Crypto;
+use LoyalSecurity\Support\Crypto;
 
 /**
  * Manages per-user TOTP enrollment, encrypted secret storage, hashed backup codes, and
@@ -27,7 +27,7 @@ class TwoFactor {
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_twofa';
+		return $wpdb->prefix . 'loyalsec_twofa';
 	}
 
 	/**
@@ -196,7 +196,7 @@ class TwoFactor {
 		if ( ! is_array( $hashes ) ) {
 			return false;
 		}
-		require_once \TotalSecurityWP\Support\Paths::includes() . '/class-phpass.php';
+		require_once \LoyalSecurity\Support\Paths::includes() . '/class-phpass.php';
 		$hasher = new \PasswordHash( 8, true );
 
 		foreach ( $hashes as $idx => $hash ) {

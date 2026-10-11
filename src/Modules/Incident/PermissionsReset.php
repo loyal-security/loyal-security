@@ -2,14 +2,14 @@
 /**
  * Recursive file-permission normalization.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * Forces correct UNIX permissions across a tree (directories 0755, files 0644), with a
@@ -34,7 +34,7 @@ class PermissionsReset {
 	 * @return array{dirs:int,files:int,changed:int,capped:bool}
 	 */
 	public function apply( string $root = '', int $max_items = 20000 ): array {
-		$root = wp_normalize_path( '' === $root ? \TotalSecurityWP\Support\Paths::root() : $root );
+		$root = wp_normalize_path( '' === $root ? \LoyalSecurity\Support\Paths::root() : $root );
 		$dirs = 0;
 		$files = 0;
 		$changed = 0;

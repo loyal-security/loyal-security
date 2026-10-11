@@ -2,17 +2,17 @@
 /**
  * Site-local, admin-managed bot rules.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Stores bot rules an admin added by hand (a specific scraper noticed in the logs, a crawler
  * they want fully trusted) or accepted from a Sentinel AI suggestion. Distinct from the
- * plugin-bundled baseline in {@see \TotalSecurityWP\Waf\BotSignatures} — this is the local,
+ * plugin-bundled baseline in {@see \LoyalSecurity\Waf\BotSignatures} — this is the local,
  * site-specific layer on top of it, following the exact same "local overrides/extends bundled"
  * pattern {@see CustomVirtualPatches} already uses for virtual patches. Merged into both
  * Standard Mode (BotBlocker/BotVerifier) and the Optimized-Mode prepend (baked into
@@ -27,7 +27,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class CustomBotRules {
 
-	private const OPTION = 'totalsecwp_custom_bot_rules';
+	private const OPTION = 'loyalsec_custom_bot_rules';
 
 	/**
 	 * Every rule, enabled or not — for the management UI, which needs to show (and let an admin

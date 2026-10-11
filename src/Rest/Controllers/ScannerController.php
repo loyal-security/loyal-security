@@ -2,23 +2,23 @@
 /**
  * Scanner + integrity REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Modules\Scanner\ScannerModule;
-use TotalSecurityWP\Modules\Scanner\ScanState;
-use TotalSecurityWP\Modules\Scanner\Finding;
-use TotalSecurityWP\Modules\Integrity\IntegrityModule;
-use TotalSecurityWP\Modules\Firewall\CustomVirtualPatches;
-use TotalSecurityWP\Modules\Firewall\FirewallModule;
-use TotalSecurityWP\Modules\Firewall\PatchSubmissionClient;
-use TotalSecurityWP\Modules\Telemetry\BypassReporter;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Modules\Scanner\ScannerModule;
+use LoyalSecurity\Modules\Scanner\ScanState;
+use LoyalSecurity\Modules\Scanner\Finding;
+use LoyalSecurity\Modules\Integrity\IntegrityModule;
+use LoyalSecurity\Modules\Firewall\CustomVirtualPatches;
+use LoyalSecurity\Modules\Firewall\FirewallModule;
+use LoyalSecurity\Modules\Firewall\PatchSubmissionClient;
+use LoyalSecurity\Modules\Telemetry\BypassReporter;
 use WP_REST_Request;
 
 /**
@@ -69,7 +69,7 @@ class ScannerController extends AbstractController {
 		return $m instanceof ScannerModule ? $m : null;
 	}
 
-	private function settings(): \TotalSecurityWP\Core\Settings {
+	private function settings(): \LoyalSecurity\Core\Settings {
 		return $this->container->make( 'settings' );
 	}
 
@@ -81,7 +81,7 @@ class ScannerController extends AbstractController {
 	public function start( WP_REST_Request $request ) {
 		$scanner = $this->scanner();
 		if ( ! $scanner ) {
-			return $this->fail( 'totalsecwp_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
 		}
 		$type = (string) ( $request->get_param( 'type' ) ?: 'full' );
 		return $this->ok( $scanner->start( $type ) );
@@ -90,11 +90,11 @@ class ScannerController extends AbstractController {
 	public function batch( WP_REST_Request $request ) {
 		$scanner = $this->scanner();
 		if ( ! $scanner ) {
-			return $this->fail( 'totalsecwp_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
 		}
 		$scan_id = (string) $request->get_param( 'scan_id' );
 		if ( '' === $scan_id ) {
-			return $this->fail( 'totalsecwp_no_scan', __( 'Missing scan id.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_scan', __( 'Missing scan id.', 'loyal-security' ), 422 );
 		}
 		return $this->ok( $scanner->run_batch( $scan_id ) );
 	}
@@ -118,13 +118,13 @@ class ScannerController extends AbstractController {
 	public function finding_status( WP_REST_Request $request ) {
 		$scanner = $this->scanner();
 		if ( ! $scanner ) {
-			return $this->fail( 'totalsecwp_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
 		}
 		$id     = (int) $request->get_param( 'id' );
 		$status = (string) $request->get_param( 'status' );
 		$allowed = array( 'open', 'ignored', 'resolved', 'quarantined' );
 		if ( ! in_array( $status, $allowed, true ) ) {
-			return $this->fail( 'totalsecwp_bad_status', __( 'Invalid status.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_status', __( 'Invalid status.', 'loyal-security' ), 422 );
 		}
 		$scanner->set_finding_status( $id, $status );
 		return $this->ok( array( 'id' => $id, 'status' => $status ) );
@@ -138,11 +138,11 @@ class ScannerController extends AbstractController {
 	public function finding_bulk( WP_REST_Request $request ) {
 		$scanner = $this->scanner();
 		if ( ! $scanner ) {
-			return $this->fail( 'totalsecwp_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
 		}
 		$action = (string) ( $request->get_param( 'action' ) ?: 'ignore' );
 		if ( ! in_array( $action, array( 'ignore', 'whitelist' ), true ) ) {
-			return $this->fail( 'totalsecwp_bad_action', __( 'Invalid bulk action.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_action', __( 'Invalid bulk action.', 'loyal-security' ), 422 );
 		}
 
 		$whitelisted = 0;
@@ -151,7 +151,7 @@ class ScannerController extends AbstractController {
 			foreach ( $scanner->findings( 'open', 1000 ) as $f ) {
 				$path = (string) ( $f['path'] ?? '' );
 				// Only file paths can be whitelisted; database-row findings have no path to allow.
-				if ( '' === $path || preg_match( '/^(post:|option:|user:|theme:|comment:|usermeta:|mu:|dropin:)/', $path ) ) {
+				if ( '' === $path || \LoyalSecurity\Modules\Scanner\DatabaseScanner::is_location( $path ) ) {
 					continue;
 				}
 				if ( $whitelist->add( $path, 'path' ) ) {
@@ -172,7 +172,7 @@ class ScannerController extends AbstractController {
 	public function finding_refresh( WP_REST_Request $request ) {
 		$scanner = $this->scanner();
 		if ( ! $scanner ) {
-			return $this->fail( 'totalsecwp_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
 		}
 		return $this->ok( $scanner->refresh_findings() );
 	}
@@ -188,22 +188,22 @@ class ScannerController extends AbstractController {
 	public function finding_patch( WP_REST_Request $request ) {
 		$scanner = $this->scanner();
 		if ( ! $scanner ) {
-			return $this->fail( 'totalsecwp_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
 		}
 
 		$id     = (int) $request->get_param( 'id' );
 		$action = (string) $request->get_param( 'action' );
 		if ( ! in_array( $action, array( 'approve', 'reject', 'submit_cloud' ), true ) ) {
-			return $this->fail( 'totalsecwp_bad_action', __( 'Invalid action.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_action', __( 'Invalid action.', 'loyal-security' ), 422 );
 		}
 
 		$row = $scanner->get_finding( $id );
 		if ( ! $row ) {
-			return $this->fail( 'totalsecwp_not_found', __( 'Finding not found.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_not_found', __( 'Finding not found.', 'loyal-security' ), 404 );
 		}
 		$suggestion = ! empty( $row['suggested_patch'] ) ? json_decode( (string) $row['suggested_patch'], true ) : null;
 		if ( ! is_array( $suggestion ) || empty( $suggestion['rule'] ) || ! is_array( $suggestion['rule'] ) ) {
-			return $this->fail( 'totalsecwp_no_suggestion', __( 'This finding has no suggested patch.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_suggestion', __( 'This finding has no suggested patch.', 'loyal-security' ), 422 );
 		}
 		// Findings are only ever backfilled with a suggestion once (see
 		// ScannerModule::store_findings()'s dedup check) — a suggestion computed months ago,
@@ -265,13 +265,13 @@ class ScannerController extends AbstractController {
 		// shows this action while consent is missing; once given, 'approve' submits automatically).
 		// Requires the data-sharing consent.
 		if ( ! BypassReporter::consent_given() ) {
-			return $this->fail( 'totalsecwp_no_consent', __( 'Anonymous data-sharing consent is required to submit to the cloud.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_no_consent', __( 'Anonymous data-sharing consent is required to submit to the cloud.', 'loyal-security' ), 409 );
 		}
 		$result = $this->submit_to_cloud( $suggestion['rule'], (string) ( $row['rule'] ?? '' ) );
 		if ( empty( $result['ok'] ) ) {
 			$detail = $this->humanize_cloud_error( (string) ( $result['body'] ?? '' ) );
 			return $this->fail(
-				'totalsecwp_submit_failed',
+				'loyalsec_submit_failed',
 				'Could not reach the cloud service: ' . (string) ( $result['error'] ?? 'unknown' ) . ( '' !== $detail ? ' — ' . $detail : '' ),
 				502
 			);
@@ -418,12 +418,12 @@ class ScannerController extends AbstractController {
 	public function whitelist_add( WP_REST_Request $request ) {
 		$scanner = $this->scanner();
 		if ( ! $scanner ) {
-			return $this->fail( 'totalsecwp_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
 		}
 		$value = (string) $request->get_param( 'value' );
 		$type  = 'rule' === (string) $request->get_param( 'type' ) ? 'rule' : 'path';
 		if ( '' === trim( $value ) ) {
-			return $this->fail( 'totalsecwp_no_value', __( 'Nothing to whitelist.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_value', __( 'Nothing to whitelist.', 'loyal-security' ), 422 );
 		}
 		$scanner->whitelist()->add( $value, $type );
 
@@ -438,7 +438,7 @@ class ScannerController extends AbstractController {
 	public function whitelist_remove( WP_REST_Request $request ) {
 		$scanner = $this->scanner();
 		if ( ! $scanner ) {
-			return $this->fail( 'totalsecwp_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_scanner_off', __( 'The scanner module is disabled.', 'loyal-security' ), 409 );
 		}
 		$value = (string) $request->get_param( 'value' );
 		$type  = 'rule' === (string) $request->get_param( 'type' ) ? 'rule' : 'path';
@@ -450,7 +450,7 @@ class ScannerController extends AbstractController {
 	 * Recent completed-scan history (every entry the site keeps).
 	 */
 	public function history( WP_REST_Request $request ) {
-		$history = get_option( 'totalsecwp_scan_history', array() );
+		$history = get_option( 'loyalsec_scan_history', array() );
 		if ( ! is_array( $history ) ) {
 			$history = array();
 		}
@@ -460,7 +460,7 @@ class ScannerController extends AbstractController {
 	public function integrity_run( WP_REST_Request $request ) {
 		$integrity = $this->integrity();
 		if ( ! $integrity ) {
-			return $this->fail( 'totalsecwp_integrity_off', __( 'The integrity module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_integrity_off', __( 'The integrity module is disabled.', 'loyal-security' ), 409 );
 		}
 		return $this->ok( $integrity->run() );
 	}
@@ -468,7 +468,7 @@ class ScannerController extends AbstractController {
 	public function integrity_snapshot( WP_REST_Request $request ) {
 		$integrity = $this->integrity();
 		if ( ! $integrity ) {
-			return $this->fail( 'totalsecwp_integrity_off', __( 'The integrity module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_integrity_off', __( 'The integrity module is disabled.', 'loyal-security' ), 409 );
 		}
 		return $this->ok( array( 'recorded' => $integrity->snapshot_baselines() ) );
 	}

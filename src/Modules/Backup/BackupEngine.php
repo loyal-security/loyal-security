@@ -2,14 +2,14 @@
 /**
  * Backup creation engine.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Backup;
+namespace LoyalSecurity\Modules\Backup;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * Creates a backup: a ZIP archive of the site files (optionally excluding heavy uploads) plus
@@ -22,7 +22,7 @@ class BackupEngine {
 	private BackupStore $store;
 
 	/** Directory basenames never included in a file backup. */
-	private array $skip_dirs = array( 'node_modules', '.git', '.svn', 'cache' );
+	private array $skip_dirs = array( 'node_modules', '.git', '.svn' );
 
 	public function __construct( ?BackupStore $store = null ) {
 		$this->store = $store ?? new BackupStore();
@@ -101,15 +101,20 @@ class BackupEngine {
 			'include_uploads' => $include_uploads,
 			'files'           => $file_count,
 			'zip_bytes'       => $zip_bytes,
-			'zip_sha256'      => \TotalSecurityWP\Support\Filesystem::sha256( $zip_path ),
+			'zip_sha256'      => \LoyalSecurity\Support\Filesystem::sha256( $zip_path ),
 			'db_included'     => $db_included,
 			'db_bytes'        => $db_bytes,
-			'db_sha256'       => $db_included ? \TotalSecurityWP\Support\Filesystem::sha256( $dir . '/database.sql' ) : '',
-			'abspath'         => wp_normalize_path( \TotalSecurityWP\Support\Paths::root() ),
+			'db_sha256'       => $db_included ? \LoyalSecurity\Support\Filesystem::sha256( $dir . '/database.sql' ) : '',
+			'abspath'         => wp_normalize_path( \LoyalSecurity\Support\Paths::root() ),
 			'wp_version'      => $wp_version ?? '',
-			'plugin_version'  => TOTALSECWP_VERSION,
+			'plugin_version'  => LOYALSEC_VERSION,
 		);
 		$this->store->write_manifest( $id, $manifest );
+		// Keep the dump's checksum outside the backup directory too — see
+		// BackupStore::expected_db_sha256().
+		if ( $db_included ) {
+			$this->store->remember_db_sha256( $id, (string) $manifest['db_sha256'] );
+		}
 
 		return array(
 			'ok'        => true,
@@ -133,8 +138,8 @@ class BackupEngine {
 			return -1;
 		}
 
-		$root         = untrailingslashit( wp_normalize_path( \TotalSecurityWP\Support\Paths::root() ) );
-		$storage      = wp_normalize_path( \TotalSecurityWP\Modules\Firewall\BanStore::storage_dir() );
+		$root         = untrailingslashit( wp_normalize_path( \LoyalSecurity\Support\Paths::root() ) );
+		$storage      = wp_normalize_path( \LoyalSecurity\Modules\Firewall\BanStore::storage_dir() );
 		$uploads_dir  = '';
 		$uploads      = wp_upload_dir();
 		if ( empty( $uploads['error'] ) ) {
@@ -144,16 +149,20 @@ class BackupEngine {
 		$count       = 0;
 		$next_report = 100; // emit a progress update every N files
 		$skip_dirs   = $this->skip_dirs;
+		// Only the shared page/object cache under wp-content is left out (it is rebuilt on
+		// demand). Other folders named "cache" are kept: plugins ship code in them, and a
+		// restore without it breaks those plugins.
+		$content_cache = untrailingslashit( wp_normalize_path( \LoyalSecurity\Support\Paths::content() ) ) . '/cache';
 		// Exclusions live in a RecursiveCallbackFilterIterator, NOT the consuming loop: with a
 		// plain iterator a `continue` only skips the directory's own entry — the iterator still
-		// descends into its children, so node_modules/.git/cache contents were archived anyway.
+		// descends into its children, so node_modules/.git contents were archived anyway.
 		// Returning false from the filter prunes the whole subtree (same approach as
 		// Scanner\FileWalker). NOT FOLLOW_SYMLINKS + the isLink() reject: following symlinks
 		// lets the walk archive files OUTSIDE ABSPATH (data leak / archive bloat) and can wedge
 		// on a symlink loop.
 		$filter = new \RecursiveCallbackFilterIterator(
 			new \RecursiveDirectoryIterator( $root, \FilesystemIterator::SKIP_DOTS ),
-			static function ( $item ) use ( $storage, $uploads_dir, $include_uploads, $skip_dirs ) {
+			static function ( $item ) use ( $storage, $uploads_dir, $include_uploads, $skip_dirs, $content_cache ) {
 				if ( $item->isLink() ) {
 					return false;
 				}
@@ -165,7 +174,7 @@ class BackupEngine {
 				if ( ! $include_uploads && '' !== $uploads_dir && 0 === strpos( $path, $uploads_dir ) ) {
 					return false;
 				}
-				if ( $item->isDir() && in_array( $item->getBasename(), $skip_dirs, true ) ) {
+				if ( $item->isDir() && ( in_array( $item->getBasename(), $skip_dirs, true ) || $path === $content_cache ) ) {
 					return false;
 				}
 				return true;

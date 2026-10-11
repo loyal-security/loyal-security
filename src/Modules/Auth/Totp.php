@@ -2,10 +2,10 @@
 /**
  * Pure-PHP TOTP (RFC 6238) implementation.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 

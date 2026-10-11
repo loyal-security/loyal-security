@@ -2,14 +2,14 @@
 /**
  * Bypass reporter — assembles, queues, and ships anonymized bypass reports to LicenseKit.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Telemetry;
+namespace LoyalSecurity\Modules\Telemetry;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
+use LoyalSecurity\Core\Settings;
 
 /**
  * Owns the outbound side: wrap a {@see BypassCorrelator} fragment in an anonymous envelope,
@@ -22,8 +22,8 @@ use TotalSecurityWP\Core\Settings;
 class BypassReporter {
 
 	private const QUEUE_NAME    = 'queue.jsonl';
-	private const STATE_OPTION  = 'totalsecwp_telemetry_state';
-	private const SECRET_OPTION = 'totalsecwp_telemetry_secret';
+	private const STATE_OPTION  = 'loyalsec_telemetry_state';
+	private const SECRET_OPTION = 'loyalsec_telemetry_secret';
 	private const SCHEMA        = 1;
 
 	private Settings $settings;
@@ -101,13 +101,13 @@ class BypassReporter {
 			$body    = (string) wp_json_encode( $envelope );
 			$headers = array(
 				'Content-Type'       => 'application/json',
-				'X-TotalSec-Install' => (string) $envelope['install_id'],
+				'X-LoyalSec-Install' => (string) $envelope['install_id'],
 			);
 			// Sign the exact bytes we send so the backend can verify authenticity. If we don't
 			// have a secret yet (registration not available), send unsigned — the backend can
 			// accept unsigned during rollout and we retry registration next flush.
 			if ( '' !== $secret ) {
-				$headers['X-TotalSec-Sig'] = hash_hmac( 'sha256', $body, $secret );
+				$headers['X-LoyalSec-Sig'] = hash_hmac( 'sha256', $body, $secret );
 			}
 
 			$response = wp_remote_post(
@@ -115,7 +115,7 @@ class BypassReporter {
 				array(
 					'timeout'    => 10,
 					'blocking'   => false,
-					'user-agent' => \TotalSecurityWP\Support\Http::user_agent(),
+					'user-agent' => \LoyalSecurity\Support\Http::user_agent(),
 					'headers'    => $headers,
 					'body'       => $body,
 				)
@@ -205,12 +205,12 @@ class BypassReporter {
 		return array(
 			'schema'         => self::SCHEMA,
 			'install_id'     => self::install_id(),
-			'plugin_version' => defined( 'TOTALSECWP_VERSION' ) ? TOTALSECWP_VERSION : '',
+			'plugin_version' => defined( 'LOYALSEC_VERSION' ) ? LOYALSEC_VERSION : '',
 			'rulesets'       => array(
 				'waf'     => $this->ruleset_version( 'waf-signatures.php' ),
 				'malware' => $this->ruleset_version( 'malware-signatures.php' ),
 			),
-			'waf_mode'       => (string) get_option( 'totalsecwp_waf_mode', 'standard' ),
+			'waf_mode'       => (string) get_option( 'loyalsec_waf_mode', 'standard' ),
 			'env'            => array(
 				'php' => $this->coarse_version( PHP_VERSION ),
 				'wp'  => $this->coarse_version( (string) get_bloginfo( 'version' ) ),
@@ -336,7 +336,7 @@ class BypassReporter {
 	}
 
 	private function base(): string {
-		$base = defined( 'TOTALSECWP_TELEMETRY_API_URL' ) ? (string) TOTALSECWP_TELEMETRY_API_URL : '';
+		$base = defined( 'LOYALSEC_TELEMETRY_API_URL' ) ? (string) LOYALSEC_TELEMETRY_API_URL : '';
 		return rtrim( $base, '/' );
 	}
 
@@ -385,7 +385,7 @@ class BypassReporter {
 			$this->base() . '/register',
 			array(
 				'timeout'    => 10,
-				'user-agent' => \TotalSecurityWP\Support\Http::user_agent(),
+				'user-agent' => \LoyalSecurity\Support\Http::user_agent(),
 				'headers'    => array( 'Content-Type' => 'application/json' ),
 				'body'       => wp_json_encode( array( 'install_id' => self::install_id() ) ),
 			)
@@ -394,12 +394,12 @@ class BypassReporter {
 			// Was previously a silent black box on failure — log so a persistently-unregistered
 			// install is diagnosable (transient vs. an actual outbound-connectivity problem)
 			// instead of just retrying forever with no trace of why.
-			\TotalSecurityWP\Support\Debug::log( 'telemetry register failed: ' . $response->get_error_message() );
+			\LoyalSecurity\Support\Debug::log( 'telemetry register failed: ' . $response->get_error_message() );
 			return '';
 		}
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( $code < 200 || $code >= 300 ) {
-			\TotalSecurityWP\Support\Debug::log( 'telemetry register failed: HTTP ' . $code . ' — ' . substr( (string) wp_remote_retrieve_body( $response ), 0, 300 ) );
+			\LoyalSecurity\Support\Debug::log( 'telemetry register failed: HTTP ' . $code . ' — ' . substr( (string) wp_remote_retrieve_body( $response ), 0, 300 ) );
 			return '';
 		}
 
@@ -410,7 +410,7 @@ class BypassReporter {
 			$secret = (string) ( $data['secret'] ?? ( $data['data']['secret'] ?? '' ) );
 		}
 		if ( '' === $secret ) {
-			\TotalSecurityWP\Support\Debug::log( 'telemetry register: 2xx response but no secret field found — ' . substr( (string) wp_remote_retrieve_body( $response ), 0, 300 ) );
+			\LoyalSecurity\Support\Debug::log( 'telemetry register: 2xx response but no secret field found — ' . substr( (string) wp_remote_retrieve_body( $response ), 0, 300 ) );
 		} else {
 			update_option( self::SECRET_OPTION, $secret, true );
 		}
@@ -418,7 +418,7 @@ class BypassReporter {
 	}
 
 	private function ruleset_version( string $file ): string {
-		$path = TOTALSECWP_PATH . 'data/' . $file;
+		$path = LOYALSEC_PATH . 'data/' . $file;
 		if ( ! is_file( $path ) ) {
 			return '';
 		}
@@ -439,20 +439,20 @@ class BypassReporter {
 	/* ------------------------------------------------------------------ */
 
 	public static function install_id(): string {
-		$id = (string) get_option( 'totalsecwp_install_id', '' );
+		$id = (string) get_option( 'loyalsec_install_id', '' );
 		if ( '' === $id ) {
 			try {
 				$id = bin2hex( random_bytes( 16 ) );
 			} catch ( \Throwable $e ) {
-				$id = md5( uniqid( 'totalsec', true ) );
+				$id = md5( uniqid( 'loyalsec', true ) );
 			}
-			update_option( 'totalsecwp_install_id', $id, true );
+			update_option( 'loyalsec_install_id', $id, true );
 		}
 		return $id;
 	}
 
 	public static function consent_given(): bool {
-		$consent = get_option( 'totalsecwp_telemetry_consent', array() );
+		$consent = get_option( 'loyalsec_telemetry_consent', array() );
 		return is_array( $consent ) && ! empty( $consent['given'] );
 	}
 }

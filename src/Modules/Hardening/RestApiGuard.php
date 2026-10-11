@@ -2,16 +2,15 @@
 /**
  * REST API exposure hardening.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
 
 /**
  * Restricts information disclosure through the REST API: hides the user-enumeration
@@ -21,7 +20,7 @@ use TotalSecurityWP\Support\Ip;
 class RestApiGuard {
 
 	/** Option storing the anonymous-namespace tally built while learning mode is active. */
-	private const OPT_LEARNING = 'totalsecwp_rest_learning_namespaces';
+	private const OPT_LEARNING = 'loyalsec_rest_learning_namespaces';
 	private const LEARNING_CAP = 200;
 
 	private bool  $restrict_users;
@@ -58,7 +57,9 @@ class RestApiGuard {
 	 * @return array<string, mixed>
 	 */
 	public function hide_users( array $endpoints ): array {
-		if ( current_user_can( 'list_users' ) ) {
+		// Anyone who writes posts needs this endpoint: the block editor's author picker reads
+		// it. Hidden from visitors and from accounts that cannot write (subscribers, customers).
+		if ( current_user_can( 'list_users' ) || current_user_can( 'edit_posts' ) ) {
 			return $endpoints;
 		}
 		foreach ( array( '/wp/v2/users', '/wp/v2/users/(?P<id>[\d]+)' ) as $route ) {
@@ -95,7 +96,7 @@ class RestApiGuard {
 		}
 
 		return new \WP_Error(
-			'totalsecwp_rest_forbidden',
+			'loyalsec_rest_forbidden',
 			__( 'REST API access is restricted to authenticated users.', 'loyal-security' ),
 			array( 'status' => 401 )
 		);
@@ -113,7 +114,7 @@ class RestApiGuard {
 		if ( null !== $this->logger ) {
 			$this->logger->log(
 				EventCatalog::REST_LEARNING,
-				array( 'namespace' => $namespace, 'route' => $route, 'ip' => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ) ) // phpcs:ignore WordPress.Security.NonceVerification
+				array( 'namespace' => $namespace, 'route' => $route, 'ip' => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip() ) // phpcs:ignore WordPress.Security.NonceVerification
 			);
 		}
 

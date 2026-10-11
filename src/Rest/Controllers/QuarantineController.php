@@ -2,17 +2,17 @@
 /**
  * Incident / quarantine REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Modules\Incident\IncidentModule;
-use TotalSecurityWP\Modules\Scanner\ScannerModule;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Modules\Incident\IncidentModule;
+use LoyalSecurity\Modules\Scanner\ScannerModule;
 use WP_REST_Request;
 
 /**
@@ -68,7 +68,7 @@ class QuarantineController extends AbstractController {
 	public function add( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 
 		$path       = (string) $request->get_param( 'path' );
@@ -88,12 +88,12 @@ class QuarantineController extends AbstractController {
 		}
 
 		if ( '' === $path ) {
-			return $this->fail( 'totalsecwp_no_path', __( 'No file path provided.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_path', __( 'No file path provided.', 'loyal-security' ), 422 );
 		}
 
 		$res = $incident->quarantine_file( $path, $reason, $finding_id ?: null );
 		if ( empty( $res['ok'] ) ) {
-			return $this->fail( 'totalsecwp_quarantine_failed', $res['message'] ?? __( 'Quarantine failed.', 'loyal-security' ), 500 );
+			return $this->fail( 'loyalsec_quarantine_failed', $res['message'] ?? __( 'Quarantine failed.', 'loyal-security' ), 500 );
 		}
 
 		// Mark the finding as quarantined.
@@ -110,18 +110,18 @@ class QuarantineController extends AbstractController {
 	public function restore( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		$res = $incident->restore_file( (int) $request->get_param( 'id' ) );
 		return empty( $res['ok'] )
-			? $this->fail( 'totalsecwp_restore_failed', $res['message'] ?? 'Failed.', 500 )
+			? $this->fail( 'loyalsec_restore_failed', $res['message'] ?? 'Failed.', 500 )
 			: $this->ok( $res );
 	}
 
 	public function delete( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		$res = $incident->quarantine()->delete( (int) $request->get_param( 'id' ) );
 		return $this->ok( $res );
@@ -133,7 +133,7 @@ class QuarantineController extends AbstractController {
 	public function clear( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		return $this->ok( $incident->quarantine()->clear() );
 	}
@@ -141,7 +141,7 @@ class QuarantineController extends AbstractController {
 	public function recover_core( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		return $this->ok( $incident->recover_core() );
 	}
@@ -149,7 +149,7 @@ class QuarantineController extends AbstractController {
 	public function reset_permissions( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		$root = (string) $request->get_param( 'root' );
 		return $this->ok( $incident->reset_permissions( $root ) );

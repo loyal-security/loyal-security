@@ -2,16 +2,16 @@
 /**
  * Backup & Recovery module.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Backup;
+namespace LoyalSecurity\Modules\Backup;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Core\Cron;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Core\Cron;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Coordinates on-demand and scheduled backups (files, or files + database), enforces a
@@ -30,7 +30,7 @@ class BackupModule extends AbstractModule {
 	}
 
 	/** Recurring cron hook that runs an automatic backup. */
-	public const SCHEDULE_HOOK = 'totalsecwp_scheduled_backup';
+	public const SCHEDULE_HOOK = 'loyalsec_scheduled_backup';
 
 	public function default_settings(): array {
 		return array(
@@ -45,13 +45,13 @@ class BackupModule extends AbstractModule {
 
 	public function register_hooks(): void {
 		add_action( Cron::PRUNE_LOGS, array( $this, 'enforce_retention' ) );
-		add_action( 'totalsecwp_run_backup', array( $this, 'run_backup_job' ), 10, 3 );
+		add_action( 'loyalsec_run_backup', array( $this, 'run_backup_job' ), 10, 3 );
 		add_action( self::SCHEDULE_HOOK, array( $this, 'run_scheduled_backup' ) );
 
 		// Keep the recurring-backup cron in lock-step with the `schedule` setting whenever it
 		// is saved (and reconcile once per load in boot() as a safety net). Without this the
 		// dashboard toggle changed a setting that nothing ever acted on.
-		add_action( 'update_option_totalsecwp_settings', array( $this, 'sync_backup_schedule' ) );
+		add_action( 'update_option_loyalsec_settings', array( $this, 'sync_backup_schedule' ) );
 	}
 
 	public function boot(): void {
@@ -111,7 +111,7 @@ class BackupModule extends AbstractModule {
 			return; // Setting turned off between scheduling and firing.
 		}
 		$scope  = $this->setting( 'include_db', true ) ? 'full' : 'files';
-		$job_id = \TotalSecurityWP\Support\JobStore::create( 'backup', array( 'scope' => $scope, 'scheduled' => true ) );
+		$job_id = \LoyalSecurity\Support\JobStore::create( 'backup', array( 'scope' => $scope, 'scheduled' => true ) );
 		$this->run_backup_job( $job_id, $scope, null );
 	}
 
@@ -125,14 +125,14 @@ class BackupModule extends AbstractModule {
 	 */
 	public function run_backup_job( string $job_id, string $scope, ?bool $include_uploads ): void {
 		try {
-			\TotalSecurityWP\Support\JobStore::progress( $job_id, 5, 'Getting ready…' );
+			\LoyalSecurity\Support\JobStore::progress( $job_id, 5, 'Getting ready…' );
 			$uploads = null === $include_uploads ? (bool) $this->setting( 'include_uploads', true ) : $include_uploads;
 			$engine  = new BackupEngine( new BackupStore() );
 			$res     = $engine->create(
 				$scope,
 				$uploads,
 				static function ( int $pct, string $step ) use ( $job_id ): void {
-					\TotalSecurityWP\Support\JobStore::progress( $job_id, $pct, $step );
+					\LoyalSecurity\Support\JobStore::progress( $job_id, $pct, $step );
 				}
 			);
 			if ( ! empty( $res['ok'] ) ) {
@@ -145,16 +145,16 @@ class BackupModule extends AbstractModule {
 					'db'    => ! empty( $m['db_included'] ),
 				) );
 				$this->enforce_retention();
-				\TotalSecurityWP\Support\JobStore::complete(
+				\LoyalSecurity\Support\JobStore::complete(
 					$job_id,
 					'Backup complete' . ( $size ? ' — ' . $size : '' ),
 					$m
 				);
 			} else {
-				\TotalSecurityWP\Support\JobStore::fail( $job_id, $res['message'] ?? 'Backup failed.' );
+				\LoyalSecurity\Support\JobStore::fail( $job_id, $res['message'] ?? 'Backup failed.' );
 			}
 		} catch ( \Throwable $e ) {
-			\TotalSecurityWP\Support\JobStore::fail( $job_id, $e->getMessage() );
+			\LoyalSecurity\Support\JobStore::fail( $job_id, $e->getMessage() );
 		}
 	}
 
@@ -223,6 +223,6 @@ class BackupModule extends AbstractModule {
 		 *
 		 * @since 1.0.0
 		 */
-		do_action( 'totalsecwp_backup_retention_enforced' );
+		do_action( 'loyalsec_backup_retention_enforced' );
 	}
 }

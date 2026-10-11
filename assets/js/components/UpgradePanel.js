@@ -91,7 +91,7 @@ function FeatureGrid() {
  * the separate Pro plugin, which can register its own licence card here (`license.manage`).
  */
 function GetProCard( { isPro } ) {
-	const cfg = window.TotalSecurityWP || {};
+	const cfg = window.LoyalSecurity || {};
 	const getProUrl = cfg.checkout_url || cfg.pricing_url || '#';
 	return h( ProGate, {
 		feature: 'license.manage',
@@ -109,7 +109,7 @@ function GetProCard( { isPro } ) {
 }
 
 export function UpgradePanel() {
-	const cfg   = window.TotalSecurityWP || {};
+	const cfg   = window.LoyalSecurity || {};
 	const isPro = cfg.tier === 'pro';
 
 	const [ data,    setData    ] = useState( null );

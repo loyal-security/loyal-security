@@ -6,7 +6,7 @@ logging — in a single self-contained plugin.
 
 **Website:** https://loyalsecuritywp.com
 **Documentation:** https://loyalsecuritywp.com/docs.html
-**Download:** https://loyalsecuritywp.com/download.html
+**Download:** https://wordpress.org/plugins/loyal-security/
 
 Every protection runs on your own server with the rules bundled in the plugin. No Node.js, no
 build step: the admin dashboard is a React app powered by WordPress core's own bundled
@@ -69,7 +69,7 @@ Full feature documentation: https://loyalsecuritywp.com/docs.html
 From a release zip:
 
 1. Upload the `loyal-security` folder to `/wp-content/plugins/`, or install it from
-   **Plugins → Add New** once listed on WordPress.org.
+   **Plugins → Add New** (search for Loyal Security).
 2. Activate it from the **Plugins** screen.
 3. Open **Loyal Security** in the admin menu — the Setup Wizard runs on first activation.
 
@@ -116,5 +116,5 @@ under the same terms. Full explanation: https://loyalsecuritywp.com/license.html
 
 ## Support
 
-General usage questions and bug reports: the WordPress.org support forum (once listed) or the
-contact details at https://loyalsecuritywp.com/docs.html#support.
+General usage questions and bug reports: the [WordPress.org support forum](https://wordpress.org/support/plugin/loyal-security/), or see
+https://loyalsecuritywp.com/support.html for all options.

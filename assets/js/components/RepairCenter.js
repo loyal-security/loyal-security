@@ -117,7 +117,7 @@ export function RepairCenter() {
 			const res = await api.post( endpoint, { ...body, sync: true } );
 			store.toast( ( res && res.message ) || 'Done.', 'success' );
 		} catch ( e ) {
-			if ( e.status === 504 || e.code === 'totalsecwp_corrupt_response' || /timeout|aborted/i.test( e.message || '' ) ) {
+			if ( e.status === 504 || e.code === 'loyalsec_corrupt_response' || /timeout|aborted/i.test( e.message || '' ) ) {
 				store.toast( 'The request timed out on the server — check via FTP/file manager whether it completed.', 'error' );
 			} else {
 				store.toast( e.message, 'error' );

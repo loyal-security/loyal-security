@@ -2,16 +2,16 @@
 /**
  * Audit log REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Modules\Audit\LogRepository;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Modules\Audit\LogRepository;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 use WP_REST_Request;
 
 /**
@@ -108,7 +108,7 @@ class LogsController extends AbstractController {
 		 *
 		 * @param string[] $types Event-type constants.
 		 */
-		return (array) apply_filters( 'totalsecwp_live_event_types', $types );
+		return (array) apply_filters( 'loyalsec_live_event_types', $types );
 	}
 
 	/**
@@ -124,7 +124,7 @@ class LogsController extends AbstractController {
 	 */
 	private function query_live( int $since_id, int $limit, ?array $types, string $ip = '', string $search = '' ): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_events';
+		$table = $wpdb->prefix . 'loyalsec_events';
 
 		// Polling (since_id > 0) fetches only newer rows; the initial load shows the last 24 h so
 		// the panel isn't blank on a quiet site. Optional filters are switched off by an empty
@@ -185,7 +185,7 @@ class LogsController extends AbstractController {
 	 */
 	public function get_summary( WP_REST_Request $request ) {
 		global $wpdb;
-		$table  = $wpdb->prefix . 'totalsecwp_events';
+		$table  = $wpdb->prefix . 'loyalsec_events';
 		$window = max( 300, min( 86400, (int) ( $request->get_param( 'window' ) ?: 3600 ) ) );
 		$since  = gmdate( 'Y-m-d H:i:s', time() - $window );
 
@@ -234,7 +234,7 @@ class LogsController extends AbstractController {
 	 */
 	public function login_activity( WP_REST_Request $request ) {
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_events';
+		$table = $wpdb->prefix . 'loyalsec_events';
 		$types = array(
 			EventCatalog::LOGIN_SUCCESS,
 			EventCatalog::LOGIN_FAILED,
@@ -329,8 +329,8 @@ class LogsController extends AbstractController {
 	 * exportable.
 	 */
 	private function audit_retention_days(): int {
-		$module = \TotalSecurityWP\Plugin::instance()->module( 'audit' );
-		$days   = $module instanceof \TotalSecurityWP\Modules\Audit\AuditModule
+		$module = \LoyalSecurity\Plugin::instance()->module( 'audit' );
+		$days   = $module instanceof \LoyalSecurity\Modules\Audit\AuditModule
 			? (int) $module->setting_public( 'log_retention_days', 90 )
 			: 90;
 		return max( 1, $days );

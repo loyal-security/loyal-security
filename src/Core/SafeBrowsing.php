@@ -2,10 +2,10 @@
 /**
  * Safe Browsing Check — query the Google Safe Browsing Lookup API v4.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class SafeBrowsing {
 
-	private const CACHE_KEY = 'totalsecwp_safebrowse_cache';
+	private const CACHE_KEY = 'loyalsec_safebrowse_cache';
 
 	private const CACHE_TTL = 6 * HOUR_IN_SECONDS;
 
@@ -57,7 +57,7 @@ class SafeBrowsing {
 			add_query_arg( 'key', rawurlencode( $api_key ), self::ENDPOINT ),
 			array(
 				'timeout'    => 15,
-				'user-agent' => \TotalSecurityWP\Support\Http::user_agent(),
+				'user-agent' => \LoyalSecurity\Support\Http::user_agent(),
 				'headers'    => array( 'Content-Type' => 'application/json' ),
 				'body'       => wp_json_encode( $body ),
 			)

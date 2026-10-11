@@ -2,18 +2,18 @@
 /**
  * Hardening REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Modules\Hardening\HardeningModule;
-use TotalSecurityWP\Modules\Hardening\RestApiGuard;
-use TotalSecurityWP\Modules\Hardening\ExposureScanner;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Modules\Hardening\HardeningModule;
+use LoyalSecurity\Modules\Hardening\RestApiGuard;
+use LoyalSecurity\Modules\Hardening\ExposureScanner;
 use WP_REST_Request;
 
 /**
@@ -96,13 +96,13 @@ class HardeningController extends AbstractController {
 
 	public function status( WP_REST_Request $request ) {
 		$m = $this->module();
-		return $m ? $this->ok( $m->status() ) : $this->fail( 'totalsecwp_hardening_off', __( 'Hardening module disabled.', 'loyal-security' ), 409 );
+		return $m ? $this->ok( $m->status() ) : $this->fail( 'loyalsec_hardening_off', __( 'Hardening module disabled.', 'loyal-security' ), 409 );
 	}
 
 	public function server_rules( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_hardening_off', __( 'Hardening module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_hardening_off', __( 'Hardening module disabled.', 'loyal-security' ), 409 );
 		}
 		$action = (string) $request->get_param( 'action' );
 		return $this->ok( 'revert' === $action ? $m->revert_server_rules() : $m->apply_server_rules() );
@@ -111,7 +111,7 @@ class HardeningController extends AbstractController {
 	public function config( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_hardening_off', __( 'Hardening module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_hardening_off', __( 'Hardening module disabled.', 'loyal-security' ), 409 );
 		}
 		if ( 'revert' === $request->get_param( 'action' ) ) {
 			return $this->ok( $m->revert_config() );

@@ -2,24 +2,27 @@
 /**
  * Security Health Score — an A–F grade summarising the site's security posture.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Plugin;
+use LoyalSecurity\Plugin;
 
 /**
- * Computes a 0–100 health score (and an A–F grade) from a small set of posture checks:
- * which protective modules are enabled, scan recency, and open critical findings. Each check
- * independently subtracts from a perfect 100.
+ * Computes a 0–100 health score (and an A–F grade) from a small set of posture checks: which
+ * protective modules are enabled, open malware findings, whether setup was completed and whether
+ * two-factor is enforced. Each failing check subtracts its impact from a perfect 100.
+ *
+ * This is the only place the score is calculated. The dashboard, the admin-bar badge, WP-CLI and
+ * Pro's Hub reporter all read it, so a site never shows two different grades.
  */
 class HealthScore {
 
 	/** Rolling daily score history, used only to show a trend arrow — capped, not a full log. */
-	private const HISTORY_OPTION = 'totalsecwp_score_history';
+	private const HISTORY_OPTION = 'loyalsec_score_history';
 
 	/** Keep enough history for a month-over-month view later; today only the 7-day trend reads it. */
 	private const HISTORY_MAX_DAYS = 35;
@@ -27,17 +30,70 @@ class HealthScore {
 	/**
 	 * Compute the score, grade, and the underlying checks.
 	 *
-	 * @return array{score:int,grade:string,checks:array<int,array{id:string,label:string,pass:bool,impact:int}>,trend:?int}
+	 * Each check carries the dashboard route that fixes it (`route`, plus `highlight` for a
+	 * specific setting) so the dashboard can turn failing checks into recommendations. A check
+	 * with impact 0 is advice only and does not lower the score.
+	 *
+	 * @return array{score:int,grade:string,checks:array<int,array{id:string,label:string,pass:bool,impact:int,route:string,highlight?:string}>,trend:?int}
 	 */
 	public function compute(): array {
-		$checks = array(
-			$this->module_check( 'firewall', __( 'Web Application Firewall enabled', 'loyal-security' ), 20 ),
-			$this->module_check( 'auth', __( 'Two-factor authentication available', 'loyal-security' ), 15 ),
-			$this->module_check( 'hardening', __( 'System hardening enabled', 'loyal-security' ), 10 ),
-			$this->recent_scan_check(),
-			$this->critical_findings_check(),
-			$this->module_check( 'integrity', __( 'Core integrity monitoring enabled', 'loyal-security' ), 10 ),
-			$this->module_check( 'backup', __( 'Backups configured', 'loyal-security' ), 10 ),
+		$checks = array();
+
+		if ( class_exists( Plugin::class ) ) {
+			foreach ( Plugin::instance()->modules() as $id => $module ) {
+				$checks[] = array(
+					'id'        => $id . '_enabled',
+					/* translators: %s: module title */
+					'label'     => sprintf( __( 'The %s module is disabled — enable it for full protection.', 'loyal-security' ), $module->title() ),
+					'pass'      => $module->is_enabled(),
+					'impact'    => 10,
+					'route'     => 'settings',
+					'highlight' => $id . '.enabled',
+				);
+			}
+		}
+
+		$open_findings = $this->count_rows( 'scan_findings', 'open' );
+		$checks[]      = array(
+			'id'     => 'no_open_findings',
+			'label'  => __( 'Unresolved malware findings detected. Review and remediate them.', 'loyal-security' ),
+			'pass'   => 0 === $open_findings,
+			'impact' => min( 30, $open_findings * 5 ),
+			'route'  => 'scanner',
+		);
+
+		$quarantined = $this->count_rows( 'quarantine', 'quarantined' );
+		$checks[]    = array(
+			'id'     => 'quarantine_reviewed',
+			/* translators: %d quarantined file count */
+			'label'  => sprintf( _n( '%d quarantined file is awaiting review.', '%d quarantined files are awaiting review.', $quarantined, 'loyal-security' ), $quarantined ),
+			'pass'   => 0 === $quarantined,
+			'impact' => 0,
+			'route'  => 'quarantine',
+		);
+
+		$checks[] = array(
+			'id'     => 'setup_complete',
+			'label'  => __( 'Complete the setup wizard to deploy the optimized firewall.', 'loyal-security' ),
+			'pass'   => (bool) get_option( 'loyalsec_setup_complete', false ),
+			'impact' => 10,
+			'route'  => 'wizard',
+		);
+
+		// This scores the *enforcement* toggle, which requires every admin/editor to enroll — not
+		// whether the current user personally has. It's surfaced directly on the 2FA panel
+		// (ForceTwoFactorCard in TwoFactorSetup.js), so the recommendation lands somewhere with
+		// the actual control on it.
+		$force_2fa = false;
+		if ( class_exists( Plugin::class ) ) {
+			$force_2fa = (bool) Plugin::instance()->container()->make( 'settings' )->get( 'auth', 'force_2fa', false );
+		}
+		$checks[] = array(
+			'id'     => 'force_2fa',
+			'label'  => __( 'Enforce two-factor authentication for administrators.', 'loyal-security' ),
+			'pass'   => $force_2fa,
+			'impact' => 8,
+			'route'  => '2fa',
 		);
 
 		/**
@@ -47,7 +103,7 @@ class HealthScore {
 		 *
 		 * @param array<int,array{id:string,label:string,pass:bool,impact:int}> $checks Checks list.
 		 */
-		$checks = apply_filters( 'totalsecwp_health_score_checks', $checks );
+		$checks = apply_filters( 'loyalsec_health_score_checks', $checks );
 
 		$score = 100;
 		foreach ( $checks as $check ) {
@@ -119,83 +175,19 @@ class HealthScore {
 	}
 
 	/**
-	 * Build a check that passes when the given module is enabled.
-	 *
-	 * @return array{id:string,label:string,pass:bool,impact:int}
+	 * Count rows in one of the plugin's tables with the given status.
 	 */
-	private function module_check( string $module_id, string $label, int $impact ): array {
-		return array(
-			'id'     => $module_id . '_enabled',
-			'label'  => $label,
-			'pass'   => $this->module_enabled( $module_id ),
-			'impact' => $impact,
-		);
-	}
-
-	/**
-	 * Whether a module exists and reports itself enabled.
-	 */
-	private function module_enabled( string $module_id ): bool {
-		if ( ! class_exists( Plugin::class ) ) {
-			return false;
-		}
-		$module = Plugin::instance()->module( $module_id );
-		return $module ? $module->is_enabled() : false;
-	}
-
-	/**
-	 * Passes when a scan completed within the last 7 days.
-	 *
-	 * @return array{id:string,label:string,pass:bool,impact:int}
-	 */
-	private function recent_scan_check(): array {
-		$history = get_option( 'totalsecwp_scan_history', array() );
-		$pass    = false;
-
-		if ( is_array( $history ) && ! empty( $history[0] ) && is_array( $history[0] ) ) {
-			$completed = isset( $history[0]['completed_at'] ) ? strtotime( (string) $history[0]['completed_at'] . ' UTC' ) : 0;
-			if ( $completed && $completed >= ( time() - ( 7 * DAY_IN_SECONDS ) ) ) {
-				$pass = true;
-			}
-		}
-
-		return array(
-			'id'     => 'recent_scan',
-			'label'  => __( 'Malware scan run in the last 7 days', 'loyal-security' ),
-			'pass'   => $pass,
-			'impact' => 15,
-		);
-	}
-
-	/**
-	 * Passes when there are no open findings at warning severity or above.
-	 *
-	 * @return array{id:string,label:string,pass:bool,impact:int}
-	 */
-	private function critical_findings_check(): array {
+	private function count_rows( string $table, string $status ): int {
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_scan_findings';
-
-		$open_critical = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name built from $wpdb->prefix, not user input.
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM %i WHERE severity >= %d AND status = %s", $table,
-				30,
-				'open'
-			)
-		);
-
-		return array(
-			'id'     => 'no_open_critical',
-			'label'  => __( 'No unresolved critical findings', 'loyal-security' ),
-			'pass'   => 0 === $open_critical,
-			'impact' => 20,
+		return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- plugin-owned table, counted live for the score.
+			$wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE status = %s', $wpdb->prefix . 'loyalsec_' . $table, $status )
 		);
 	}
 
 	/**
 	 * Map a numeric score onto an A–F grade.
 	 *
-	 * Public so other surfaces (e.g. {@see \TotalSecurityWP\Admin\AdminBarScore}) that display a
+	 * Public so other surfaces (e.g. {@see \LoyalSecurity\Admin\AdminBarScore}) that display a
 	 * cached score can derive the same grade rather than duplicating (and risking drifting from)
 	 * these thresholds.
 	 */
@@ -203,13 +195,13 @@ class HealthScore {
 		if ( $score >= 90 ) {
 			return 'A';
 		}
-		if ( $score >= 75 ) {
+		if ( $score >= 80 ) {
 			return 'B';
 		}
-		if ( $score >= 60 ) {
+		if ( $score >= 65 ) {
 			return 'C';
 		}
-		if ( $score >= 45 ) {
+		if ( $score >= 50 ) {
 			return 'D';
 		}
 		return 'F';

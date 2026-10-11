@@ -2,15 +2,15 @@
 /**
  * IP ban storage (database) with sync to the pre-WordPress flat-file store.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Ip;
-use TotalSecurityWP\Waf\FileStore;
+use LoyalSecurity\Support\Ip;
+use LoyalSecurity\Waf\FileStore;
 
 /**
  * Authoritative ban list. Writes are mirrored into the WAF prepend's `bans.json` so the
@@ -20,7 +20,7 @@ class BanStore {
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_bans';
+		return $wpdb->prefix . 'loyalsec_bans';
 	}
 
 	/**
@@ -32,17 +32,107 @@ class BanStore {
 	 * @param int|null $ttl      Seconds until expiry (temporary only).
 	 * @param string   $source   Origin (manual|bruteforce|waf|ratelimit|geo|bot).
 	 * @param string   $cidr     Optional CIDR range.
+	 * @return bool False when the address is invalid or is a proxy in front of the site.
 	 */
 	public function add( string $ip, string $reason = '', string $type = 'temporary', ?int $ttl = null, string $source = 'manual', string $cidr = '' ): bool {
+		$ban = compact( 'ip', 'reason', 'type', 'ttl', 'source', 'cidr' );
+		if ( ! $this->write_row( $ban ) ) {
+			return false;
+		}
+		$this->sync_to_file();
+		$this->announce( $ban );
+		return true;
+	}
+
+	/**
+	 * Add or update many bans and rewrite the prepend's ban file once, instead of once per ban.
+	 * For bulk imports such as IP-reputation lists.
+	 *
+	 * @param array<int, array<string, mixed>> $bans Each: ip, and optionally reason, type, ttl, source, cidr (as for {@see add()}).
+	 * @return int Number of bans written.
+	 */
+	public function add_many( array $bans ): int {
+		$written = array();
+		foreach ( $bans as $ban ) {
+			if ( ! is_array( $ban ) ) {
+				continue;
+			}
+			$ban = array(
+				'ip'     => (string) ( $ban['ip'] ?? '' ),
+				'reason' => (string) ( $ban['reason'] ?? '' ),
+				'type'   => (string) ( $ban['type'] ?? 'temporary' ),
+				'ttl'    => isset( $ban['ttl'] ) ? (int) $ban['ttl'] : null,
+				'source' => (string) ( $ban['source'] ?? 'manual' ),
+				'cidr'   => (string) ( $ban['cidr'] ?? '' ),
+			);
+			if ( $this->write_row( $ban ) ) {
+				$written[] = $ban;
+			}
+		}
+		if ( $written ) {
+			$this->sync_to_file();
+			foreach ( $written as $ban ) {
+				$this->announce( $ban );
+			}
+		}
+		return count( $written );
+	}
+
+	/**
+	 * Whether an address or range belongs to a proxy in front of the site (Cloudflare's edge or a
+	 * configured trusted proxy). Those addresses carry many visitors' traffic, so banning one
+	 * would block real visitors instead of the attacker.
+	 */
+	public static function is_proxy_address( string $ip, string $cidr = '' ): bool {
+		$proxies = Ip::CLOUDFLARE_RANGES;
+		try {
+			$settings = \LoyalSecurity\Plugin::instance()->container()->make( 'settings' );
+			$proxies  = array_merge( $proxies, array_filter( array_map( 'trim', array_map( 'strval', (array) $settings->get( 'firewall', 'trusted_proxies', array() ) ) ) ) );
+		} catch ( \Throwable $e ) {
+			// Settings not available (very early or during uninstall): Cloudflare's ranges still apply.
+			unset( $e );
+		}
+		if ( '' === $cidr ) {
+			return Ip::is_valid( $ip ) && Ip::in_ranges( $ip, $proxies );
+		}
+		// Two ranges overlap when either one's network address lies inside the other.
+		$base = explode( '/', $cidr, 2 )[0];
+		if ( Ip::is_valid( $base ) && Ip::in_ranges( $base, $proxies ) ) {
+			return true;
+		}
+		foreach ( $proxies as $proxy ) {
+			$proxy_base = explode( '/', $proxy, 2 )[0];
+			if ( Ip::is_valid( $proxy_base ) && Ip::cidr_match( $proxy_base, $cidr ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Insert or update one ban row (no file sync, no action).
+	 *
+	 * @param array<string, mixed> $ban ip, reason, type, ttl, source, cidr.
+	 */
+	private function write_row( array $ban ): bool {
 		global $wpdb;
 
+		$ip     = (string) $ban['ip'];
+		$cidr   = (string) $ban['cidr'];
+		$type   = (string) $ban['type'];
+		$reason = (string) $ban['reason'];
+		$ttl    = $ban['ttl'];
+
 		if ( '' === $cidr && ! Ip::is_valid( $ip ) ) {
+			return false;
+		}
+		if ( self::is_proxy_address( $ip, $cidr ) ) {
 			return false;
 		}
 
 		$expires = null;
 		if ( 'permanent' !== $type && $ttl ) {
-			$expires = gmdate( 'Y-m-d H:i:s', time() + $ttl );
+			$expires = gmdate( 'Y-m-d H:i:s', time() + (int) $ttl );
 		}
 
 		$existing = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB
@@ -55,7 +145,7 @@ class BanStore {
 				array(
 					'reason'     => mb_substr( $reason, 0, 191 ),
 					'type'       => $type,
-					'source'     => $source,
+					'source'     => (string) $ban['source'],
 					'cidr'       => '' !== $cidr ? $cidr : null,
 					'expires_at' => $expires,
 					'hits'       => 0,
@@ -70,15 +160,21 @@ class BanStore {
 					'cidr'       => '' !== $cidr ? $cidr : null,
 					'reason'     => mb_substr( $reason, 0, 191 ),
 					'type'       => $type,
-					'source'     => $source,
+					'source'     => (string) $ban['source'],
 					'created_at' => gmdate( 'Y-m-d H:i:s' ),
 					'expires_at' => $expires,
 				)
 			);
 		}
+		return true;
+	}
 
-		$this->sync_to_file();
-
+	/**
+	 * Fire the ban-added action for one written ban.
+	 *
+	 * @param array<string, mixed> $ban ip, reason, type, source, cidr.
+	 */
+	private function announce( array $ban ): void {
 		/**
 		 * Fires after a ban is added or updated. Used by integrations (e.g. Cloudflare sync)
 		 * to mirror the ban to an external edge firewall.
@@ -89,17 +185,15 @@ class BanStore {
 		 * @param array  $context { reason, type, source, cidr } describing the ban.
 		 */
 		do_action(
-			'totalsecwp_ban_added',
-			$ip,
+			'loyalsec_ban_added',
+			(string) $ban['ip'],
 			array(
-				'reason' => $reason,
-				'type'   => $type,
-				'source' => $source,
-				'cidr'   => $cidr,
+				'reason' => (string) $ban['reason'],
+				'type'   => (string) $ban['type'],
+				'source' => (string) $ban['source'],
+				'cidr'   => (string) $ban['cidr'],
 			)
 		);
-
-		return true;
 	}
 
 	/**
@@ -164,7 +258,12 @@ class BanStore {
 			// FileStore, which does fall through to ranges, kept blocking it: mode drift).
 		}
 
-		// CIDR ranges.
+		// CIDR ranges: the ban file mirrors every range with a sorted index (sync_to_file()), so
+		// use its binary search rather than matching each range in turn on every request.
+		$dir = self::storage_dir();
+		if ( '' !== $dir && is_file( $dir . '/bans.json' ) ) {
+			return ( new FileStore( $dir ) )->in_banned_range( $ip );
+		}
 		$ranges = $wpdb->get_col( $wpdb->prepare( "SELECT cidr FROM %i WHERE cidr IS NOT NULL", $this->table() ) ); // phpcs:ignore WordPress.DB
 		return $ranges && Ip::in_ranges( $ip, $ranges );
 	}

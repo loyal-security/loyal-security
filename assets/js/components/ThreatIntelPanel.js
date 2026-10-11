@@ -203,7 +203,7 @@ function ConnectionTestCard( { conn, onRegister, registering } ) {
 
 		const lic = d.license || {};
 		const tier = lic.tier || 'free';
-		row( tier === 'pro', 'License tier: ' + tier, tier === 'pro' ? '' : 'Free/unknown — check the X-TotalSec-License hash or plan' );
+		row( tier === 'pro', 'License tier: ' + tier, tier === 'pro' ? '' : 'Free/unknown — check the X-LoyalSec-License hash or plan' );
 
 		const skew = Math.abs( Number( d.clock_skew_seconds || 0 ) );
 		row( skew < 300, 'Clock skew: ' + ( d.clock_skew_seconds ?? '?' ) + 's', skew < 300 ? '' : 'Fix server NTP — reputation will reject as stale' );
@@ -352,7 +352,8 @@ function vulnTime( v ) {
 	const raw = v.published || v.detected_at || v.created_at || v.updated || 0;
 	if ( ! raw ) return 0;
 	if ( typeof raw === 'number' ) return raw < 1e12 ? raw * 1000 : raw;
-	const t = new Date( ( '' + raw ).replace( ' ', 'T' ) ).getTime();
+	// SQL datetimes are UTC; parse them as such (a bare date like "2026-10-01" already is).
+	const t = new Date( ( ( s ) => ( /T[\d:.]+$/.test( s ) ? s + 'Z' : s ) )( ( '' + raw ).replace( ' ', 'T' ) ) ).getTime();
 	return isNaN( t ) ? 0 : t;
 }
 

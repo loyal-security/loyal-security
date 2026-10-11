@@ -57,7 +57,7 @@ export function Dashboard() {
 	const counters = s.counters || {};
 	const gradeTone = s.score >= 80 ? 'success' : s.score >= 65 ? 'warning' : 'danger';
 	const tier = isPro ? 'pro' : 'free';
-	const upgradeUrl = ( window.TotalSecurityWP && window.TotalSecurityWP.upgrade_url ) || '';
+	const upgradeUrl = ( window.LoyalSecurity && window.LoyalSecurity.upgrade_url ) || '';
 
 	return h(
 		Fragment,
@@ -298,7 +298,9 @@ function LoginTimeline() {
 /** Render an ISO/SQL timestamp as a compact relative "time ago" string. */
 function timeAgo( ts ) {
 	if ( ! ts ) return '—';
-	const then = new Date( ( '' + ts ).replace( ' ', 'T' ) ).getTime();
+	// Stored as UTC ("Y-m-d H:i:s"); without the Z the browser read it as local time and the
+	// list was off by the viewer's UTC offset ("3h ago" for a sign-in a minute old).
+	const then = new Date( ( ( s ) => ( /T[\d:.]+$/.test( s ) ? s + 'Z' : s ) )( ( '' + ts ).replace( ' ', 'T' ) ) ).getTime();
 	if ( isNaN( then ) ) return ts;
 	const secs = Math.max( 0, Math.floor( ( Date.now() - then ) / 1000 ) );
 	if ( secs < 60 ) return secs + 's ago';

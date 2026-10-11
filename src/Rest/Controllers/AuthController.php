@@ -2,23 +2,23 @@
 /**
  * Identity / 2FA / session REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Modules\Auth\AuthModule;
-use TotalSecurityWP\Modules\Auth\LoginUrlInstaller;
-use TotalSecurityWP\Modules\Auth\TwoFactorGracePeriod;
-use TotalSecurityWP\Modules\Auth\Passkey;
-use TotalSecurityWP\Modules\Auth\WebAuthnCeremony;
-use TotalSecurityWP\Modules\Firewall\BanStore;
-use TotalSecurityWP\Modules\Firewall\IpResolver;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Modules\Auth\AuthModule;
+use LoyalSecurity\Modules\Auth\LoginUrlInstaller;
+use LoyalSecurity\Modules\Auth\TwoFactorGracePeriod;
+use LoyalSecurity\Modules\Auth\Passkey;
+use LoyalSecurity\Modules\Auth\WebAuthnCeremony;
+use LoyalSecurity\Modules\Firewall\BanStore;
+use LoyalSecurity\Modules\Firewall\IpResolver;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 use WP_REST_Request;
 use WP_Error;
 
@@ -166,10 +166,10 @@ class AuthController extends AbstractController {
 	public function begin( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
 		}
 		if ( $m->twofa()->is_enabled( get_current_user_id() ) ) {
-			return $this->fail( 'totalsecwp_2fa_already_active', __( 'Two-factor is already active. Disable it before starting a new enrollment.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_2fa_already_active', __( 'Two-factor is already active. Disable it before starting a new enrollment.', 'loyal-security' ), 409 );
 		}
 		return $this->ok( $m->twofa()->begin_enroll( get_current_user_id() ) );
 	}
@@ -177,12 +177,12 @@ class AuthController extends AbstractController {
 	public function confirm( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
 		}
 		$code = (string) $request->get_param( 'code' );
 		$res  = $m->twofa()->confirm_enroll( get_current_user_id(), $code );
 		if ( empty( $res['ok'] ) ) {
-			return $this->fail( 'totalsecwp_2fa_confirm', $res['message'] ?? 'Failed.', 422 );
+			return $this->fail( 'loyalsec_2fa_confirm', $res['message'] ?? 'Failed.', 422 );
 		}
 		$this->logger()->log( EventCatalog::TWOFA_ENROLLED, array( 'user_id' => get_current_user_id() ) );
 		return $this->ok( $res );
@@ -191,7 +191,7 @@ class AuthController extends AbstractController {
 	public function disable( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
 		}
 		$m->twofa()->disable( get_current_user_id() );
 		$this->logger()->log( EventCatalog::TWOFA_DISABLED, array( 'user_id' => get_current_user_id() ) );
@@ -201,7 +201,7 @@ class AuthController extends AbstractController {
 	public function destroy_all( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
 		}
 		$count = $m->sessions()->destroy_all_sessions();
 		return $this->ok( array( 'users_logged_out' => $count ) );
@@ -210,7 +210,7 @@ class AuthController extends AbstractController {
 	public function destroy_mine( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
 		}
 		$m->sessions()->destroy_user_sessions( get_current_user_id() );
 		return $this->ok( array( 'ok' => true ) );
@@ -222,7 +222,7 @@ class AuthController extends AbstractController {
 	public function list_trusted_devices( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
 		}
 		$devices = $m->sessions()->get_trusted_devices( get_current_user_id() );
 		return $this->ok( array( 'devices' => $devices ) );
@@ -234,12 +234,12 @@ class AuthController extends AbstractController {
 	public function revoke_trusted_device( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
 		}
 		$hash    = (string) $request->get_param( 'hash' );
 		$removed = $m->sessions()->revoke_trusted_device( get_current_user_id(), $hash );
 		if ( ! $removed ) {
-			return $this->fail( 'totalsecwp_td_not_found', __( 'Trusted device not found.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_td_not_found', __( 'Trusted device not found.', 'loyal-security' ), 404 );
 		}
 		return $this->ok( array( 'revoked' => true ) );
 	}
@@ -252,7 +252,7 @@ class AuthController extends AbstractController {
 	public function list_all_trusted_devices( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
 		}
 		return $this->ok( array( 'devices' => $m->sessions()->get_all_trusted_devices() ) );
 	}
@@ -264,7 +264,7 @@ class AuthController extends AbstractController {
 	public function admin_revoke_trusted_device( WP_REST_Request $request ) {
 		$m = $this->module();
 		if ( ! $m ) {
-			return $this->fail( 'totalsecwp_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_auth_off', __( 'Auth module disabled.', 'loyal-security' ), 409 );
 		}
 		$user_id = (int) $request->get_param( 'user_id' );
 		$hash    = (string) $request->get_param( 'hash' );
@@ -273,7 +273,7 @@ class AuthController extends AbstractController {
 		// gate and route (see permission_callback above).
 		$removed = $m->sessions()->revoke_trusted_device( $user_id, $hash );
 		if ( ! $removed ) {
-			return $this->fail( 'totalsecwp_td_not_found', __( 'Trusted device not found.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_td_not_found', __( 'Trusted device not found.', 'loyal-security' ), 404 );
 		}
 		return $this->ok( array( 'revoked' => true ) );
 	}
@@ -311,13 +311,13 @@ class AuthController extends AbstractController {
 
 		$slug = sanitize_title( (string) $request->get_param( 'slug' ) );
 		if ( '' === $slug || strlen( $slug ) < 3 || strlen( $slug ) > 64 || ! preg_match( '/^[a-z0-9-]+$/', $slug ) ) {
-			return $this->fail( 'totalsecwp_login_url_invalid', __( 'Choose a slug of 3–64 letters, numbers, or hyphens.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_login_url_invalid', __( 'Choose a slug of 3–64 letters, numbers, or hyphens.', 'loyal-security' ), 422 );
 		}
 		if ( in_array( $slug, self::RESERVED_SLUGS, true ) ) {
-			return $this->fail( 'totalsecwp_login_url_reserved', __( 'That slug is reserved — choose another.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_login_url_reserved', __( 'That slug is reserved — choose another.', 'loyal-security' ), 422 );
 		}
 		if ( function_exists( 'get_page_by_path' ) && get_page_by_path( $slug, OBJECT, get_post_types( array( 'public' => true ) ) ) ) {
-			return $this->fail( 'totalsecwp_login_url_collision', __( 'That slug is already used by a page/post on this site — choose another.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_login_url_collision', __( 'That slug is already used by a page/post on this site — choose another.', 'loyal-security' ), 422 );
 		}
 
 		$installer = new LoginUrlInstaller();
@@ -329,7 +329,7 @@ class AuthController extends AbstractController {
 			// it, leaving Nginx users with nothing but a bare error and no way to finish enabling
 			// the feature.
 			return new WP_Error(
-				'totalsecwp_login_url_failed',
+				'loyalsec_login_url_failed',
 				$res['message'],
 				array(
 					'status'        => 500,
@@ -349,7 +349,7 @@ class AuthController extends AbstractController {
 				__( '[Loyal Security] Your custom login URL', 'loyal-security' ),
 				sprintf(
 					/* translators: 1: site name, 2: new login URL */
-					__( "Loyal Security enabled a custom login URL on %1\$s.\n\nNew login page: %2\$s\n\nThe original /wp-login.php now returns a 404 for the plain login form. Keep this email — if the site becomes unreachable, an administrator with file access can add define('TOTALSECWP_DISABLE_LOGIN_URL', true); to wp-config.php to restore the original URL immediately.", 'loyal-security' ),
+					__( "Loyal Security enabled a custom login URL on %1\$s.\n\nNew login page: %2\$s\n\nThe original /wp-login.php now returns a 404 for the plain login form. Keep this email — if the site becomes unreachable, an administrator with file access can add define('LOYALSEC_DISABLE_LOGIN_URL', true); to wp-config.php to restore the original URL immediately.", 'loyal-security' ),
 					get_bloginfo( 'name' ),
 					$url
 				)
@@ -365,7 +365,7 @@ class AuthController extends AbstractController {
 	 * who needs more time.
 	 */
 	public function grace_list( WP_REST_Request $request ) {
-		/** @var \TotalSecurityWP\Core\Settings $settings */
+		/** @var \LoyalSecurity\Core\Settings $settings */
 		$settings = $this->container->make( 'settings' );
 		$module   = $this->module();
 		if ( ! $module ) {
@@ -406,13 +406,13 @@ class AuthController extends AbstractController {
 		$days    = (int) $request->get_param( 'days' );
 
 		if ( $user_id <= 0 || $days <= 0 ) {
-			return $this->fail( 'totalsecwp_grace_invalid', __( 'A user and a positive number of days are required.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_grace_invalid', __( 'A user and a positive number of days are required.', 'loyal-security' ), 422 );
 		}
 		if ( ! get_userdata( $user_id ) ) {
-			return $this->fail( 'totalsecwp_grace_no_user', __( 'User not found.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_grace_no_user', __( 'User not found.', 'loyal-security' ), 404 );
 		}
 
-		/** @var \TotalSecurityWP\Core\Settings $settings */
+		/** @var \LoyalSecurity\Core\Settings $settings */
 		$settings = $this->container->make( 'settings' );
 		$grace    = new TwoFactorGracePeriod( $settings );
 		$deadline = $grace->extend( $user_id, $days );
@@ -429,10 +429,10 @@ class AuthController extends AbstractController {
 	public function grace_enforce( WP_REST_Request $request ) {
 		$user_id = (int) $request->get_param( 'user_id' );
 		if ( $user_id <= 0 || ! get_userdata( $user_id ) ) {
-			return $this->fail( 'totalsecwp_grace_no_user', __( 'User not found.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_grace_no_user', __( 'User not found.', 'loyal-security' ), 404 );
 		}
 
-		/** @var \TotalSecurityWP\Core\Settings $settings */
+		/** @var \LoyalSecurity\Core\Settings $settings */
 		$settings = $this->container->make( 'settings' );
 		$grace    = new TwoFactorGracePeriod( $settings );
 		$deadline = $grace->enforce_now( $user_id );
@@ -463,7 +463,7 @@ class AuthController extends AbstractController {
 		try {
 			return $this->ok( ( new WebAuthnCeremony() )->begin_registration( get_current_user_id() ) );
 		} catch ( \Throwable $e ) {
-			return $this->fail( 'totalsecwp_passkey_unsupported', __( 'Passkeys are not available on this server (missing OpenSSL support).', 'loyal-security' ), 500 );
+			return $this->fail( 'loyalsec_passkey_unsupported', __( 'Passkeys are not available on this server (missing OpenSSL support).', 'loyal-security' ), 500 );
 		}
 	}
 
@@ -472,12 +472,12 @@ class AuthController extends AbstractController {
 		$attestation = (string) $request->get_param( 'attestationObject' );
 		$label       = (string) $request->get_param( 'label' );
 		if ( '' === $client_data || '' === $attestation ) {
-			return $this->fail( 'totalsecwp_passkey_bad_request', __( 'Missing registration data.', 'loyal-security' ), 400 );
+			return $this->fail( 'loyalsec_passkey_bad_request', __( 'Missing registration data.', 'loyal-security' ), 400 );
 		}
 
 		$res = ( new WebAuthnCeremony() )->complete_registration( get_current_user_id(), $client_data, $attestation, $label );
 		if ( empty( $res['ok'] ) ) {
-			return $this->fail( 'totalsecwp_passkey_register_failed', $res['message'] ?? __( 'Could not register passkey.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_passkey_register_failed', $res['message'] ?? __( 'Could not register passkey.', 'loyal-security' ), 422 );
 		}
 
 		$this->logger()->log( EventCatalog::PASSKEY_REGISTERED, array( 'user_id' => get_current_user_id() ) );
@@ -488,7 +488,7 @@ class AuthController extends AbstractController {
 		$id      = (string) $request->get_param( 'id' );
 		$removed = ( new Passkey() )->remove_credential( get_current_user_id(), $id );
 		if ( ! $removed ) {
-			return $this->fail( 'totalsecwp_passkey_not_found', __( 'Passkey not found.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_passkey_not_found', __( 'Passkey not found.', 'loyal-security' ), 404 );
 		}
 		$this->logger()->log( EventCatalog::PASSKEY_REMOVED, array( 'user_id' => get_current_user_id() ) );
 		return $this->ok( array( 'removed' => true ) );
@@ -501,12 +501,12 @@ class AuthController extends AbstractController {
 	 */
 	public function passkey_login_options( WP_REST_Request $request ) {
 		if ( $this->passkey_login_ip_banned() ) {
-			return $this->fail( 'totalsecwp_banned', __( 'Access from your IP address has been temporarily blocked due to suspicious activity.', 'loyal-security' ), 403 );
+			return $this->fail( 'loyalsec_banned', __( 'Access from your IP address has been temporarily blocked due to suspicious activity.', 'loyal-security' ), 403 );
 		}
 		try {
 			return $this->ok( ( new WebAuthnCeremony() )->begin_login() );
 		} catch ( \Throwable $e ) {
-			return $this->fail( 'totalsecwp_passkey_unsupported', __( 'Passkey login is not available on this server.', 'loyal-security' ), 500 );
+			return $this->fail( 'loyalsec_passkey_unsupported', __( 'Passkey login is not available on this server.', 'loyal-security' ), 500 );
 		}
 	}
 

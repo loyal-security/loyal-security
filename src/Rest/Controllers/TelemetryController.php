@@ -2,17 +2,17 @@
 /**
  * Bypass-telemetry REST controller — consent + transparency.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Telemetry\BypassReporter;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Telemetry\BypassReporter;
 use WP_REST_Request;
 
 /**
@@ -24,7 +24,7 @@ class TelemetryController extends AbstractController {
 	/** Bump when the consent wording / data practices change, to force re-consent. */
 	public const POLICY_VERSION = 1;
 
-	private const CONSENT_OPTION = 'totalsecwp_telemetry_consent';
+	private const CONSENT_OPTION = 'loyalsec_telemetry_consent';
 
 	public function register_routes(): void {
 		$ns = $this->namespace();
@@ -76,7 +76,7 @@ class TelemetryController extends AbstractController {
 				'policy_version'     => self::POLICY_VERSION,
 				'needs_consent'      => $this->needs_consent( $consent ),
 				'install_id'         => BypassReporter::install_id(),
-				'has_secret'         => '' !== (string) get_option( 'totalsecwp_telemetry_secret', '' ),
+				'has_secret'         => '' !== (string) get_option( 'loyalsec_telemetry_secret', '' ),
 				'share_attacker_ip'  => (bool) $settings->get( 'telemetry', 'share_attacker_ip', true ),
 				'near_miss_capture'  => (bool) $settings->get( 'telemetry', 'near_miss_capture', true ),
 				'max_reports_per_day' => (int) $settings->get( 'telemetry', 'max_reports_per_day', 20 ),

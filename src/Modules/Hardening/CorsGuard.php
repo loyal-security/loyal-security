@@ -2,15 +2,15 @@
 /**
  * REST API CORS hardening.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\Logger;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
 
 /**
  * Replaces WordPress core's default REST API CORS handling.
@@ -68,7 +68,7 @@ class CorsGuard {
 		$origin = get_http_origin();
 
 		if ( ! $origin ) {
-			if ( ! headers_sent() && 'GET' === \TotalSecurityWP\Support\RequestVars::method() && ! is_user_logged_in() ) {
+			if ( ! headers_sent() && 'GET' === \LoyalSecurity\Support\RequestVars::method() && ! is_user_logged_in() ) {
 				header( 'Vary: Origin', false );
 			}
 			return $served;
@@ -81,7 +81,9 @@ class CorsGuard {
 				$this->logger->log(
 					EventCatalog::CORS_BLOCKED,
 					array(
-						'origin' => $origin,
+						// Sanitized at the point it is recorded, like every other logged value —
+						// the rejected Origin is attacker-supplied and must not enter the log raw.
+						'origin' => esc_url_raw( (string) $origin ),
 						'route'  => isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REQUEST_URI'] ) ) : '',
 					),
 					EventCatalog::SEV_NOTICE

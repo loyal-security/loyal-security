@@ -2,16 +2,16 @@
 /**
  * Session management — idle timeout, concurrent-login control, global logout.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Modules\Audit\Logger;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Enforces idle session expiry, optionally blocks concurrent logins (one active session per
@@ -50,16 +50,16 @@ class SessionManager {
 		}
 
 		$user_id = get_current_user_id();
-		$last    = (int) get_user_meta( $user_id, 'totalsecwp_last_activity', true );
+		$last    = (int) get_user_meta( $user_id, 'loyalsec_last_activity', true );
 		$now     = time();
 
 		if ( $last && ( $now - $last ) > $timeout ) {
 			$this->logger->log( EventCatalog::SESSION_DESTROYED, array( 'user_id' => $user_id, 'reason' => 'idle_timeout' ) );
 			wp_logout();
-			wp_safe_redirect( wp_login_url() . '?totalsecwp_idle=1' );
+			wp_safe_redirect( wp_login_url() . '?loyalsec_idle=1' );
 			exit;
 		}
-		update_user_meta( $user_id, 'totalsecwp_last_activity', $now );
+		update_user_meta( $user_id, 'loyalsec_last_activity', $now );
 	}
 
 	/**

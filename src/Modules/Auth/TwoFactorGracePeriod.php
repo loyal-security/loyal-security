@@ -2,14 +2,14 @@
 /**
  * Per-user grace period for enforced two-factor enrollment.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
+use LoyalSecurity\Core\Settings;
 
 /**
  * Rolling out `force_2fa` immediately locks out every non-enrolled user in an enforced role on
@@ -22,13 +22,13 @@ use TotalSecurityWP\Core\Settings;
  * State lives in two user meta keys, both lazily created the first time a given user is
  * actually evaluated (not backfilled for the whole user table up front, so turning the setting
  * on doesn't itself require a migration):
- *   - totalsecwp_2fa_grace_until   (int unix timestamp) — hard-enforcement deadline.
- *   - totalsecwp_2fa_popup_snoozed_until (int unix timestamp) — reminder popup suppressed until.
+ *   - loyalsec_2fa_grace_until   (int unix timestamp) — hard-enforcement deadline.
+ *   - loyalsec_2fa_popup_snoozed_until (int unix timestamp) — reminder popup suppressed until.
  */
 class TwoFactorGracePeriod {
 
-	private const DEADLINE_META = 'totalsecwp_2fa_grace_until';
-	private const SNOOZE_META   = 'totalsecwp_2fa_popup_snoozed_until';
+	private const DEADLINE_META = 'loyalsec_2fa_grace_until';
+	private const SNOOZE_META   = 'loyalsec_2fa_popup_snoozed_until';
 
 	private Settings $settings;
 

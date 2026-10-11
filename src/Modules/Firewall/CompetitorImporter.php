@@ -2,15 +2,15 @@
 /**
  * One-time IP allow/block list migration from other security plugins.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Support\Ip;
 
 /**
  * Switching security plugins is the single biggest thing that keeps an unhappy admin on a
@@ -32,7 +32,7 @@ class CompetitorImporter {
 	public function __construct( ?Settings $settings = null, ?BanStore $bans = null ) {
 		// A bare `new Settings()` wouldn't have per-module defaults registered (that happens once,
 		// at boot, on the container's shared instance) — pull the real shared instance instead.
-		$this->settings = $settings ?? \TotalSecurityWP\Plugin::instance()->container()->make( 'settings' );
+		$this->settings = $settings ?? \LoyalSecurity\Plugin::instance()->container()->make( 'settings' );
 		$this->bans     = $bans ?? new BanStore();
 	}
 

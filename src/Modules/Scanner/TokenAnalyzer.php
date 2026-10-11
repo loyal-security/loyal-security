@@ -2,10 +2,10 @@
 /**
  * PHP-token (AST-ish) obfuscation analysis.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Scanner;
+namespace LoyalSecurity\Modules\Scanner;
 
 defined( 'ABSPATH' ) || exit;
 

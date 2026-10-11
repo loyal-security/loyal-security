@@ -2,15 +2,15 @@
 /**
  * Central audit logger — writes security-relevant events to a dedicated table.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Audit;
+namespace LoyalSecurity\Modules\Audit;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Support\Ip;
 
 /**
  * The single write path for the audit trail. Resolved as a shared service so every
@@ -29,7 +29,7 @@ class Logger {
 	 */
 	public static function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_events';
+		return $wpdb->prefix . 'loyalsec_events';
 	}
 
 	/**
@@ -43,11 +43,9 @@ class Logger {
 	public function log( string $type, array $context = array(), ?int $severity = null ): int {
 		global $wpdb;
 
-		$severity = $severity ?? EventCatalog::default_severity( $type );
-		$ip_headers  = \TotalSecurityWP\Support\RequestVars::ip_headers();
-		$trust_proxy = (bool) $this->settings->get( 'firewall', 'trust_proxy', false );
-		$proxies     = (array) $this->settings->get( 'firewall', 'trusted_proxies', array() );
-		$ip          = Ip::client_ip( $ip_headers, $trust_proxy, $proxies );
+		$severity   = $severity ?? EventCatalog::default_severity( $type );
+		$ip_headers = \LoyalSecurity\Support\RequestVars::ip_headers();
+		$ip         = ( new \LoyalSecurity\Modules\Firewall\IpResolver( $this->settings ) )->current();
 
 		$user_id = function_exists( 'get_current_user_id' ) ? get_current_user_id() : 0;
 
@@ -56,9 +54,9 @@ class Logger {
 			'severity'    => $severity,
 			'user_id'     => $user_id,
 			'ip'          => $ip,
-			'request_uri' => mb_substr( \TotalSecurityWP\Support\RequestVars::uri(), 0, 512 ),
-			'method'      => '' !== \TotalSecurityWP\Support\RequestVars::text( 'REQUEST_METHOD' ) ? \TotalSecurityWP\Support\RequestVars::method() : '',
-			'user_agent'  => mb_substr( \TotalSecurityWP\Support\RequestVars::user_agent(), 0, 512 ),
+			'request_uri' => mb_substr( \LoyalSecurity\Support\RequestVars::uri(), 0, 512 ),
+			'method'      => '' !== \LoyalSecurity\Support\RequestVars::text( 'REQUEST_METHOD' ) ? \LoyalSecurity\Support\RequestVars::method() : '',
+			'user_agent'  => mb_substr( \LoyalSecurity\Support\RequestVars::user_agent(), 0, 512 ),
 			'context'     => wp_json_encode( $this->scrub( $context ) ),
 			'created_at'  => gmdate( 'Y-m-d H:i:s' ),
 		);
@@ -85,7 +83,7 @@ class Logger {
 		 * @param array  $data
 		 * @param int    $id
 		 */
-		do_action( 'totalsecwp_event_logged', $type, $data, $id );
+		do_action( 'loyalsec_event_logged', $type, $data, $id );
 
 		return $id;
 	}

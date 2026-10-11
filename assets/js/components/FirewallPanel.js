@@ -52,7 +52,7 @@ export function FirewallPanel() {
 	// already given, approving a suggestion submits it to the cloud automatically (server side)
 	// — the "Submit to Cloud" action only needs to appear while consent is still missing, where
 	// it doubles as the consent prompt.
-	const consentGiven = !! ( window.TotalSecurityWP && window.TotalSecurityWP.telemetry && window.TotalSecurityWP.telemetry.consent_given );
+	const consentGiven = !! ( window.LoyalSecurity && window.LoyalSecurity.telemetry && window.LoyalSecurity.telemetry.consent_given );
 
 	const BANS_PER_PAGE = 50;
 	const loadStats = () => api.get( '/firewall/stats' ).then( ( d ) => { setStats( d ); setStatsError( null ); } )
@@ -342,18 +342,18 @@ export function FirewallPanel() {
 					: 'Place it yourself with this shortcode:'
 			),
 			h( 'div', { style: { display: 'flex', gap: '8px', alignItems: 'center', opacity: trustBadgeEnabled ? 1 : 0.5 } },
-				h( 'code', { style: { flex: '1 1 auto', background: 'var(--ts-bg)', padding: '8px 10px', borderRadius: '6px', fontSize: '13px' } }, '[total_security_wp_badge]' ),
+				h( 'code', { style: { flex: '1 1 auto', background: 'var(--ts-bg)', padding: '8px 10px', borderRadius: '6px', fontSize: '13px' } }, '[loyal_security_badge]' ),
 				h( Button, {
 					variant: 'ghost',
 					onClick: () => {
-						try { navigator.clipboard.writeText( '[total_security_wp_badge]' ); store.toast( 'Shortcode copied.', 'success' ); }
+						try { navigator.clipboard.writeText( '[loyal_security_badge]' ); store.toast( 'Shortcode copied.', 'success' ); }
 						catch ( e ) { store.toast( 'Copy failed — select the text manually.', 'error' ); }
 					},
 				}, 'Copy' )
 			),
 			h( 'p', { className: 'ts-hint', style: { marginBottom: 0 } },
 				'Paste it into any widget, page, or post. Add ', h( 'code', null, 'style="light"' ), ' for a light-background version: ',
-				h( 'code', null, '[total_security_wp_badge style="light"]' )
+				h( 'code', null, '[loyal_security_badge style="light"]' )
 			)
 		),
 
@@ -389,7 +389,7 @@ export function FirewallPanel() {
 			),
 			settings && h( 'div', { style: { display: 'flex', gap: '10px', flexWrap: 'wrap' } },
 				h( Badge, { tone: settings.detection_only ? 'warning' : 'success' }, settings.detection_only ? 'Audit mode: On' : 'Blocking: Active' ),
-				h( Badge, { tone: 'neutral' }, 'Lockout after ' + ( settings.bruteforce_max ?? 3 ) + ' attempts' ),
+				h( Badge, { tone: 'neutral' }, 'Lockout after ' + ( settings.bruteforce_max ?? 5 ) + ' attempts' ),
 				h( Badge, { tone: settings.bruteforce_escalation_enabled !== false ? 'success' : 'neutral' }, 'Escalating lockouts: ' + ( settings.bruteforce_escalation_enabled !== false ? 'On' : 'Off' ) )
 			)
 		),
@@ -443,7 +443,7 @@ export function FirewallPanel() {
 						id: 'firewall.bruteforce_max',
 						label: 'Failed attempts before lockout',
 						hint: 'How many failed logins from one IP within the window below trigger a lockout.',
-						value: settings.bruteforce_max ?? 3,
+						value: settings.bruteforce_max ?? 5,
 						onCommit: ( v ) => toggleSetting( 'bruteforce_max', v ),
 					} ),
 					h( NumberRow, {
@@ -584,6 +584,32 @@ export function FirewallPanel() {
 
 		h(
 			Card,
+			{ title: '🚫 Blocked Bot Groups' },
+			settings === null
+				? h( Spinner, null )
+				: h(
+					Fragment,
+					null,
+					h( 'p', { className: 'ts-hint', style: { marginTop: 0 } },
+						'Vulnerability scanners and attack tools (sqlmap, Nikto, WPScan and similar) are always blocked. The two groups below are off by default because legitimate services use them.'
+					),
+					settingRow(
+						'Block generic HTTP clients (curl, python-requests, Go)',
+						'Payment webhooks, shipping and accounting integrations, uptime checks and server cron jobs often use these clients. Turn this on only if nothing on your site receives such calls.',
+						!! settings.block_http_clients,
+						( v ) => toggleSetting( 'block_http_clients', v )
+					),
+					settingRow(
+						'Block SEO crawlers (Ahrefs, Semrush, Majestic, Moz, Petal)',
+						'These crawlers can be heavy, but SEO tools you use on your own site rely on them, and Petal is a search engine.',
+						!! settings.block_seo_crawlers,
+						( v ) => toggleSetting( 'block_seo_crawlers', v )
+					)
+				)
+		),
+
+		h(
+			Card,
 			{ title: '📋 Bot Rules', actions: botRules ? h( Badge, { tone: 'neutral' }, botRules.length ) : null },
 			h( 'p', { className: 'ts-hint', style: { marginTop: 0 } },
 				'Every trusted crawler and every bot you have blocked or added by hand, in one list. Builtin entries can be disabled but not removed; anything you add here can be fully removed.'
@@ -688,7 +714,7 @@ export function FirewallPanel() {
 							id: 'firewall.query_cardinality_max',
 							label: 'Distinct combinations before blocking',
 							hint: 'How many different filter/query combinations one IP can request within the window below before it is treated as abuse.',
-							value: settings.query_cardinality_max ?? 60,
+							value: settings.query_cardinality_max ?? 120,
 							suffix: 'combinations',
 							onCommit: ( v ) => toggleSetting( 'query_cardinality_max', v ),
 						} ),

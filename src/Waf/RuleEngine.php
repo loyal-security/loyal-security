@@ -2,10 +2,10 @@
 /**
  * Anomaly-scoring rule engine.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Waf;
+namespace LoyalSecurity\Waf;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -102,6 +102,12 @@ class RuleEngine {
 			);
 		}
 
+		// Each rule scores at most once per request. The same text reaches the engine several
+		// times (a form field, the raw body that carries it, each decoded variant), so counting
+		// every sighting multiplied one ordinary phrase past the threshold: an order note that
+		// matched one rule scored it twice and was blocked. Distinct rules still add up.
+		$scored = array();
+
 		foreach ( $req->values() as [ $source, $param, $value ] ) {
 			if ( '' === $value ) {
 				continue;
@@ -130,6 +136,12 @@ class RuleEngine {
 					if ( ! empty( $rule['same_host_exempt'] ) && $this->is_own_host( (string) ( $rule['matched'] ?? '' ) ) ) {
 						continue;
 					}
+
+					$rule_id = (string) $rule['id'];
+					if ( isset( $scored[ $rule_id ] ) ) {
+						continue;
+					}
+					$scored[ $rule_id ] = true;
 
 					$score              = (int) $rule['score'];
 					$decision->score   += $score;

@@ -2,15 +2,15 @@
 /**
  * Breached-password detection via HaveIBeenPwned (k-anonymity).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Checks the password supplied at login against the HaveIBeenPwned "Pwned Passwords" range
@@ -25,10 +25,10 @@ use TotalSecurityWP\Modules\Audit\EventCatalog;
 class BreachCheck {
 
 	/** Transient prefix flagging that a user's password was found in a breach corpus. */
-	private const FLAG_PREFIX = 'totalsecwp_hibp_';
+	private const FLAG_PREFIX = 'loyalsec_hibp_';
 
 	/** Transient prefix throttling how often we query the API for a given user. */
-	private const THROTTLE_PREFIX = 'totalsecwp_hibp_chk_';
+	private const THROTTLE_PREFIX = 'loyalsec_hibp_chk_';
 
 	/** Pwned Passwords range endpoint. */
 	private const API_BASE = 'https://api.pwnedpasswords.com/range/';
@@ -68,7 +68,7 @@ class BreachCheck {
 		 * @param bool $enabled True to run the HIBP lookup.
 		 * @param int  $user_id The user being authenticated.
 		 */
-		if ( ! apply_filters( 'totalsecwp_breach_check_enabled', true, (int) $user_id ) ) {
+		if ( ! apply_filters( 'loyalsec_breach_check_enabled', true, (int) $user_id ) ) {
 			return $check;
 		}
 
@@ -106,7 +106,7 @@ class BreachCheck {
 			self::API_BASE . $prefix,
 			array(
 				'timeout'    => 3,
-				'user-agent' => \TotalSecurityWP\Support\Http::user_agent(),
+				'user-agent' => \LoyalSecurity\Support\Http::user_agent(),
 				'headers'    => array( 'Add-Padding' => 'true' ),
 			)
 		);

@@ -2,15 +2,15 @@
 /**
  * Upgrade / pricing REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\LicenseKit;
-use TotalSecurityWP\Rest\AbstractController;
+use LoyalSecurity\Core\LicenseKit;
+use LoyalSecurity\Rest\AbstractController;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -23,7 +23,7 @@ use WP_REST_Response;
 class UpgradeController extends AbstractController {
 
 	/** Transient key + TTL for the proxied pricing payload. */
-	private const CACHE_KEY = 'totalsecwp_upgrade_pricing';
+	private const CACHE_KEY = 'loyalsec_upgrade_pricing';
 	private const CACHE_TTL = HOUR_IN_SECONDS;
 
 	public function register_routes(): void {
@@ -40,7 +40,7 @@ class UpgradeController extends AbstractController {
 			return $this->ok( $cached );
 		}
 
-		$slug = defined( 'TOTALSECWP_LICENSE_ITEM_SLUG' ) ? (string) \TOTALSECWP_LICENSE_ITEM_SLUG : 'total-security-wp';
+		$slug = defined( 'LOYALSEC_LICENSE_ITEM_SLUG' ) ? (string) \LOYALSEC_LICENSE_ITEM_SLUG : 'loyal-security';
 		$data = LicenseKit::pricing( $slug );
 
 		if ( null === $data ) {

@@ -14,7 +14,7 @@
  *
  * The wizard is informational + best-effort: it tries to push the chosen settings to a batch
  * endpoint but never blocks if that endpoint is absent. Completion is recorded in localStorage
- * (`totalsecwp_onboarding_done`) so the OnboardingBanner stops nagging.
+ * (`loyalsec_onboarding_done`) so the OnboardingBanner stops nagging.
  */
 import { h, useState, useEffect, Fragment } from '../el.js';
 import { api } from '../api.js';
@@ -196,7 +196,7 @@ export function OnboardingWizard() {
 		api.get( '/firewall/stats' ).then( ( d ) => setProofStats( d || {} ) ).catch( () => setProofStats( {} ) );
 	}, [ screen ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const upgradeUrl = ( window.TotalSecurityWP && window.TotalSecurityWP.upgrade_url ) || '';
+	const upgradeUrl = ( window.LoyalSecurity && window.LoyalSecurity.upgrade_url ) || '';
 
 	const chooseSiteType = ( type ) => {
 		setSiteType( type );
@@ -231,7 +231,7 @@ export function OnboardingWizard() {
 			store.toast( 'Settings applied (reload to see changes).', 'info' );
 		} finally {
 			// Reaching the end of onboarding IS "initial setup done" — shares the same
-			// totalsecwp_setup_complete flag the technical Setup Wizard's own "Mark complete"
+			// loyalsec_setup_complete flag the technical Setup Wizard's own "Mark complete"
 			// step sets, so the "Finish setup" admin notice stops nagging either way. Fire this
 			// after the toast above and let the success screen render immediately regardless of
 			// outcome — never worth blocking on.
@@ -244,7 +244,7 @@ export function OnboardingWizard() {
 	const goHash = ( hash ) => { window.location.hash = hash; };
 
 	const dismissForever = () => {
-		try { window.localStorage.setItem( 'totalsecwp_onboarding_done', '1' ); } catch ( e ) {}
+		try { window.localStorage.setItem( 'loyalsec_onboarding_done', '1' ); } catch ( e ) {}
 		goHash( '#/dashboard' );
 	};
 

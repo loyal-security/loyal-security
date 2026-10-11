@@ -2,10 +2,10 @@
 /**
  * Lightweight user-agent classifier — no external library, PHP 8.0+.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Traffic;
+namespace LoyalSecurity\Modules\Traffic;
 
 defined( 'ABSPATH' ) || exit;
 

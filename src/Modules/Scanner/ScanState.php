@@ -2,10 +2,10 @@
 /**
  * Scan progress/state persistence.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Scanner;
+namespace LoyalSecurity\Modules\Scanner;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,7 +16,7 @@ class ScanState {
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_scan_state';
+		return $wpdb->prefix . 'loyalsec_scan_state';
 	}
 
 	public function create( string $scan_id, string $type, int $total ): void {
@@ -69,7 +69,7 @@ class ScanState {
 	/**
 	 * Append a compact summary of a completed scan to the rolling history option.
 	 *
-	 * Stored in the autoloaded `totalsecwp_scan_history` option as a list of up to 10 entries
+	 * Stored in the autoloaded `loyalsec_scan_history` option as a list of up to 10 entries
 	 * (oldest dropped first), so the dashboard can show recent scans without trawling the
 	 * audit log. Findings are bucketed by severity.
 	 */
@@ -80,7 +80,7 @@ class ScanState {
 		}
 
 		global $wpdb;
-		$findings_table = $wpdb->prefix . 'totalsecwp_scan_findings';
+		$findings_table = $wpdb->prefix . 'loyalsec_scan_findings';
 		$buckets        = array( 'critical' => 0, 'warning' => 0, 'notice' => 0 );
 		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name built from $wpdb->prefix, not user input.
 			$wpdb->prepare(
@@ -109,7 +109,7 @@ class ScanState {
 			'findings'      => $buckets,
 		);
 
-		$history = get_option( 'totalsecwp_scan_history', array() );
+		$history = get_option( 'loyalsec_scan_history', array() );
 		if ( ! is_array( $history ) ) {
 			$history = array();
 		}
@@ -117,7 +117,7 @@ class ScanState {
 		array_unshift( $history, $entry );
 		$history = array_slice( $history, 0, 10 );
 
-		update_option( 'totalsecwp_scan_history', $history, true );
+		update_option( 'loyalsec_scan_history', $history, true );
 	}
 
 	/**

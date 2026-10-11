@@ -2,10 +2,10 @@
 /**
  * Site-local, admin-approved virtual-patch rules.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class CustomVirtualPatches {
 
-	private const OPTION = 'totalsecwp_custom_virtual_patches';
+	private const OPTION = 'loyalsec_custom_virtual_patches';
 
 	/**
 	 * Every rule, enabled or not — for the management UI, which needs to show (and let an

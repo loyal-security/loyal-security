@@ -128,7 +128,7 @@ export function Sidebar( { active, score } ) {
 			'div',
 			{ className: 'ts-brand' },
 			h( 'span', { className: 'ts-brand__mark' }, '🛡️' ),
-			h( 'span', { className: 'ts-brand__name' }, ( window.TotalSecurityWP && window.TotalSecurityWP.brand_name ) || 'Loyal Security' )
+			h( 'span', { className: 'ts-brand__name' }, ( window.LoyalSecurity && window.LoyalSecurity.brand_name ) || 'Loyal Security' )
 		),
 		store && h(
 			'div',

@@ -2,17 +2,17 @@
 /**
  * Incident response module.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Support\Filesystem;
-use TotalSecurityWP\Support\JobStore;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Support\Filesystem;
+use LoyalSecurity\Support\JobStore;
 
 /**
  * Exposes the quarantine, recovery, and permission-reset tools and records each action in
@@ -29,9 +29,9 @@ class IncidentModule extends AbstractModule {
 	}
 
 	/** Cron hooks for the async incident operations (dispatched from RepairController). */
-	public const JOB_REPAIR_PLUGIN = 'totalsecwp_incident_repair_plugin';
-	public const JOB_REPAIR_BULK   = 'totalsecwp_incident_repair_bulk';
-	public const JOB_CLEAR_BACKUPS = 'totalsecwp_incident_clear_backups';
+	public const JOB_REPAIR_PLUGIN = 'loyalsec_incident_repair_plugin';
+	public const JOB_REPAIR_BULK   = 'loyalsec_incident_repair_bulk';
+	public const JOB_CLEAR_BACKUPS = 'loyalsec_incident_clear_backups';
 
 	public function default_settings(): array {
 		return array(
@@ -58,7 +58,7 @@ class IncidentModule extends AbstractModule {
 
 		// Watch backup storage growth and remind the admin to clear it once it crosses the
 		// configured size threshold (fires right after each new snapshot is recorded).
-		add_action( 'totalsecwp_repair_backup_recorded', array( $this, 'audit_backup_storage' ) );
+		add_action( 'loyalsec_repair_backup_recorded', array( $this, 'audit_backup_storage' ) );
 	}
 
 	public function quarantine(): Quarantine {
@@ -74,7 +74,7 @@ class IncidentModule extends AbstractModule {
 		if ( '' === $path || path_is_absolute( $path ) ) {
 			return $path;
 		}
-		return \TotalSecurityWP\Support\Paths::root() . ltrim( $path, '/\\' );
+		return \LoyalSecurity\Support\Paths::root() . ltrim( $path, '/\\' );
 	}
 
 	public function recovery(): Recovery {
@@ -123,7 +123,7 @@ class IncidentModule extends AbstractModule {
 			(int) $this->setting( 'perm_dir_mode', 0755 ),
 			(int) $this->setting( 'perm_file_mode', 0644 )
 		);
-		$result = $reset->apply( $root ?: \TotalSecurityWP\Support\Paths::root() );
+		$result = $reset->apply( $root ?: \LoyalSecurity\Support\Paths::root() );
 		$this->logger()->log( EventCatalog::PERMISSIONS_RESET, $result );
 		return $result;
 	}
@@ -158,14 +158,14 @@ class IncidentModule extends AbstractModule {
 	 */
 	private function resolve_core_findings(): int {
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_scan_findings';
+		$table = $wpdb->prefix . 'loyalsec_scan_findings';
 		// Normalise separators so Windows-stored backslash paths match too.
 		return (int) $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- bulk status update.
 			$wpdb->prepare(
 				"UPDATE %i SET status = 'resolved' WHERE status = 'open' AND ( REPLACE( path, '\\\\', '/' ) LIKE %s OR REPLACE( path, '\\\\', '/' ) LIKE %s )",
 				$table,
-				$wpdb->esc_like( wp_normalize_path( \TotalSecurityWP\Support\Paths::admin() ) . '/' ) . '%',
-				$wpdb->esc_like( wp_normalize_path( \TotalSecurityWP\Support\Paths::includes() ) . '/' ) . '%'
+				$wpdb->esc_like( wp_normalize_path( \LoyalSecurity\Support\Paths::admin() ) . '/' ) . '%',
+				$wpdb->esc_like( wp_normalize_path( \LoyalSecurity\Support\Paths::includes() ) . '/' ) . '%'
 			)
 		);
 	}
@@ -214,20 +214,20 @@ class IncidentModule extends AbstractModule {
 			return array( 'ok' => false, 'cleared' => 0, 'kept' => 0, 'message' => __( 'This plugin can’t be verified against WordPress.org.', 'loyal-security' ) );
 		}
 
-		$modified = ( new \TotalSecurityWP\Modules\Integrity\PluginChecksums() )->verify_plugin( $slug, $version );
+		$modified = ( new \LoyalSecurity\Modules\Integrity\PluginChecksums() )->verify_plugin( $slug, $version );
 		if ( null === $modified ) {
 			return array( 'ok' => false, 'cleared' => 0, 'kept' => 0, 'message' => __( 'No official checksums available for this plugin/version (premium or custom code).', 'loyal-security' ) );
 		}
 
 		// Normalised set of files that differ from the official copy.
-		$plugin_dir   = wp_normalize_path( \TotalSecurityWP\Support\Paths::plugin( $slug ) );
+		$plugin_dir   = wp_normalize_path( \LoyalSecurity\Support\Paths::plugin( $slug ) );
 		$modified_set = array();
 		foreach ( $modified as $rel ) {
 			$modified_set[ wp_normalize_path( $plugin_dir . '/' . ltrim( (string) $rel, '/' ) ) ] = true;
 		}
 
-		$scanner = \TotalSecurityWP\Plugin::instance()->module( 'scanner' );
-		if ( ! $scanner instanceof \TotalSecurityWP\Modules\Scanner\ScannerModule ) {
+		$scanner = \LoyalSecurity\Plugin::instance()->module( 'scanner' );
+		if ( ! $scanner instanceof \LoyalSecurity\Modules\Scanner\ScannerModule ) {
 			return array( 'ok' => false, 'cleared' => 0, 'kept' => 0, 'message' => __( 'The scanner module is unavailable.', 'loyal-security' ) );
 		}
 
@@ -307,8 +307,8 @@ class IncidentModule extends AbstractModule {
 		if ( ! empty( $res['ok'] ) ) {
 			$this->logger()->log( EventCatalog::FILE_FIX_APPLIED, array( 'path' => $path, 'removed' => $res['removed'] ?? 0 ) );
 			if ( $finding_id ) {
-				$scanner = \TotalSecurityWP\Plugin::instance()->module( 'scanner' );
-				if ( $scanner instanceof \TotalSecurityWP\Modules\Scanner\ScannerModule ) {
+				$scanner = \LoyalSecurity\Plugin::instance()->module( 'scanner' );
+				if ( $scanner instanceof \LoyalSecurity\Modules\Scanner\ScannerModule ) {
 					$scanner->set_finding_status( $finding_id, 'resolved' );
 				}
 			}
@@ -334,7 +334,7 @@ class IncidentModule extends AbstractModule {
 			return array( 'ok' => false, 'message' => __( 'File not found.', 'loyal-security' ) );
 		}
 		// Never delete our own plugin files or wp-config.php.
-		if ( false !== strpos( $path, wp_normalize_path( TOTALSECWP_PATH ) ) ) {
+		if ( false !== strpos( $path, wp_normalize_path( LOYALSEC_PATH ) ) ) {
 			return array( 'ok' => false, 'message' => __( 'Refusing to delete Loyal Security\'s own files.', 'loyal-security' ) );
 		}
 		if ( 'wp-config.php' === basename( $path ) ) {
@@ -365,8 +365,8 @@ class IncidentModule extends AbstractModule {
 
 		$this->logger()->log( EventCatalog::FILE_DELETED, array( 'path' => $path, 'backup_id' => $backup_id ) );
 		if ( $finding_id ) {
-			$scanner = \TotalSecurityWP\Plugin::instance()->module( 'scanner' );
-			if ( $scanner instanceof \TotalSecurityWP\Modules\Scanner\ScannerModule ) {
+			$scanner = \LoyalSecurity\Plugin::instance()->module( 'scanner' );
+			if ( $scanner instanceof \LoyalSecurity\Modules\Scanner\ScannerModule ) {
 				$scanner->set_finding_status( $finding_id, 'resolved' );
 			}
 		}
@@ -410,7 +410,7 @@ class IncidentModule extends AbstractModule {
 		// Non-blocking loopback so the queued event runs now instead of on the next page view.
 		wp_remote_post(
 			add_query_arg( 'doing_wp_cron', '1', site_url( '/' ) ),
-			array( 'timeout' => 0.01, 'blocking' => false, 'sslverify' => \TotalSecurityWP\Support\Http::local_sslverify(), 'body' => array() )
+			array( 'timeout' => 0.01, 'blocking' => false, 'sslverify' => \LoyalSecurity\Support\Http::local_sslverify(), 'body' => array() )
 		);
 
 		return $job_id;
@@ -512,7 +512,7 @@ class IncidentModule extends AbstractModule {
 					JobStore::progress( $job_id, max( 1, min( 99, $pct ) ), $msg );
 				}
 			);
-			delete_option( 'totalsecwp_repair_backup_reminder' );
+			delete_option( 'loyalsec_repair_backup_reminder' );
 			JobStore::complete(
 				$job_id,
 				sprintf(
@@ -560,14 +560,14 @@ class IncidentModule extends AbstractModule {
 	 */
 	public function clear_backups(): array {
 		$res = ( new RepairBackup() )->clear_all();
-		delete_option( 'totalsecwp_repair_backup_reminder' );
+		delete_option( 'loyalsec_repair_backup_reminder' );
 		return $res;
 	}
 
 	/**
 	 * Check accumulated repair-backup storage against the configured threshold; when exceeded,
 	 * record a (throttled) audit event the Notifications module routes, and persist a reminder
-	 * the dashboard surfaces. Fired after each new snapshot via `totalsecwp_repair_backup_recorded`.
+	 * the dashboard surfaces. Fired after each new snapshot via `loyalsec_repair_backup_recorded`.
 	 */
 	public function audit_backup_storage(): void {
 		$threshold = (int) $this->setting( 'backup_size_threshold', 250 * 1024 * 1024 );
@@ -581,7 +581,7 @@ class IncidentModule extends AbstractModule {
 
 		// Persist the reminder for the dashboard banner (cheap, non-autoloaded).
 		update_option(
-			'totalsecwp_repair_backup_reminder',
+			'loyalsec_repair_backup_reminder',
 			array(
 				'bytes'      => $summary['bytes'],
 				'size_human' => $summary['size_human'],
@@ -592,8 +592,8 @@ class IncidentModule extends AbstractModule {
 		);
 
 		// Throttle the alert event to once per day so a burst of reinstalls doesn't spam.
-		if ( false === get_transient( 'totalsecwp_backup_storage_alerted' ) ) {
-			set_transient( 'totalsecwp_backup_storage_alerted', 1, DAY_IN_SECONDS );
+		if ( false === get_transient( 'loyalsec_backup_storage_alerted' ) ) {
+			set_transient( 'loyalsec_backup_storage_alerted', 1, DAY_IN_SECONDS );
 			$this->logger()->log(
 				EventCatalog::BACKUP_STORAGE_HIGH,
 				array(

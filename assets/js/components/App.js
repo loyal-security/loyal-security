@@ -35,7 +35,7 @@ import { api } from '../api.js';
 
 /**
  * Screens provided by the separate Loyal Security Pro plugin. The free plugin ships no Pro
- * interface code: each route shows the screen Pro registers (window.TotalSecurityWP.proPanels),
+ * interface code: each route shows the screen Pro registers (window.LoyalSecurity.proPanels),
  * or a short description of the feature when Pro isn't installed.
  */
 const PRO_SCREENS = {
@@ -132,8 +132,8 @@ export function App() {
 
 	// First-load GDPR consent for anonymous bypass telemetry. Only admins are asked, and only
 	// when consent has not yet been recorded against the current policy version.
-	const tcfg = ( window.TotalSecurityWP && window.TotalSecurityWP.telemetry ) || {};
-	const canManage = !! ( window.TotalSecurityWP && window.TotalSecurityWP.caps && window.TotalSecurityWP.caps.manage );
+	const tcfg = ( window.LoyalSecurity && window.LoyalSecurity.telemetry ) || {};
+	const canManage = !! ( window.LoyalSecurity && window.LoyalSecurity.caps && window.LoyalSecurity.caps.manage );
 	const [ showConsent, setShowConsent ] = useState( !! tcfg.needs_consent && canManage );
 
 	useEffect( () => {
@@ -175,13 +175,22 @@ export function App() {
 				h(
 					'header',
 					{ className: 'ts-topbar' },
-					h( 'h1', null, meta ? meta.label : ( ( window.TotalSecurityWP && window.TotalSecurityWP.brand_name ) || 'Loyal Security' ) )
+					h( 'h1', null, meta ? meta.label : ( ( window.LoyalSecurity && window.LoyalSecurity.brand_name ) || 'Loyal Security' ) )
 				),
 				h(
 					'div',
 					{ className: 'ts-content' },
 					h( OnboardingBanner, null ),
 					h( Panel, null )
+				),
+				// Countries shown on these screens come from Cloudflare when the site is behind it,
+				// otherwise from the bundled DB-IP Lite table. Its licence (CC BY 4.0, see
+				// data/geo/NOTICE.txt) asks for this link on pages that display or use its results.
+				h(
+					'footer',
+					{ className: 'ts-footer-credit' },
+					'Country data: ',
+					h( 'a', { href: 'https://db-ip.com', target: '_blank', rel: 'noopener noreferrer' }, 'IP Geolocation by DB-IP' )
 				)
 			),
 			h( Toasts, null ),

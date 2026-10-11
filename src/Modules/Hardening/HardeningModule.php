@@ -2,15 +2,15 @@
 /**
  * System & environment hardening module.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Registers the runtime hardening guards (version obfuscation, XML-RPC, REST, author
@@ -168,15 +168,78 @@ class HardeningModule extends AbstractModule {
 		}
 
 		if ( $this->setting( 'normalize_login_errors', true ) ) {
-			add_filter( 'login_errors', static function () {
-				return __( 'Incorrect username or password. Please try again.', 'loyal-security' );
-			} );
+			add_action( 'wp_login_failed', array( $this, 'remember_failed_login' ), 1, 1 );
+			add_filter( 'wp_login_errors', array( $this, 'normalize_login_errors' ), 99 );
 			add_filter( 'login_error_shake_user_ids', '__return_empty_array' );
 		}
 
 		if ( $this->setting( 'validate_host_header', true ) ) {
 			( new HostHeaderGuard( $this->logger() ) )->register();
 		}
+	}
+
+	/**
+	 * Username of a sign-in that failed during this request, or null when none did.
+	 *
+	 * @var string|null
+	 */
+	private static ?string $failed_login = null;
+
+	/**
+	 * `wp_login_failed`: note that this request's sign-in failed, and for which username.
+	 *
+	 * @param string $username Submitted username or email address.
+	 */
+	public function remember_failed_login( $username ): void {
+		self::$failed_login = sanitize_user( (string) $username );
+	}
+
+	/**
+	 * Replace the result of a failed sign-in with one neutral message, so the login page never
+	 * reveals whether a username exists or a password was right (WordPress's own messages, and
+	 * a "now enter your code" prompt, both do). Errors that reveal nothing about the account,
+	 * such as a failed CAPTCHA or an empty field, are left as they are so people can fix them.
+	 * Notes from other features (for example the two-factor hint) are appended to the message.
+	 *
+	 * @param mixed $errors The WP_Error shown on wp-login.php.
+	 * @return mixed
+	 */
+	public function normalize_login_errors( $errors ) {
+		// Only after a failed sign-in: other wp-login.php messages ("You are now logged out")
+		// stay. WordPress fires wp_login_failed for every failed attempt except empty fields.
+		if ( null === self::$failed_login || ! $errors instanceof \WP_Error || ! $errors->has_errors() ) {
+			return $errors;
+		}
+
+		/**
+		 * Filters the login error codes shown as they are, because they say nothing about
+		 * whether the account exists or the password was right.
+		 *
+		 * @since 1.5.0
+		 *
+		 * @param string[] $codes Error codes.
+		 */
+		$shown = (array) apply_filters( 'loyalsec_login_error_codes_shown', array( 'empty_username', 'empty_password', 'test_cookie', 'loyalsec_captcha', 'loyalsec_banned', 'loyalsec_login_locked' ) );
+		if ( ! array_diff( $errors->get_error_codes(), $shown ) ) {
+			return $errors;
+		}
+
+		/**
+		 * Filters extra notes appended to the neutral "Incorrect username or password" message,
+		 * for example how to finish a two-factor sign-in. Notes must not depend on whether the
+		 * password was right, or they would reveal it.
+		 *
+		 * @since 1.5.0
+		 *
+		 * @param string[] $notes Plain-text notes.
+		 * @param string   $login The submitted username or email address.
+		 */
+		$notes   = array_filter( array_map( 'strval', (array) apply_filters( 'loyalsec_login_error_notes', array(), self::$failed_login ) ) );
+		$message = esc_html__( 'Incorrect username or password. Please try again.', 'loyal-security' );
+		foreach ( $notes as $note ) {
+			$message .= '<br />' . esc_html( $note );
+		}
+		return new \WP_Error( 'loyalsec_login_failed', $message );
 	}
 
 	/* ------------------------------ Actions -------------------------------- */

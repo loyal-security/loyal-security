@@ -2,16 +2,16 @@
 /**
  * Malicious-bot blocking.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Waf\BotSignatures;
-use TotalSecurityWP\Waf\FileStore;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Waf\BotSignatures;
+use LoyalSecurity\Waf\FileStore;
 
 /**
  * Blocks requests from known bad user agents and (optionally) empty user agents, while
@@ -54,7 +54,11 @@ class BotBlocker {
 		}
 
 		$extra = array_map( 'strtolower', (array) $this->settings->get( 'firewall', 'custom_bad_agents', array() ) );
-		foreach ( array_merge( BotSignatures::BAD_AGENTS, $extra ) as $bad ) {
+		$builtin = BotSignatures::blocked_agents(
+			(bool) $this->settings->get( 'firewall', 'block_http_clients', false ),
+			(bool) $this->settings->get( 'firewall', 'block_seo_crawlers', false )
+		);
+		foreach ( array_merge( $builtin, $extra ) as $bad ) {
 			if ( '' !== $bad && false !== strpos( $ua, $bad ) ) {
 				return 'bad_user_agent:' . $bad;
 			}

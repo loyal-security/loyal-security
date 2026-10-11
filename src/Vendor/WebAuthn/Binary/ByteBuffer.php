@@ -1,11 +1,11 @@
 <?php
 
 
-namespace TotalSecurityWP\Vendor\WebAuthn\Binary;
+namespace LoyalSecurity\Vendor\WebAuthn\Binary;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Vendor\WebAuthn\WebAuthnException;
+use LoyalSecurity\Vendor\WebAuthn\WebAuthnException;
 
 /**
  * Modified version of https://github.com/madwizard-thomas/webauthn-server/blob/master/src/Format/ByteBuffer.php

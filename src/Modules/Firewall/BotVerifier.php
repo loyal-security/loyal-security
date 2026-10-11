@@ -2,15 +2,15 @@
 /**
  * Background reverse-DNS bot verification.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Waf\FileStore;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Waf\FileStore;
 
 /**
  * Runs the actual reverse-DNS verification for bots that BotBlocker (or the Optimized-Mode
@@ -31,8 +31,8 @@ use TotalSecurityWP\Waf\FileStore;
  */
 class BotVerifier {
 
-	private const HOOK     = 'totalsecwp_verify_bots';
-	private const SCHEDULE = 'totalsecwp_bot_verify';
+	private const HOOK     = 'loyalsec_verify_bots';
+	private const SCHEDULE = 'loyalsec_bot_verify';
 
 	public function __construct( private Settings $settings ) {}
 
@@ -92,7 +92,7 @@ class BotVerifier {
 	 * result to include the original IP. Both halves matter — a bare PTR lookup alone is
 	 * attacker-controllable (anyone can configure reverse DNS for IP space they control); the
 	 * forward round-trip is what actually proves the claimed owner controls that hostname.
-	 * Suffixes are resolved by the caller (builtin {@see \TotalSecurityWP\Waf\BotSignatures::TRUSTED_SUFFIXES}
+	 * Suffixes are resolved by the caller (builtin {@see \LoyalSecurity\Waf\BotSignatures::TRUSTED_SUFFIXES}
 	 * or an admin-provided custom suffix) — this method itself has no opinion on signature names.
 	 *
 	 * @param array<string> $suffixes Trusted hostname suffixes, e.g. `['googlebot.com']`.

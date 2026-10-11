@@ -4,17 +4,17 @@
  *
  * Records every alert Loyal Security actually dispatches (or attempts) so the notification
  * centre can show a delivery history: which event, on which channel, to whom, and whether it
- * succeeded. Backed by a dedicated table (`{$prefix}totalsecwp_notifications`) created in
- * {@see \TotalSecurityWP\Core\Installer}.
+ * succeeded. Backed by a dedicated table (`{$prefix}loyalsec_notifications`) created in
+ * {@see \LoyalSecurity\Core\Installer}.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Notifications;
+namespace LoyalSecurity\Modules\Notifications;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Read/write layer for the notification-history table.
@@ -30,7 +30,7 @@ class NotificationLog {
 	 */
 	public static function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_notifications';
+		return $wpdb->prefix . 'loyalsec_notifications';
 	}
 
 	/**

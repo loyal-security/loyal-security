@@ -2,14 +2,14 @@
 /**
  * Plugin file integrity verification via the WordPress.org checksum API.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Integrity;
+namespace LoyalSecurity\Modules\Integrity;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Http;
+use LoyalSecurity\Support\Http;
 
 /**
  * Verifies installed plugins hosted on WordPress.org against published per-file checksums.
@@ -119,9 +119,20 @@ class PluginChecksums {
 	private function baseline_target( string $file ): array {
 		$slug = dirname( $file );
 		if ( '.' === $slug ) {
-			return array( 'plugin:' . basename( $file ), trailingslashit( \TotalSecurityWP\Support\Paths::plugins() ), false );
+			return array( 'plugin:' . basename( $file ), trailingslashit( \LoyalSecurity\Support\Paths::plugins() ), false );
 		}
-		return array( 'plugin:' . $slug, \TotalSecurityWP\Support\Paths::plugin( $slug ), true );
+		return array( 'plugin:' . $slug, \LoyalSecurity\Support\Paths::plugin( $slug ), true );
+	}
+
+	/**
+	 * Re-take a plugin's baseline after WordPress itself updated it, if it has one.
+	 *
+	 * @param string $file Plugin file, e.g. "my-plugin/my-plugin.php".
+	 * @return int Files recorded (0 when the plugin had no baseline).
+	 */
+	public function refresh_baseline( string $file ): int {
+		[ $source ] = $this->baseline_target( $file );
+		return $this->baseline->has( $source ) ? $this->baseline_snapshot( $file ) : 0;
 	}
 
 	private function baseline_snapshot( string $file ): int {
@@ -156,7 +167,7 @@ class PluginChecksums {
 			return null; // Not on WordPress.org (premium/custom) or no data.
 		}
 
-		$plugin_dir = \TotalSecurityWP\Support\Paths::plugin( $slug );
+		$plugin_dir = \LoyalSecurity\Support\Paths::plugin( $slug );
 		$modified   = array();
 
 		foreach ( $data['files'] as $rel => $hashes ) {
@@ -186,7 +197,7 @@ class PluginChecksums {
 	/**
 	 * Flattened set of every official WordPress.org sha256 file hash for every installed,
 	 * WordPress.org-hosted plugin at its currently-installed version — content-addressed (by
-	 * hash, not path), so it can be handed straight to {@see \TotalSecurityWP\Modules\Scanner\HeuristicScanner}'s
+	 * hash, not path), so it can be handed straight to {@see \LoyalSecurity\Modules\Scanner\HeuristicScanner}'s
 	 * `$allow_hashes` allowlist to trust any file whose content provably matches an official
 	 * release, regardless of where it lives. Cached per slug+version (so an upgrade invalidates
 	 * automatically) to avoid hitting the WordPress.org checksum API on every scan batch.
@@ -217,7 +228,7 @@ class PluginChecksums {
 	/**
 	 * Official sha256 hash list for one plugin at one version, transient-cached. Shared by
 	 * {@see official_hash_set()} (all plugins, for the scanner allowlist) and
-	 * {@see \TotalSecurityWP\Modules\Firewall\PatchSuggester} (single slug, to recognise a
+	 * {@see \LoyalSecurity\Modules\Firewall\PatchSuggester} (single slug, to recognise a
 	 * pristine official file before drafting a virtual-patch suggestion against it).
 	 * Non-empty lists cache for {@see HASHSET_CACHE_TTL}; empty ones (not on WordPress.org,
 	 * or a fetch failure) only for {@see HASHSET_EMPTY_TTL} — see that constant for why.
@@ -225,7 +236,7 @@ class PluginChecksums {
 	 * @return string[] Lowercase sha256 hex hashes ([] when unverifiable).
 	 */
 	public function hash_list_for( string $slug, string $version ): array {
-		$key    = 'totalsecwp_officialhashes_' . md5( $slug . '|' . $version );
+		$key    = 'loyalsec_officialhashes_' . md5( $slug . '|' . $version );
 		$cached = get_transient( $key );
 		if ( ! is_array( $cached ) ) {
 			$cached = $this->fetch_hash_list( $slug, $version );

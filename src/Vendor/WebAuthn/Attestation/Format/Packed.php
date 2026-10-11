@@ -1,13 +1,13 @@
 <?php
 
 
-namespace TotalSecurityWP\Vendor\WebAuthn\Attestation\Format;
+namespace LoyalSecurity\Vendor\WebAuthn\Attestation\Format;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Vendor\WebAuthn\Attestation\AuthenticatorData;
-use TotalSecurityWP\Vendor\WebAuthn\WebAuthnException;
-use TotalSecurityWP\Vendor\WebAuthn\Binary\ByteBuffer;
+use LoyalSecurity\Vendor\WebAuthn\Attestation\AuthenticatorData;
+use LoyalSecurity\Vendor\WebAuthn\WebAuthnException;
+use LoyalSecurity\Vendor\WebAuthn\Binary\ByteBuffer;
 
 class Packed extends FormatBase {
     private $_alg;

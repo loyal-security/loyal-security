@@ -2,16 +2,16 @@
 /**
  * Bypass correlator — links a confirmed compromise back to the request that likely caused it.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Telemetry;
+namespace LoyalSecurity\Modules\Telemetry;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\IncidentCorrelator;
-use TotalSecurityWP\Modules\Traffic\TrafficBuffer;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\IncidentCorrelator;
+use LoyalSecurity\Modules\Traffic\TrafficBuffer;
 
 /**
  * The piece the rest of the plugin does not do: scan/integrity findings and the HTTP requests
@@ -223,7 +223,7 @@ class BypassCorrelator {
 	 */
 	private function paths_for_scan( string $scan_id ): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_scan_findings';
+		$table = $wpdb->prefix . 'loyalsec_scan_findings';
 		$rows  = $wpdb->get_col( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name built from $wpdb->prefix, not user input.
 			$wpdb->prepare(
 				"SELECT path FROM %i WHERE scan_id = %s LIMIT 25", $table,

@@ -103,7 +103,7 @@ function TrustedDevices() {
 /**
  * Admin-wide view across every user's trusted devices — distinct from TrustedDevices above,
  * which is scoped to the current user's own for self-service. Every viewer of this page already
- * has manage_total_security_wp (the page itself is gated on it), so no extra client-side
+ * has manage_loyal_security (the page itself is gated on it), so no extra client-side
  * capability check is needed here; the REST endpoints enforce it server-side regardless.
  * Exists so a compromised device can be revoked immediately by whoever finds it, without first
  * tracking down which specific user account trusted it.
@@ -467,7 +467,7 @@ function LoginUrlCard() {
 		status.enabled && h( Button, { variant: 'danger', disabled: !! busy, onClick: disable }, busy === 'disable' ? 'Disabling…' : 'Disable' ),
 
 		h( 'p', { className: 'ts-muted' }, 'Recovery: if you ever get locked out, add ',
-			h( 'code', null, "define('TOTALSECWP_DISABLE_LOGIN_URL', true);" ), ' to wp-config.php to instantly restore /wp-login.php — no database access needed.' )
+			h( 'code', null, "define('LOYALSEC_DISABLE_LOGIN_URL', true);" ), ' to wp-config.php to instantly restore /wp-login.php — no database access needed.' )
 	);
 }
 
@@ -608,7 +608,7 @@ function fmtDate( ts ) {
 	if ( typeof ts === 'number' || /^\d+$/.test( '' + ts ) ) {
 		d = new Date( Number( ts ) * 1000 );
 	} else {
-		d = new Date( ( '' + ts ).replace( ' ', 'T' ) );
+		d = new Date( ( ( s ) => ( /T[\d:.]+$/.test( s ) ? s + 'Z' : s ) )( ( '' + ts ).replace( ' ', 'T' ) ) ); // stored as UTC
 	}
 	return isNaN( d.getTime() ) ? String( ts ) : d.toLocaleDateString();
 }

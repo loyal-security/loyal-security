@@ -2,10 +2,10 @@
 /**
  * Must-Use plugin and drop-in integrity verification.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Integrity;
+namespace LoyalSecurity\Modules\Integrity;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -58,7 +58,7 @@ class MuPluginChecksums {
 		}
 
 		// Always snapshot drop-ins (even if none exist yet) so a later addition is detected.
-		$total += $this->baseline->snapshot_files( 'dropins', \TotalSecurityWP\Support\Paths::content(), $this->present_dropins() );
+		$total += $this->baseline->snapshot_files( 'dropins', \LoyalSecurity\Support\Paths::content(), $this->present_dropins() );
 
 		return $total;
 	}
@@ -78,7 +78,7 @@ class MuPluginChecksums {
 			$out[]          = $diff;
 		}
 
-		$diff           = $this->baseline->diff_files( 'dropins', \TotalSecurityWP\Support\Paths::content(), $this->present_dropins() );
+		$diff           = $this->baseline->diff_files( 'dropins', \LoyalSecurity\Support\Paths::content(), $this->present_dropins() );
 		$diff['source'] = 'dropins';
 		$out[]          = $diff;
 
@@ -89,7 +89,7 @@ class MuPluginChecksums {
 	 * The mu-plugins directory, or null if it does not exist.
 	 */
 	private function mu_dir(): ?string {
-		$dir = \TotalSecurityWP\Support\Paths::mu_plugins();
+		$dir = \LoyalSecurity\Support\Paths::mu_plugins();
 		return is_dir( $dir ) ? $dir : null;
 	}
 
@@ -101,7 +101,7 @@ class MuPluginChecksums {
 	private function present_dropins(): array {
 		$present = array();
 		foreach ( self::DROPINS as $name ) {
-			if ( is_file( \TotalSecurityWP\Support\Paths::content() . '/' . $name ) ) {
+			if ( is_file( \LoyalSecurity\Support\Paths::content() . '/' . $name ) ) {
 				$present[] = $name;
 			}
 		}

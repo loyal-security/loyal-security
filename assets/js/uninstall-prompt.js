@@ -8,7 +8,7 @@
 ( function () {
 	'use strict';
 
-	var cfg = window.TotalSecWPUninstall || {};
+	var cfg = window.LoyalSecUninstall || {};
 
 	document.addEventListener( 'DOMContentLoaded', function () {
 		var row = document.querySelector( '[data-plugin="' + cfg.plugin + '"]' );
@@ -32,7 +32,7 @@
 
 	function showModal( deleteHref ) {
 		var overlay = document.createElement( 'div' );
-		overlay.id = 'totalsecwp-del-overlay';
+		overlay.id = 'loyalsec-del-overlay';
 		overlay.style.cssText =
 			'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100000;' +
 			'display:flex;align-items:center;justify-content:center';
@@ -48,7 +48,7 @@
 
 			'<label style="display:flex;align-items:flex-start;gap:10px;padding:14px;' +
 			'border:1px solid #dcdcde;border-radius:4px;background:#fafafa;cursor:pointer">' +
-			'<input type="checkbox" id="totalsecwp-del-chk"' +
+			'<input type="checkbox" id="loyalsec-del-chk"' +
 			( cfg.deleteOnUninstall ? ' checked' : '' ) +
 			' style="margin-top:2px;width:16px;height:16px;flex-shrink:0">' +
 			'<span>' +
@@ -61,10 +61,10 @@
 			'</label>' +
 
 			'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">' +
-			'<button id="totalsecwp-del-cancel" type="button" ' +
+			'<button id="loyalsec-del-cancel" type="button" ' +
 			'style="padding:6px 14px;border:1px solid #dcdcde;border-radius:3px;' +
 			'background:#fff;cursor:pointer;font-size:13px">Cancel</button>' +
-			'<button id="totalsecwp-del-confirm" type="button" ' +
+			'<button id="loyalsec-del-confirm" type="button" ' +
 			'style="padding:6px 16px;border:none;border-radius:3px;' +
 			'background:#2271b1;color:#fff;cursor:pointer;font-size:13px;font-weight:600">' +
 			'Save &amp; Deactivate</button>' +
@@ -74,7 +74,7 @@
 
 		document.body.appendChild( overlay );
 
-		document.getElementById( 'totalsecwp-del-cancel' ).addEventListener( 'click', function () {
+		document.getElementById( 'loyalsec-del-cancel' ).addEventListener( 'click', function () {
 			overlay.remove();
 		} );
 
@@ -84,14 +84,14 @@
 			}
 		} );
 
-		document.getElementById( 'totalsecwp-del-confirm' ).addEventListener( 'click', function () {
-			var deleteData = document.getElementById( 'totalsecwp-del-chk' ).checked;
+		document.getElementById( 'loyalsec-del-confirm' ).addEventListener( 'click', function () {
+			var deleteData = document.getElementById( 'loyalsec-del-chk' ).checked;
 			var btn = this;
 			btn.disabled = true;
 			btn.textContent = 'Saving…';
 
 			var body = new FormData();
-			body.append( 'action', 'totalsecwp_set_delete_flag' );
+			body.append( 'action', 'loyalsec_set_delete_flag' );
 			body.append( 'nonce', cfg.nonce );
 			body.append( 'delete_data', deleteData ? 'true' : 'false' );
 

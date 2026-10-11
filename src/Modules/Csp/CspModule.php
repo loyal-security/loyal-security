@@ -2,14 +2,14 @@
 /**
  * CSP Manager module.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Csp;
+namespace LoyalSecurity\Modules\Csp;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
+use LoyalSecurity\Core\AbstractModule;
 
 /**
  * Emits a configurable Content-Security-Policy header on every frontend response.
@@ -27,10 +27,10 @@ class CspModule extends AbstractModule {
 	}
 
 	/** Cron hook name for the pending-domain notification check. */
-	public const CRON_NOTIFY = 'totalsecwp_csp_notify_check';
+	public const CRON_NOTIFY = 'loyalsec_csp_notify_check';
 
 	/** User meta: pending-domain count at which the user dismissed the CSP notice. */
-	private const PENDING_DISMISS_META = 'totalsecwp_csp_notice_dismissed_at';
+	private const PENDING_DISMISS_META = 'loyalsec_csp_notice_dismissed_at';
 
 	public function default_settings(): array {
 		return array(
@@ -92,7 +92,7 @@ class CspModule extends AbstractModule {
 			$policy = $this->build_policy();
 
 			if ( (bool) $this->setting( 'violations_log', true ) ) {
-				$report_uri = rest_url( TOTALSECWP_REST_NAMESPACE . '/csp/report' );
+				$report_uri = rest_url( LOYALSEC_REST_NAMESPACE . '/csp/report' );
 				$policy    .= '; report-uri ' . $report_uri;
 			}
 
@@ -230,7 +230,7 @@ class CspModule extends AbstractModule {
 		}
 
 		// Dashboard and Plugins screens only (the CSP screen itself lists pending domains).
-		if ( ! \TotalSecurityWP\Admin\Notices::on_overview_screen() ) {
+		if ( ! \LoyalSecurity\Admin\Notices::on_overview_screen() ) {
 			return;
 		}
 
@@ -244,7 +244,7 @@ class CspModule extends AbstractModule {
 			return;
 		}
 
-		$dismiss = wp_nonce_url( add_query_arg( 'totalsecwp_dismiss_csp_pending', (string) $count ), 'totalsecwp_dismiss_csp_pending' );
+		$dismiss = wp_nonce_url( add_query_arg( 'loyalsec_dismiss_csp_pending', (string) $count ), 'loyalsec_dismiss_csp_pending' );
 		printf(
 			'<div class="notice notice-warning"><p><strong>%1$s</strong> %2$s <a href="%3$s">%4$s</a> <a href="%5$s" class="button-link">%6$s</a></p></div>',
 			esc_html__( 'Loyal Security CSP Monitor:', 'loyal-security' ),
@@ -266,10 +266,10 @@ class CspModule extends AbstractModule {
 	 * Record the pending count at which the current user dismissed the CSP notice.
 	 */
 	public function maybe_dismiss_pending_notice(): void {
-		if ( empty( $_GET['totalsecwp_dismiss_csp_pending'] ) || ! current_user_can( 'manage_options' ) ) {
+		if ( empty( $_GET['loyalsec_dismiss_csp_pending'] ) || ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-		check_admin_referer( 'totalsecwp_dismiss_csp_pending' );
-		update_user_meta( get_current_user_id(), self::PENDING_DISMISS_META, absint( wp_unslash( $_GET['totalsecwp_dismiss_csp_pending'] ) ) );
+		check_admin_referer( 'loyalsec_dismiss_csp_pending' );
+		update_user_meta( get_current_user_id(), self::PENDING_DISMISS_META, absint( wp_unslash( $_GET['loyalsec_dismiss_csp_pending'] ) ) );
 	}
 }

@@ -11,16 +11,15 @@
  * legitimate traffic that has no Referer (privacy proxies, curl tools used
  * by admins, etc.) — only a confirmed foreign-origin Referer is flagged.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
 
 class CsrfGuard {
 
@@ -77,7 +76,7 @@ class CsrfGuard {
 				'ref_host'  => $ref_host,
 				'site_host' => $site_host,
 				'user_id'   => get_current_user_id(),
-				'ip'        => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ),
+				'ip'        => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip(),
 			),
 			EventCatalog::SEV_WARNING
 		);

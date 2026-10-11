@@ -18,7 +18,7 @@
  *
  * Patch-gap intelligence (delivered via the signed `patches` feed, not this file) adds these
  * optional fields to a rule so the plugin can attribute and surface it (see
- * TotalSecurityWP\Modules\ThreatIntel\PatchGap). Enforcement still uses slug + max_version above:
+ * LoyalSecurity\Modules\ThreatIntel\PatchGap). Enforcement still uses slug + max_version above:
  *
  *   source              'patch_gap' — marks the rule as early-virtual-patching intelligence.
  *   plugin_version_from  Version the vulnerability was introduced in / analysed from (display).
@@ -29,11 +29,11 @@
  *   detected_at          ISO-8601 timestamp the rule was generated (display only).
  *   cve_id               CVE id if one was later assigned (optional).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
 // Also loaded by the pre-WordPress WAF prepend (Optimized Mode), which defines
-// TOTALSECWP_WAF_PREPEND instead of ABSPATH — see data/waf-signatures.php for the same pattern.
+// LOYALSEC_WAF_PREPEND instead of ABSPATH — see data/waf-signatures.php for the same pattern.
 defined( 'ABSPATH' ) || exit;
 
 return array(

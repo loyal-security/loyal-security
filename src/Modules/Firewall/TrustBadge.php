@@ -2,10 +2,10 @@
 /**
  * Public "Protected by" trust badge — a floating widget and a shortcode for manual placement.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class TrustBadge {
 
-	private const STYLE_HANDLE = 'totalsecwp-trust-badge';
+	private const STYLE_HANDLE = 'loyalsec-trust-badge';
 
 	public function register_hooks(): void {
 		add_shortcode( 'loyal_security_badge', array( $this, 'render' ) );
@@ -47,9 +47,9 @@ class TrustBadge {
 		}
 		wp_register_style(
 			self::STYLE_HANDLE,
-			plugins_url( 'assets/css/trust-badge.css', TOTALSECWP_FILE ),
+			plugins_url( 'assets/css/trust-badge.css', LOYALSEC_FILE ),
 			array(),
-			TOTALSECWP_VERSION
+			LOYALSEC_VERSION
 		);
 		if ( $settings->get( 'firewall', 'trust_badge_floating', true ) ) {
 			wp_enqueue_style( self::STYLE_HANDLE );
@@ -146,8 +146,8 @@ class TrustBadge {
 		);
 	}
 
-	private function settings(): \TotalSecurityWP\Core\Settings {
-		return \TotalSecurityWP\Plugin::instance()->container()->make( 'settings' );
+	private function settings(): \LoyalSecurity\Core\Settings {
+		return \LoyalSecurity\Plugin::instance()->container()->make( 'settings' );
 	}
 
 	/**
@@ -158,7 +158,7 @@ class TrustBadge {
 	 */
 	private function blocked_last_30_days(): int {
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_events';
+		$table = $wpdb->prefix . 'loyalsec_events';
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name built from $wpdb->prefix, not user input.
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
 			return 0;

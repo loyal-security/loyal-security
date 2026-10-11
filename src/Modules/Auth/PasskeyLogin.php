@@ -2,14 +2,14 @@
 /**
  * Passkey sign-in on the login form.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Adds a "Sign in with a passkey" button to wp-login.php and verifies the passkey inside
@@ -37,10 +37,10 @@ class PasskeyLogin {
 	/** User verified by a passkey during this request (0 = none). */
 	private static int $verified_user_id = 0;
 
-	private ?\TotalSecurityWP\Core\Settings $settings;
-	private ?\TotalSecurityWP\Modules\Audit\Logger $logger;
+	private ?\LoyalSecurity\Core\Settings $settings;
+	private ?\LoyalSecurity\Modules\Audit\Logger $logger;
 
-	public function __construct( ?\TotalSecurityWP\Core\Settings $settings = null, ?\TotalSecurityWP\Modules\Audit\Logger $logger = null ) {
+	public function __construct( ?\LoyalSecurity\Core\Settings $settings = null, ?\LoyalSecurity\Modules\Audit\Logger $logger = null ) {
 		$this->settings = $settings;
 		$this->logger   = $logger;
 	}
@@ -77,7 +77,7 @@ class PasskeyLogin {
 			return $user; // Not a passkey sign-in.
 		}
 
-		$fail = new \WP_Error( 'totalsecwp_passkey_failed', __( 'Passkey sign-in failed. Please try again.', 'loyal-security' ) );
+		$fail = new \WP_Error( 'loyalsec_passkey_failed', __( 'Passkey sign-in failed. Please try again.', 'loyal-security' ) );
 		if ( array() === $assertion ) {
 			$this->log( EventCatalog::PASSKEY_LOGIN_FAILED, array() );
 			return $fail;
@@ -111,12 +111,12 @@ class PasskeyLogin {
 	 */
 	private static function posted_assertion(): ?array {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- wp-login.php's form carries no nonce; the assertion is bound to a single-use server challenge and signed by the authenticator.
-		if ( empty( $_POST['totalsecwp_passkey_flow'] ) ) {
+		if ( empty( $_POST['loyalsec_passkey_flow'] ) ) {
 			return null;
 		}
 		$out = array();
 		foreach ( self::FIELDS as $key => $max ) {
-			$name  = 'totalsecwp_passkey_' . $key;
+			$name  = 'loyalsec_passkey_' . $key;
 			$value = isset( $_POST[ $name ] ) && is_string( $_POST[ $name ] ) ? sanitize_text_field( wp_unslash( $_POST[ $name ] ) ) : '';
 			if ( '' === $value || strlen( $value ) > $max || ! preg_match( '/^[A-Za-z0-9_-]+$/', $value ) ) {
 				return array();
@@ -136,40 +136,40 @@ class PasskeyLogin {
 
 	public function render_button(): void {
 		?>
-		<p class="totalsecwp-passkey">
-			<button type="button" id="totalsecwp-passkey-btn" class="button button-secondary">
+		<p class="loyalsec-passkey">
+			<button type="button" id="loyalsec-passkey-btn" class="button button-secondary">
 				<?php esc_html_e( '🔑 Sign in with a passkey', 'loyal-security' ); ?>
 			</button>
 		</p>
-		<p id="totalsecwp-passkey-msg" class="totalsecwp-passkey-msg" role="status" hidden></p>
+		<p id="loyalsec-passkey-msg" class="loyalsec-passkey-msg" role="status" hidden></p>
 		<?php
 		foreach ( array_keys( self::FIELDS ) as $key ) {
-			printf( '<input type="hidden" name="%1$s" id="%1$s" value="" />', esc_attr( 'totalsecwp_passkey_' . $key ) );
+			printf( '<input type="hidden" name="%1$s" id="%1$s" value="" />', esc_attr( 'loyalsec_passkey_' . $key ) );
 		}
 	}
 
 	public function enqueue(): void {
-		if ( ! defined( 'TOTALSECWP_URL' ) || ! defined( 'TOTALSECWP_REST_NAMESPACE' ) ) {
+		if ( ! defined( 'LOYALSEC_URL' ) || ! defined( 'LOYALSEC_REST_NAMESPACE' ) ) {
 			return;
 		}
 		wp_enqueue_style(
-			'totalsecwp-passkey-login',
-			TOTALSECWP_URL . 'assets/css/passkey-login.css',
+			'loyalsec-passkey-login',
+			LOYALSEC_URL . 'assets/css/passkey-login.css',
 			array(),
-			defined( 'TOTALSECWP_VERSION' ) ? TOTALSECWP_VERSION : false
+			defined( 'LOYALSEC_VERSION' ) ? LOYALSEC_VERSION : false
 		);
 		wp_enqueue_script(
-			'totalsecwp-passkey-login',
-			TOTALSECWP_URL . 'assets/js/passkey-login.js',
+			'loyalsec-passkey-login',
+			LOYALSEC_URL . 'assets/js/passkey-login.js',
 			array(),
-			defined( 'TOTALSECWP_VERSION' ) ? TOTALSECWP_VERSION : false,
+			defined( 'LOYALSEC_VERSION' ) ? LOYALSEC_VERSION : false,
 			true
 		);
 		wp_localize_script(
-			'totalsecwp-passkey-login',
-			'TotalSecWPPasskey',
+			'loyalsec-passkey-login',
+			'LoyalSecPasskey',
 			array(
-				'restBase' => esc_url_raw( rest_url( TOTALSECWP_REST_NAMESPACE ) ),
+				'restBase' => esc_url_raw( rest_url( LOYALSEC_REST_NAMESPACE ) ),
 			)
 		);
 	}

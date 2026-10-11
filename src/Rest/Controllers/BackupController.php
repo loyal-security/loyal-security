@@ -2,16 +2,16 @@
 /**
  * Backup & Recovery REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Modules\Backup\BackupModule;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Modules\Backup\BackupModule;
 use WP_REST_Request;
 
 /**
@@ -80,7 +80,7 @@ class BackupController extends AbstractController {
 	public function create( WP_REST_Request $request ) {
 		$b = $this->backup();
 		if ( ! $b ) {
-			return $this->fail( 'totalsecwp_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
 		}
 		$scope   = 'files' === (string) $request->get_param( 'scope' ) ? 'files' : 'full';
 		$uploads = null === $request->get_param( 'include_uploads' ) ? null : (bool) $request->get_param( 'include_uploads' );
@@ -88,15 +88,15 @@ class BackupController extends AbstractController {
 		// Dispatch the backup as a background WP-Cron job and return immediately so the HTTP
 		// request finishes in <200 ms — no more 504 timeouts on large sites. The dashboard
 		// polls GET /jobs/{job_id} for live progress.
-		$job_id = \TotalSecurityWP\Support\JobStore::create( 'backup', [ 'scope' => $scope ] );
+		$job_id = \LoyalSecurity\Support\JobStore::create( 'backup', [ 'scope' => $scope ] );
 
-		wp_schedule_single_event( time() - 1, 'totalsecwp_run_backup', [ $job_id, $scope, $uploads ] );
+		wp_schedule_single_event( time() - 1, 'loyalsec_run_backup', [ $job_id, $scope, $uploads ] );
 
 		// Kick WP-Cron immediately (non-blocking loopback) so the job starts right away
 		// instead of waiting for the next page load to trigger cron naturally.
 		wp_remote_post(
 			add_query_arg( 'doing_wp_cron', '1', site_url( '/' ) ),
-			[ 'timeout' => 0.01, 'blocking' => false, 'sslverify' => \TotalSecurityWP\Support\Http::local_sslverify(), 'body' => [] ]
+			[ 'timeout' => 0.01, 'blocking' => false, 'sslverify' => \LoyalSecurity\Support\Http::local_sslverify(), 'body' => [] ]
 		);
 
 		return $this->ok( [ 'job_id' => $job_id, 'status' => 'queued' ] );
@@ -105,11 +105,11 @@ class BackupController extends AbstractController {
 	public function delete( WP_REST_Request $request ) {
 		$b = $this->backup();
 		if ( ! $b ) {
-			return $this->fail( 'totalsecwp_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
 		}
 		$id = (string) $request->get_param( 'id' );
 		if ( '' === $id ) {
-			return $this->fail( 'totalsecwp_no_id', __( 'No backup specified.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_id', __( 'No backup specified.', 'loyal-security' ), 422 );
 		}
 		return $this->ok( array( 'deleted' => $b->delete_backup( $id ) ) );
 	}
@@ -117,17 +117,17 @@ class BackupController extends AbstractController {
 	public function restore( WP_REST_Request $request ) {
 		$b = $this->backup();
 		if ( ! $b ) {
-			return $this->fail( 'totalsecwp_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
 		}
 		$id = (string) $request->get_param( 'id' );
 		if ( '' === $id ) {
-			return $this->fail( 'totalsecwp_no_id', __( 'No backup specified.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_id', __( 'No backup specified.', 'loyal-security' ), 422 );
 		}
 		$files = null === $request->get_param( 'files' ) ? true : (bool) $request->get_param( 'files' );
 		$db    = null === $request->get_param( 'db' ) ? true : (bool) $request->get_param( 'db' );
 		$res   = $b->restore_backup( $id, $files, $db );
 		return empty( $res['ok'] )
-			? $this->fail( 'totalsecwp_restore_failed', $res['message'] ?? __( 'Restore failed.', 'loyal-security' ), 500 )
+			? $this->fail( 'loyalsec_restore_failed', $res['message'] ?? __( 'Restore failed.', 'loyal-security' ), 500 )
 			: $this->ok( $res );
 	}
 
@@ -142,13 +142,13 @@ class BackupController extends AbstractController {
 	public function recovery_set( WP_REST_Request $request ) {
 		$b = $this->backup();
 		if ( ! $b ) {
-			return $this->fail( 'totalsecwp_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
 		}
 		$enable = (bool) $request->get_param( 'enable' );
 		if ( $enable ) {
 			$res = $b->recovery()->enable();
 			return empty( $res['ok'] )
-				? $this->fail( 'totalsecwp_recovery_failed', $res['message'] ?? __( 'Could not enable recovery.', 'loyal-security' ), 500 )
+				? $this->fail( 'loyalsec_recovery_failed', $res['message'] ?? __( 'Could not enable recovery.', 'loyal-security' ), 500 )
 				: $this->ok_no_store( $res ); // Includes the one-time plaintext token.
 		}
 		$b->recovery()->disable();
@@ -165,11 +165,11 @@ class BackupController extends AbstractController {
 	public function recovery_download( WP_REST_Request $request ) {
 		$b = $this->backup();
 		if ( ! $b ) {
-			return $this->fail( 'totalsecwp_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_backup_off', __( 'The backup module is disabled.', 'loyal-security' ), 409 );
 		}
 		$recovery = $b->recovery();
 		if ( ! $recovery->is_enabled() ) {
-			return $this->fail( 'totalsecwp_recovery_off', __( 'Standalone recovery is not enabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_recovery_off', __( 'Standalone recovery is not enabled.', 'loyal-security' ), 409 );
 		}
 
 		// Returned as JSON and saved as a file by the dashboard: the plugin itself never writes

@@ -2,10 +2,10 @@
 /**
  * CSP policy builder with service presets.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Csp;
+namespace LoyalSecurity\Modules\Csp;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,7 +28,7 @@ class CspPolicy {
 	 */
 	private static function presets(): array {
 		if ( null === self::$presets_cache ) {
-			$json  = file_get_contents( TOTALSECWP_PATH . 'assets/data/csp-presets.json' );
+			$json  = file_get_contents( LOYALSEC_PATH . 'assets/data/csp-presets.json' );
 			$decoded = is_string( $json ) ? json_decode( $json, true ) : null;
 			self::$presets_cache = is_array( $decoded ) ? $decoded : array();
 		}

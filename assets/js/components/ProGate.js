@@ -5,7 +5,7 @@
  * The free plugin contains no Pro functionality — neither PHP nor interface code. Where a Pro
  * feature would appear, it shows a static teaser (name, a few points, a link to the upgrade
  * screen). When the Pro plugin is installed it registers its own components in
- * `window.TotalSecurityWP.proComponents` / `proPanels`, and those render instead.
+ * `window.LoyalSecurity.proComponents` / `proPanels`, and those render instead.
  *
  * `useIsPro()` / `fetchTier()` read the licence tier from the server (`/status/license`); they
  * only decide which wording a teaser shows, never whether anything is unlocked.
@@ -19,7 +19,7 @@ import { h, useState, useEffect } from '../el.js';
 
 // Whether the Pro plugin is active, shared by every teaser on the page. Only the wording of the
 // teasers depends on it.
-let _tier = ( window.TotalSecurityWP && window.TotalSecurityWP.tier ) || 'free'; // optimistic initial value
+let _tier = ( window.LoyalSecurity && window.LoyalSecurity.tier ) || 'free'; // optimistic initial value
 let _fetchedAt = 0; // timestamp (ms) of last server verification
 let _inflightPromise = null; // dedupe concurrent fetches
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -40,7 +40,7 @@ export function fetchTier() {
 		return _inflightPromise;
 	}
 
-	const cfg = window.TotalSecurityWP || { root: '', nonce: '' };
+	const cfg = window.LoyalSecurity || { root: '', nonce: '' };
 	const url = cfg.root.replace( /\/$/, '' ) + '/status/license';
 
 	_inflightPromise = fetch( url, {
@@ -86,11 +86,11 @@ export function useIsPro() {
  * Registries the separate Loyal Security Pro plugin fills from its own enqueued script (when it
  * is installed and active) — never the free plugin, which ships no Pro interface code at all:
  *
- *   window.TotalSecurityWP.proComponents[ 'agency.whitelabel' ] = WhiteLabelPanel; // a section
- *   window.TotalSecurityWP.proPanels[ 'uptime' ] = UptimePanel;                   // a whole screen
+ *   window.LoyalSecurity.proComponents[ 'agency.whitelabel' ] = WhiteLabelPanel; // a section
+ *   window.LoyalSecurity.proPanels[ 'uptime' ] = UptimePanel;                   // a whole screen
  */
 function registered( registryName, key ) {
-	const registry = window.TotalSecurityWP && window.TotalSecurityWP[ registryName ];
+	const registry = window.LoyalSecurity && window.LoyalSecurity[ registryName ];
 	return registry && typeof registry[ key ] === 'function' ? registry[ key ] : null;
 }
 

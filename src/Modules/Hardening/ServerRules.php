@@ -2,10 +2,10 @@
 /**
  * Server rule generation (.htaccess / Nginx).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -33,10 +33,9 @@ class ServerRules {
 	private const MARK_BEGIN = '# BEGIN Loyal Security';
 	private const MARK_END   = '# END Loyal Security';
 
-	/** Current markers plus the ones earlier versions wrote. */
+	/** The markers this plugin wraps its own blocks in. */
 	private const MARKERS = array(
 		array( self::MARK_BEGIN, self::MARK_END ),
-		array( '# BEGIN Total Security WP', '# END Total Security WP' ),
 	);
 
 	/**
@@ -113,7 +112,7 @@ class ServerRules {
 		$results = array();
 
 		// Root: prepend our block above the WordPress block.
-		$results['root'] = $this->write_block( \TotalSecurityWP\Support\Paths::root() . '.htaccess', $this->root_block(), true );
+		$results['root'] = $this->write_block( \LoyalSecurity\Support\Paths::root() . '.htaccess', $this->root_block(), true );
 
 		// uploads/.
 		$uploads = wp_upload_dir();
@@ -122,7 +121,7 @@ class ServerRules {
 		}
 
 		// wp-includes/.
-		$results['wp-includes'] = $this->write_block( \TotalSecurityWP\Support\Paths::includes() . '/.htaccess', $this->no_php_block(), false );
+		$results['wp-includes'] = $this->write_block( \LoyalSecurity\Support\Paths::includes() . '/.htaccess', $this->no_php_block(), false );
 
 		// A malformed root block on a host with an unusual AllowOverride/mod_rewrite config can
 		// 500 the entire site — the same class of risk LoginUrlInstaller::verify() already
@@ -143,12 +142,12 @@ class ServerRules {
 	/**
 	 * Confirm the site still answers (no 5xx) after writing the root .htaccess block.
 	 * Best-effort: a host that blocks loopback requests may report a false failure here — same
-	 * known limitation noted on {@see \TotalSecurityWP\Modules\Auth\LoginUrlInstaller::verify()}.
+	 * known limitation noted on {@see \LoyalSecurity\Modules\Auth\LoginUrlInstaller::verify()}.
 	 *
 	 * @return array{ok:bool,message:string}
 	 */
 	private function verify(): array {
-		$response = wp_remote_get( home_url( '/' ), array( 'timeout' => 8, 'sslverify' => \TotalSecurityWP\Support\Http::local_sslverify(), 'redirection' => 0 ) );
+		$response = wp_remote_get( home_url( '/' ), array( 'timeout' => 8, 'sslverify' => \LoyalSecurity\Support\Http::local_sslverify(), 'redirection' => 0 ) );
 		if ( is_wp_error( $response ) ) {
 			return array( 'ok' => false, 'message' => $response->get_error_message() );
 		}
@@ -167,7 +166,7 @@ class ServerRules {
 	 * Remove all applied rules.
 	 */
 	public function revert(): void {
-		$targets = array( \TotalSecurityWP\Support\Paths::root() . '.htaccess', \TotalSecurityWP\Support\Paths::includes() . '/.htaccess' );
+		$targets = array( \LoyalSecurity\Support\Paths::root() . '.htaccess', \LoyalSecurity\Support\Paths::includes() . '/.htaccess' );
 		$uploads = wp_upload_dir();
 		if ( empty( $uploads['error'] ) ) {
 			$targets[] = trailingslashit( $uploads['basedir'] ) . '.htaccess';
@@ -192,12 +191,12 @@ class ServerRules {
 	 * Detect whether the root rules are currently applied.
 	 */
 	public function is_applied(): bool {
-		$file = \TotalSecurityWP\Support\Paths::root() . '.htaccess';
+		$file = \LoyalSecurity\Support\Paths::root() . '.htaccess';
 		if ( ! is_file( $file ) ) {
 			return false;
 		}
 		$raw = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- see class docblock note.
-		return false !== $raw && \TotalSecurityWP\Support\Markers::present( $raw, self::MARKERS );
+		return false !== $raw && \LoyalSecurity\Support\Markers::present( $raw, self::MARKERS );
 	}
 
 	/**
@@ -260,6 +259,6 @@ class ServerRules {
 	}
 
 	private function strip( string $content ): string {
-		return \TotalSecurityWP\Support\Markers::strip( $content, self::MARKERS );
+		return \LoyalSecurity\Support\Markers::strip( $content, self::MARKERS );
 	}
 }

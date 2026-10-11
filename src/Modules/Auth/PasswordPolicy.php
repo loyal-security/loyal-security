@@ -2,14 +2,14 @@
 /**
  * Password strength policy enforcement.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
+use LoyalSecurity\Core\Settings;
 
 /**
  * Enforces a configurable password policy on profile updates, registration, and resets.
@@ -70,7 +70,7 @@ class PasswordPolicy {
 			return; // No password change in this request.
 		}
 		foreach ( $this->validate( $pass ) as $msg ) {
-			$errors->add( 'totalsecwp_pw_policy', $msg );
+			$errors->add( 'loyalsec_pw_policy', $msg );
 		}
 	}
 
@@ -84,14 +84,14 @@ class PasswordPolicy {
 	public function on_reset( $errors, $user ): void {
 		$pass = self::submitted_reset_password();
 		if ( null === $pass ) {
-			$errors->add( 'totalsecwp_pw_policy', __( 'The new password contains characters that cannot be used in a password.', 'loyal-security' ) );
+			$errors->add( 'loyalsec_pw_policy', __( 'The new password contains characters that cannot be used in a password.', 'loyal-security' ) );
 			return;
 		}
 		if ( '' === $pass ) {
 			return;
 		}
 		foreach ( $this->validate( $pass ) as $msg ) {
-			$errors->add( 'totalsecwp_pw_policy', $msg );
+			$errors->add( 'loyalsec_pw_policy', $msg );
 		}
 	}
 

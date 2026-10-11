@@ -2,10 +2,10 @@
 /**
  * Scanner finding whitelist (false-positive suppression).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Scanner;
+namespace LoyalSecurity\Modules\Scanner;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Whitelist {
 
-	private const OPTION = 'totalsecwp_scan_whitelist';
+	private const OPTION = 'loyalsec_scan_whitelist';
 
 	/**
 	 * @return array<int,array{type:string,value:string,added:string}>
@@ -38,7 +38,7 @@ class Whitelist {
 	 * the dashboard displays. Keeps the whitelist free of absolute server paths too.
 	 */
 	private function canonical( string $path ): string {
-		$short = \TotalSecurityWP\Support\Paths::display( $path );
+		$short = \LoyalSecurity\Support\Paths::display( $path );
 		if ( null !== $short ) {
 			return $short;
 		}

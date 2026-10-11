@@ -2,16 +2,16 @@
 /**
  * One-click recovery of clean core files from WordPress.org.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Filesystem;
-use TotalSecurityWP\Support\Http;
-use TotalSecurityWP\Modules\Integrity\CoreChecksums;
+use LoyalSecurity\Support\Filesystem;
+use LoyalSecurity\Support\Http;
+use LoyalSecurity\Modules\Integrity\CoreChecksums;
 
 /**
  * Restores tampered WordPress core files by fetching the pristine version from the official
@@ -47,7 +47,7 @@ class Recovery {
 			return array( 'ok' => false, 'message' => __( 'Downloaded file failed checksum verification; aborting.', 'loyal-security' ) );
 		}
 
-		$target = \TotalSecurityWP\Support\Paths::root() . $relative;
+		$target = \LoyalSecurity\Support\Paths::root() . $relative;
 		if ( ! Filesystem::write( $target, $body ) ) {
 			return array( 'ok' => false, 'message' => __( 'Could not write the recovered file (check permissions).', 'loyal-security' ) );
 		}

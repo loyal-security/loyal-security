@@ -133,7 +133,7 @@ export function SettingsForm() {
 			setAll( ( a ) => ( { ...a, [ mod ]: saved } ) );
 			setDraft( mod, { ...saved } );
 			store.toast( 'Settings saved.', 'success' );
-			window.dispatchEvent( new Event( 'totalsecwp:setup-changed' ) );
+			window.dispatchEvent( new Event( 'loyalsec:setup-changed' ) );
 		} catch ( e ) {
 			store.toast( e.message, 'error' );
 		} finally {
@@ -151,7 +151,7 @@ export function SettingsForm() {
 			setAll( ( a ) => ( { ...a, [ mod ]: saved } ) );
 			setDraft( mod, { ...saved } );
 			store.toast( value ? 'Module enabled.' : 'Module disabled.', 'success' );
-			window.dispatchEvent( new Event( 'totalsecwp:setup-changed' ) );
+			window.dispatchEvent( new Event( 'loyalsec:setup-changed' ) );
 		} catch ( e ) {
 			store.toast( e.message, 'error' );
 		} finally {

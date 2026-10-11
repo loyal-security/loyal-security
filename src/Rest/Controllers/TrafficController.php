@@ -2,18 +2,18 @@
 /**
  * Live Traffic REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Modules\Traffic\TrafficBuffer;
-use TotalSecurityWP\Modules\Traffic\TrafficModule;
-use TotalSecurityWP\Modules\Traffic\UserAgentParser;
-use TotalSecurityWP\Plugin;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Modules\Traffic\TrafficBuffer;
+use LoyalSecurity\Modules\Traffic\TrafficModule;
+use LoyalSecurity\Modules\Traffic\UserAgentParser;
+use LoyalSecurity\Plugin;
 use WP_REST_Request;
 
 /**
@@ -150,7 +150,7 @@ class TrafficController extends AbstractController {
 		global $wpdb;
 		$now = current_time( 'mysql', true );
 		$wpdb->replace( // phpcs:ignore WordPress.DB
-			$wpdb->prefix . 'totalsecwp_bans',
+			$wpdb->prefix . 'loyalsec_bans',
 			array(
 				'ip'         => $ip,
 				'reason'     => sanitize_text_field( (string) ( $request->get_param( 'reason' ) ?: 'Blocked from Live Traffic monitor' ) ),
@@ -174,7 +174,7 @@ class TrafficController extends AbstractController {
 		}
 
 		global $wpdb;
-		$wpdb->delete( $wpdb->prefix . 'totalsecwp_bans', array( 'ip' => $ip ), array( '%s' ) ); // phpcs:ignore WordPress.DB
+		$wpdb->delete( $wpdb->prefix . 'loyalsec_bans', array( 'ip' => $ip ), array( '%s' ) ); // phpcs:ignore WordPress.DB
 
 		return $this->ok( array( 'unblocked' => $ip ) );
 	}
@@ -202,7 +202,7 @@ class TrafficController extends AbstractController {
 	/** Compute summary stats from the audit events table (security events only). */
 	private function events_summary( int $since ): array {
 		global $wpdb;
-		$table    = $wpdb->prefix . 'totalsecwp_events';
+		$table    = $wpdb->prefix . 'loyalsec_events';
 		$since_dt = gmdate( 'Y-m-d H:i:s', $since );
 
 		$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE created_at >= %s", $table, $since_dt ) ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name built from $wpdb->prefix, not user input; $since_dt is bound via prepare().

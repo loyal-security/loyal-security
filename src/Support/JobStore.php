@@ -2,10 +2,10 @@
 /**
  * Transient-based job store for long-running background operations.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Support;
+namespace LoyalSecurity\Support;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class JobStore {
 
-	const PREFIX = 'totalsecwp_job_';
+	const PREFIX = 'loyalsec_job_';
 	const TTL    = 7200;
 
 	/**

@@ -2,14 +2,14 @@
 /**
  * Identity, authentication & access-control module.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
+use LoyalSecurity\Core\AbstractModule;
 
 /**
  * Wires two-factor authentication, password policy, login CAPTCHA, and session management

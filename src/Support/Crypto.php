@@ -2,10 +2,10 @@
 /**
  * Cryptographic helpers for secret storage and constant-time comparison.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Support;
+namespace LoyalSecurity\Support;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,7 +21,7 @@ final class Crypto {
 	 * Derive a 32-byte key from WordPress salts plus a context label.
 	 */
 	private static function key( string $context = 'default' ): string {
-		$material = ( defined( 'AUTH_KEY' ) ? AUTH_KEY : 'totalsec' )
+		$material = ( defined( 'AUTH_KEY' ) ? AUTH_KEY : 'loyalsec' )
 			. ( defined( 'SECURE_AUTH_SALT' ) ? SECURE_AUTH_SALT : 'salt' )
 			. $context;
 		return hash( 'sha256', $material, true );

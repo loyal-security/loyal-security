@@ -8,10 +8,10 @@
  * one that conflicts with their stack. CSP can be sent in report-only mode for
  * staged rollout.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -51,7 +51,9 @@ class SecurityHeaders {
 		}
 
 		if ( $this->on( 'add_permissions_policy' ) ) {
-			header( 'Permissions-Policy: geolocation=(), microphone=(), camera=()' );
+			// `(self)`, not `()`: embedded third-party frames lose these features, but the site's
+			// own pages keep them (store locators, "use my location" at checkout, QR scanners).
+			header( 'Permissions-Policy: geolocation=(self), microphone=(self), camera=(self)' );
 		}
 	}
 

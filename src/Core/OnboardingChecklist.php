@@ -2,14 +2,14 @@
 /**
  * Onboarding Checklist — a post-activation setup guide for the dashboard.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Plugin;
+use LoyalSecurity\Plugin;
 
 /**
  * Evaluates a fixed list of getting-started steps and reports completion progress so the
@@ -17,7 +17,7 @@ use TotalSecurityWP\Plugin;
  */
 class OnboardingChecklist {
 
-	private const DISMISS_OPTION = 'totalsecwp_onboarding_dismissed';
+	private const DISMISS_OPTION = 'loyalsec_onboarding_dismissed';
 
 	/**
 	 * Evaluate every step's current state.
@@ -83,7 +83,7 @@ class OnboardingChecklist {
 		 *
 		 * @param array<int,array<string,mixed>> $steps Step list.
 		 */
-		return apply_filters( 'totalsecwp_onboarding_steps', $steps );
+		return apply_filters( 'loyalsec_onboarding_steps', $steps );
 	}
 
 	/**
@@ -128,7 +128,7 @@ class OnboardingChecklist {
 	 * Whether at least one scan has been recorded.
 	 */
 	private function has_scan_history(): bool {
-		$history = get_option( 'totalsecwp_scan_history', array() );
+		$history = get_option( 'loyalsec_scan_history', array() );
 		return is_array( $history ) && ! empty( $history );
 	}
 

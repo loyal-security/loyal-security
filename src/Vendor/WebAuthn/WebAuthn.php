@@ -1,10 +1,10 @@
 <?php
 
-namespace TotalSecurityWP\Vendor\WebAuthn;
+namespace LoyalSecurity\Vendor\WebAuthn;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Vendor\WebAuthn\Binary\ByteBuffer;
+use LoyalSecurity\Vendor\WebAuthn\Binary\ByteBuffer;
 require_once 'WebAuthnException.php';
 require_once 'Binary/ByteBuffer.php';
 require_once 'Attestation/AttestationObject.php';
@@ -556,8 +556,12 @@ class WebAuthn {
         $host = \trim($host, '.');
 
         // The RP ID must be equal to the origin's effective domain, or a registrable
-        // domain suffix of the origin's effective domain.
-        return \preg_match('/' . \preg_quote($this->_rpId) . '$/i', $host) === 1;
+        // domain suffix of the origin's effective domain. Loyal Security change: match on a
+        // label boundary, so "evilexample.com" no longer passes for the RP ID "example.com"
+        // (upstream compares a bare suffix).
+        $host = \strtolower((string) $host);
+        $rpId = \strtolower((string) $this->_rpId);
+        return $host === $rpId || \substr($host, -\strlen('.' . $rpId)) === '.' . $rpId;
     }
 
     /**

@@ -2,10 +2,10 @@
 /**
  * wp-config.php hardening (constant injection).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,16 +21,14 @@ class ConfigHardener {
 	private const MARK_DEBUG_LOG_BEGIN = '/* BEGIN Loyal Security debug.log */';
 	private const MARK_DEBUG_LOG_END   = '/* END Loyal Security debug.log */';
 
-	/** Constants block: current markers plus the ones earlier versions wrote. */
+	/** Constants block markers. */
 	private const MARKERS = array(
 		array( self::MARK_BEGIN, self::MARK_END ),
-		array( '/* BEGIN Total Security WP */', '/* END Total Security WP */' ),
 	);
 
-	/** debug.log block: current markers plus the ones earlier versions wrote. */
+	/** debug.log block markers. */
 	private const DEBUG_LOG_MARKERS = array(
 		array( self::MARK_DEBUG_LOG_BEGIN, self::MARK_DEBUG_LOG_END ),
-		array( '/* BEGIN Total Security WP debug.log */', '/* END Total Security WP debug.log */' ),
 	);
 
 	/** Constants this hardener manages. */
@@ -38,7 +36,7 @@ class ConfigHardener {
 
 	private function config_path(): string {
 		// wp-config.php may live one level above the WordPress root.
-		return \TotalSecurityWP\Support\Paths::wp_config();
+		return \LoyalSecurity\Support\Paths::wp_config();
 	}
 
 	/**
@@ -118,7 +116,7 @@ class ConfigHardener {
 
 	private function has_block(): bool {
 		$path = $this->config_path();
-		return '' !== $path && \TotalSecurityWP\Support\Markers::present( (string) file_get_contents( $path ), self::MARKERS ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		return '' !== $path && \LoyalSecurity\Support\Markers::present( (string) file_get_contents( $path ), self::MARKERS ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 	}
 
 	private function backup( string $path, string $content ): void {
@@ -126,11 +124,11 @@ class ConfigHardener {
 		// directory backup of it is a predictable-filename plaintext leak of the live DB
 		// password and secret keys on any web server that doesn't specifically deny it. See
 		// Filesystem::backup_config_file()'s own docblock for the full reasoning.
-		\TotalSecurityWP\Support\Filesystem::backup_config_file( $path, $content );
+		\LoyalSecurity\Support\Filesystem::backup_config_file( $path, $content );
 	}
 
 	private function strip( string $content ): string {
-		return \TotalSecurityWP\Support\Markers::strip( $content, self::MARKERS );
+		return \LoyalSecurity\Support\Markers::strip( $content, self::MARKERS );
 	}
 
 	/* ------------------------------------------------------------------ *
@@ -155,7 +153,7 @@ class ConfigHardener {
 
 		$content = (string) file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 		$this->backup( $path, $content );
-		$content = \TotalSecurityWP\Support\Markers::strip( $content, self::DEBUG_LOG_MARKERS );
+		$content = \LoyalSecurity\Support\Markers::strip( $content, self::DEBUG_LOG_MARKERS );
 
 		$anchor = "/* That's all, stop editing! Happy publishing. */";
 		if ( false !== strpos( $content, $anchor ) ) {

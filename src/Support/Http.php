@@ -2,10 +2,10 @@
 /**
  * HTTP helper wrapping the WordPress HTTP API.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Support;
+namespace LoyalSecurity\Support;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -39,7 +39,7 @@ final class Http {
 	 * every service contacted (see the readme's "External services" section).
 	 */
 	public static function user_agent(): string {
-		return 'LoyalSecurity/' . ( defined( 'TOTALSECWP_VERSION' ) ? TOTALSECWP_VERSION : '1.0' );
+		return 'LoyalSecurity/' . ( defined( 'LOYALSEC_VERSION' ) ? LOYALSEC_VERSION : '1.0' );
 	}
 
 	/**

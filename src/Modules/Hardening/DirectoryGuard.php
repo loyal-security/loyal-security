@@ -2,16 +2,15 @@
 /**
  * Runtime directory / enumeration protection.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
 
 /**
  * Blocks user/author enumeration via `?author=N` and the REST/oEmbed author probes.
@@ -35,7 +34,9 @@ class DirectoryGuard {
 	 * Returns 403 (not a redirect) so the username is never leaked via the Location header.
 	 */
 	public function block_author_query(): void {
-		if ( is_admin() ) {
+		// Not wp-admin, and not REST: there `author` is a post filter (the block editor's Query
+		// Loop and Latest Posts blocks send it), and the users endpoint has its own guard.
+		if ( is_admin() || $this->is_rest_request() || current_user_can( 'edit_posts' ) ) {
 			return;
 		}
 		// phpcs:ignore WordPress.Security.NonceVerification
@@ -49,18 +50,38 @@ class DirectoryGuard {
 	}
 
 	/**
-	 * Catch author archive requests resolved through pretty permalinks.
-	 * Returns 403 (not a redirect) to avoid leaking the slug via the Location header.
+	 * Hide the archive of an account that has published nothing. Author pages of people who
+	 * publish are public on purpose (bylines link to them, and they matter for SEO), so they
+	 * stay; an empty archive only confirms that a login name exists, so it answers 404 like a
+	 * name that does not.
 	 */
 	public function block_author_enum(): void {
-		if ( is_author() && ! is_user_logged_in() ) {
-			global $wp_query;
-			$this->log_probe( (string) get_query_var( 'author_name' ) ?: (string) get_query_var( 'author' ) );
-			$wp_query->set_404();
-			status_header( 403 );
-			nocache_headers();
-			exit;
+		if ( ! is_author() || is_user_logged_in() ) {
+			return;
 		}
+		$author = get_queried_object();
+		if ( $author instanceof \WP_User && count_user_posts( $author->ID, get_post_types( array( 'public' => true ) ), true ) > 0 ) {
+			return;
+		}
+		global $wp_query;
+		$this->log_probe( (string) get_query_var( 'author_name' ) ?: (string) get_query_var( 'author' ) );
+		$wp_query->set_404();
+		status_header( 404 );
+		nocache_headers();
+	}
+
+	/**
+	 * Whether this is a REST API request. Runs on `init`, before WordPress defines REST_REQUEST,
+	 * so it reads the path and the `rest_route` parameter.
+	 */
+	private function is_rest_request(): bool {
+		$uri = \LoyalSecurity\Support\RequestVars::uri();
+		if ( false !== strpos( (string) wp_parse_url( $uri, PHP_URL_QUERY ), 'rest_route=' ) ) {
+			return true;
+		}
+		$prefix = (string) wp_parse_url( get_rest_url(), PHP_URL_PATH );
+		$path   = (string) wp_parse_url( $uri, PHP_URL_PATH );
+		return '' !== $prefix && 0 === strpos( trailingslashit( $path ), trailingslashit( $prefix ) );
 	}
 
 	/**
@@ -73,7 +94,7 @@ class DirectoryGuard {
 		}
 		$this->logger->log(
 			EventCatalog::AUTHOR_ENUM_BLOCKED,
-			array( 'probed' => $probed, 'ip' => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ) ) // phpcs:ignore WordPress.Security.NonceVerification
+			array( 'probed' => $probed, 'ip' => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip() ) // phpcs:ignore WordPress.Security.NonceVerification
 		);
 	}
 }

@@ -2,10 +2,10 @@
 /**
  * WP-CLI commands for Loyal Security.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Cli;
+namespace LoyalSecurity\Cli;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,12 +16,12 @@ if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 
 use WP_CLI;
 use WP_CLI_Command;
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Core\HealthScore;
-use TotalSecurityWP\Modules\Scanner\ScannerModule;
-use TotalSecurityWP\Modules\Backup\BackupModule;
-use TotalSecurityWP\Modules\Auth\AuthModule;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Core\HealthScore;
+use LoyalSecurity\Modules\Scanner\ScannerModule;
+use LoyalSecurity\Modules\Backup\BackupModule;
+use LoyalSecurity\Modules\Auth\AuthModule;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Manage the Loyal Security plugin from the command line.
@@ -34,7 +34,7 @@ use TotalSecurityWP\Modules\Audit\EventCatalog;
  *     wp loyal-security backup create
  *     wp loyal-security twofa reset admin
  */
-class TotalSecurityWPCommand extends WP_CLI_Command {
+class LoyalSecurityCommand extends WP_CLI_Command {
 
 	/**
 	 * Show the health score, enabled modules, and last scan date.
@@ -72,7 +72,7 @@ class TotalSecurityWPCommand extends WP_CLI_Command {
 		}
 
 		$last_scan = '—';
-		$history   = get_option( 'totalsecwp_scan_history', array() );
+		$history   = get_option( 'loyalsec_scan_history', array() );
 		if ( is_array( $history ) && ! empty( $history[0]['completed_at'] ) ) {
 			$last_scan = (string) $history[0]['completed_at'] . ' UTC';
 		}
@@ -184,7 +184,7 @@ class TotalSecurityWPCommand extends WP_CLI_Command {
 		$limit = max( 1, min( 500, (int) ( $assoc_args['limit'] ?? 50 ) ) );
 
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_events';
+		$table = $wpdb->prefix . 'loyalsec_events';
 
 		$types = array(
 			EventCatalog::WAF_BLOCK,

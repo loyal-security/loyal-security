@@ -2,14 +2,14 @@
 /**
  * Malware scan finding model.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Scanner;
+namespace LoyalSecurity\Modules\Scanner;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * One detection within a scanned file or database row.

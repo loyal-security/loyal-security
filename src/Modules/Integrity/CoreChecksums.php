@@ -2,10 +2,10 @@
 /**
  * WordPress core file integrity verification.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Integrity;
+namespace LoyalSecurity\Modules\Integrity;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -32,6 +32,41 @@ class CoreChecksums {
 	 * @var string[]
 	 */
 	private const ROOT_ALLOWLIST = array( 'wp-config.php' );
+
+	/**
+	 * Files that well-known plugins write into the WordPress root on purpose, keyed by file,
+	 * with the plugin folder that writes them. Accepted only while that plugin is installed, so
+	 * a leftover or a planted copy under the same name is still reported.
+	 *
+	 * @var array<string, string>
+	 */
+	private const PLUGIN_ROOT_FILES = array(
+		'koko-analytics-collect.php' => 'koko-analytics',
+		'wordfence-waf.php'          => 'wordfence',
+	);
+
+	/**
+	 * Root files written by installed plugins (see PLUGIN_ROOT_FILES).
+	 *
+	 * @return string[]
+	 */
+	private function plugin_root_files(): array {
+		$files = array();
+		foreach ( self::PLUGIN_ROOT_FILES as $file => $plugin ) {
+			if ( is_dir( trailingslashit( \LoyalSecurity\Support\Paths::plugins() ) . $plugin ) ) {
+				$files[] = $file;
+			}
+		}
+		/**
+		 * Filters the files in the WordPress root that are expected although they are not part
+		 * of WordPress, such as an analytics endpoint a plugin writes there.
+		 *
+		 * @since 1.5.1
+		 *
+		 * @param string[] $files File names relative to the WordPress root.
+		 */
+		return array_map( 'strval', (array) apply_filters( 'loyalsec_expected_root_files', $files ) );
+	}
 
 	/**
 	 * Verify core files.
@@ -65,7 +100,7 @@ class CoreChecksums {
 			if ( 0 === strpos( $file, 'wp-content/' ) ) {
 				continue;
 			}
-			$path = \TotalSecurityWP\Support\Paths::root() . $file;
+			$path = \LoyalSecurity\Support\Paths::root() . $file;
 			if ( ! file_exists( $path ) ) {
 				// Only treat genuinely required files as missing (ignore optional samples).
 				if ( ! preg_match( '/(readme\.html|wp-config-sample\.php|license\.txt)$/i', $file ) ) {
@@ -105,9 +140,12 @@ class CoreChecksums {
 		foreach ( self::ROOT_ALLOWLIST as $file ) {
 			$known[ $file ] = true;
 		}
+		foreach ( $this->plugin_root_files() as $file ) {
+			$known[ $file ] = true;
+		}
 
 		$unknown = array();
-		$abspath = untrailingslashit( wp_normalize_path( \TotalSecurityWP\Support\Paths::root() ) );
+		$abspath = untrailingslashit( wp_normalize_path( \LoyalSecurity\Support\Paths::root() ) );
 
 		// Top-level WP root files only (do not recurse into wp-content/themes/plugins).
 		$pattern = $abspath . '/*.{' . implode( ',', self::SCAN_EXTENSIONS ) . '}';
@@ -119,8 +157,11 @@ class CoreChecksums {
 		}
 
 		// Core directories — recurse fully; the manifest lists every legitimate file here.
-		foreach ( array( 'wp-admin', WPINC ) as $dir ) {
-			$root = $abspath . '/' . $dir;
+		$core_dirs = array(
+			wp_normalize_path( \LoyalSecurity\Support\Paths::admin() ),
+			wp_normalize_path( \LoyalSecurity\Support\Paths::includes() ),
+		);
+		foreach ( $core_dirs as $root ) {
 			if ( ! is_dir( $root ) ) {
 				continue;
 			}

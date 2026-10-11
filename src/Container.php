@@ -2,10 +2,10 @@
 /**
  * Minimal dependency-injection container.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP;
+namespace LoyalSecurity;
 
 defined( 'ABSPATH' ) || exit;
 

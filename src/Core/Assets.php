@@ -2,10 +2,10 @@
 /**
  * Admin asset enqueuing.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -47,51 +47,51 @@ class Assets {
 			return;
 		}
 
-		$ver = TOTALSECWP_VERSION;
-		$url = TOTALSECWP_URL . 'assets/';
+		$ver = LOYALSEC_VERSION;
+		$url = LOYALSEC_URL . 'assets/';
 
-		wp_enqueue_style( 'totalsecwp-admin', $url . 'css/admin.css', array(), $ver . '.' . (int) filemtime( TOTALSECWP_PATH . 'assets/css/admin.css' ) );
+		wp_enqueue_style( 'loyalsec-admin', $url . 'css/admin.css', array(), $ver . '.' . (int) filemtime( LOYALSEC_PATH . 'assets/css/admin.css' ) );
 
 		// Vendor: QR code generator (MIT, qrcode-generator by kazuhikoarase).
-		wp_enqueue_script( 'totalsecwp-qrcode', $url . 'js/vendor/qrcode.js', array(), '1.4.4', true );
+		wp_enqueue_script( 'loyalsec-qrcode', $url . 'js/vendor/qrcode.js', array(), '1.4.4', true );
 
 		// Classic handle that loads core React (wp-element) and prints the dashboard config
-		// (window.TotalSecurityWP) before the modules below run.
-		wp_register_script( 'totalsecwp-app', false, array( 'wp-element', 'wp-i18n', 'totalsecwp-qrcode' ), $ver, true );
+		// (window.LoyalSecurity) before the modules below run.
+		wp_register_script( 'loyalsec-app', false, array( 'wp-element', 'wp-i18n', 'loyalsec-qrcode' ), $ver, true );
 
 		// Initial value for the dashboard's wording of its pointers to Pro (see ProGate.js); the
 		// dashboard re-reads it from /status/license. Nothing is enabled or disabled by it.
 		$tier = 'free';
 		try {
-			$tier = \TotalSecurityWP\Plugin::instance()->container()->make( 'pro_status' )->tier();
+			$tier = \LoyalSecurity\Plugin::instance()->container()->make( 'pro_status' )->tier();
 		} catch ( \Throwable $e ) {
 			$tier = 'free';
 		}
 
 		$config = array(
-			'root'    => esc_url_raw( rest_url( TOTALSECWP_REST_NAMESPACE ) ),
+			'root'    => esc_url_raw( rest_url( LOYALSEC_REST_NAMESPACE ) ),
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 			'caps'    => array(
-				'manage' => current_user_can( TOTALSECWP_CAP ) || current_user_can( 'manage_options' ),
+				'manage' => \LoyalSecurity\Core\Capabilities::can_manage(),
 			),
 			'version'     => $ver,
 			'assets'      => $url,
 			'multisite'   => is_multisite(),
 			'telemetry'   => $this->telemetry_state(),
 			'tier'        => $tier,
-			'brand_name'  => \TotalSecurityWP\Support\Brand::name(),
+			'brand_name'  => \LoyalSecurity\Support\Brand::name(),
 			'upgrade_url'  => admin_url( 'admin.php?page=loyal-security' ) . '#/upgrade',
 			'checkout_url' => 'https://licensekit.loyalsecuritywp.com/register',
 			'pricing_url'  => 'https://licensekit.loyalsecuritywp.com/pricing',
 		);
 
 		wp_add_inline_script(
-			'totalsecwp-app',
-			'window.TotalSecurityWP = ' . wp_json_encode( $config ) . ';',
+			'loyalsec-app',
+			'window.LoyalSecurity = ' . wp_json_encode( $config ) . ';',
 			'before'
 		);
 
-		wp_enqueue_script( 'totalsecwp-app' );
+		wp_enqueue_script( 'loyalsec-app' );
 
 		$this->enqueue_dashboard_modules( $ver );
 	}
@@ -110,8 +110,8 @@ class Assets {
 			return;
 		}
 
-		$dir  = TOTALSECWP_PATH . 'assets/js/';
-		$base = TOTALSECWP_URL . 'assets/js/';
+		$dir  = LOYALSEC_PATH . 'assets/js/';
+		$base = LOYALSEC_URL . 'assets/js/';
 		$deps = array();
 		foreach ( array_merge( (array) glob( $dir . '*.js' ), (array) glob( $dir . 'components/*.js' ) ) as $file ) {
 			$rel = ltrim( str_replace( '\\', '/', substr( (string) $file, strlen( $dir ) ) ), '/' );
@@ -139,7 +139,7 @@ class Assets {
 	 * Modules import map now handles cache-busting). Called once on upgrade.
 	 */
 	public static function remove_legacy_htaccess(): void {
-		$file = TOTALSECWP_PATH . 'assets/.htaccess';
+		$file = LOYALSEC_PATH . 'assets/.htaccess';
 		if ( is_file( $file ) ) {
 			wp_delete_file( $file );
 		}
@@ -152,13 +152,13 @@ class Assets {
 	 * @return array{consent_given:bool,needs_consent:bool}
 	 */
 	private function telemetry_state(): array {
-		$raw     = get_option( 'totalsecwp_telemetry_consent', array() );
+		$raw     = get_option( 'loyalsec_telemetry_consent', array() );
 		$given   = is_array( $raw ) && ! empty( $raw['given'] );
 		$ts      = is_array( $raw ) ? (int) ( $raw['timestamp'] ?? 0 ) : 0;
 		$version = is_array( $raw ) ? (int) ( $raw['version'] ?? 0 ) : 0;
 
-		$policy = class_exists( \TotalSecurityWP\Rest\Controllers\TelemetryController::class )
-			? \TotalSecurityWP\Rest\Controllers\TelemetryController::POLICY_VERSION
+		$policy = class_exists( \LoyalSecurity\Rest\Controllers\TelemetryController::class )
+			? \LoyalSecurity\Rest\Controllers\TelemetryController::POLICY_VERSION
 			: 1;
 
 		// Prompt when never answered or answered against an older policy version.

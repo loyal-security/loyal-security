@@ -2,10 +2,10 @@
 /**
  * Dashboard page shell (React mount point).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Admin;
+namespace LoyalSecurity\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -19,20 +19,20 @@ class DashboardPage {
 		// Stamped server-side so the first paint already reflects the admin's saved Basic/
 		// Advanced preference, instead of the app defaulting to Advanced and visibly
 		// re-rendering to Basic once the preference fetch resolves client-side.
-		$ui_view = 'basic' === get_user_meta( get_current_user_id(), 'totalsecwp_ui_view', true ) ? 'basic' : 'advanced';
+		$ui_view = 'basic' === get_user_meta( get_current_user_id(), 'loyalsec_ui_view', true ) ? 'basic' : 'advanced';
 		// Same reasoning for the light/dark/system theme choice — stamped up front so an admin
 		// who explicitly picked "Dark" never sees a flash of the OS/WP-core-driven theme before
 		// their own choice applies. "system" is stamped as-is (not resolved server-side) so the
 		// CSS's existing prefers-color-scheme / admin-color-midnight triggers keep deciding it.
-		$theme = get_user_meta( get_current_user_id(), 'totalsecwp_theme', true );
+		$theme = get_user_meta( get_current_user_id(), 'loyalsec_theme', true );
 		$theme = in_array( $theme, array( 'light', 'dark' ), true ) ? $theme : 'system';
 		?>
-		<div class="wrap totalsecwp-wrap">
-			<div id="totalsecwp-app" data-ui-view="<?php echo esc_attr( $ui_view ); ?>" data-theme="<?php echo esc_attr( $theme ); ?>">
-				<div class="totalsecwp-boot">
-					<span class="totalsecwp-spinner" aria-hidden="true"></span>
+		<div class="wrap loyalsec-wrap">
+			<div id="loyalsec-app" data-ui-view="<?php echo esc_attr( $ui_view ); ?>" data-theme="<?php echo esc_attr( $theme ); ?>">
+				<div class="loyalsec-boot">
+					<span class="loyalsec-spinner" aria-hidden="true"></span>
 					<p><?php
-						$brand_name = \TotalSecurityWP\Support\Brand::name();
+						$brand_name = \LoyalSecurity\Support\Brand::name();
 						/* translators: %s: plugin name. */
 						printf( esc_html__( 'Loading %s…', 'loyal-security' ), esc_html( $brand_name ) );
 					?></p>

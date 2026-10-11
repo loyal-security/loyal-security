@@ -52,9 +52,9 @@
      with their built-in dark appearance. Without it, every plain <input>/<select>/<textarea> in
      the app keeps the OS's native white control face regardless of how dark everything around it
      is — the single biggest remaining "why is this input white" gap that per-component color
-     overrides can't practically cover one at a time. Scoped to #totalsecwp-app specifically so it
+     overrides can't practically cover one at a time. Scoped to #loyalsec-app specifically so it
      never touches WordPress's own unrelated admin UI elsewhere on the page. */
-  #totalsecwp-app {
+  #loyalsec-app {
     color-scheme: dark;
   }
 }
@@ -69,7 +69,7 @@ body.admin-color-midnight {
   --ts-muted: #96a1b0;
   --ts-line: #2a323f;
 }
-body.admin-color-midnight #totalsecwp-app {
+body.admin-color-midnight #loyalsec-app {
   color-scheme: dark;
 }
 
@@ -79,7 +79,7 @@ body.admin-color-midnight #totalsecwp-app {
  * so neither rule below matches and the ambient triggers above decide, unchanged. "Light" needs
  * its own explicit block (not just "absence of dark") so it can override an OS/WP-core dark
  * preference the visitor wants overridden for this app specifically. */
-#totalsecwp-app[data-theme='dark'] {
+#loyalsec-app[data-theme='dark'] {
   --ts-bg: #10141c;
   --ts-surface: #1a212c;
   --ts-ink: #e6e9ee;
@@ -87,7 +87,7 @@ body.admin-color-midnight #totalsecwp-app {
   --ts-line: #2a323f;
   color-scheme: dark;
 }
-#totalsecwp-app[data-theme='light'] {
+#loyalsec-app[data-theme='light'] {
   --ts-bg: #f6f7fb;
   --ts-surface: #ffffff;
   --ts-ink: #1d2327;
@@ -97,10 +97,10 @@ body.admin-color-midnight #totalsecwp-app {
 }
 
 /* Reset within our wrap so WP admin styles don't bleed too much. */
-.totalsecwp-wrap {
+.loyalsec-wrap {
   margin: 16px 20px 40px 0;
 }
-.totalsecwp-wrap * {
+.loyalsec-wrap * {
   box-sizing: border-box;
 }
 
@@ -112,10 +112,10 @@ body.admin-color-midnight #totalsecwp-app {
    plugin stays stuck in light-mode ink even when everything around it correctly went dark. One
    ID-scoped rule (specificity 1,0,1) beats WP core's bare element selector (0,0,1) and covers
    every heading anywhere in the app in one place, instead of patching each title class. */
-#totalsecwp-app h1,
-#totalsecwp-app h2,
-#totalsecwp-app h3,
-#totalsecwp-app h4 {
+#loyalsec-app h1,
+#loyalsec-app h2,
+#loyalsec-app h3,
+#loyalsec-app h4 {
   color: var(--ts-ink);
 }
 
@@ -129,16 +129,16 @@ body.admin-color-midnight #totalsecwp-app {
    selectors (0,1,1 at most) regardless of source order. Checkbox/radio/range are excluded since
    Toggle (ui.js) renders a visually-hidden checkbox and paints its own switch via sibling spans —
    giving the hidden input a background would be a no-op but is excluded for clarity. */
-#totalsecwp-app input:not([type='checkbox']):not([type='radio']):not([type='range']),
-#totalsecwp-app select,
-#totalsecwp-app textarea {
+#loyalsec-app input:not([type='checkbox']):not([type='radio']):not([type='range']),
+#loyalsec-app select,
+#loyalsec-app textarea {
   background-color: var(--ts-surface);
   color: var(--ts-ink);
 }
 
-#totalsecwp-app {
+#loyalsec-app {
   /* Boot placeholder. */
-  .totalsecwp-boot {
+  .loyalsec-boot {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -146,7 +146,7 @@ body.admin-color-midnight #totalsecwp-app {
     padding: 80px 0;
     color: var(--ts-muted);
   }
-  .totalsecwp-spinner,
+  .loyalsec-spinner,
   .ts-spinner {
     width: 26px;
     height: 26px;
@@ -2230,17 +2230,17 @@ body.admin-color-midnight #totalsecwp-app {
   }
 
   /* Admin bar security score */
-  #wpadminbar #wp-admin-bar-totalsecwp-score .ab-item {
+  #wpadminbar #wp-admin-bar-loyalsec-score .ab-item {
     font-weight: 700;
     padding: 0 10px;
   }
-  #wpadminbar #wp-admin-bar-totalsecwp-score.is-good .ab-item {
+  #wpadminbar #wp-admin-bar-loyalsec-score.is-good .ab-item {
     color: #46b450 !important;
   }
-  #wpadminbar #wp-admin-bar-totalsecwp-score.is-mid .ab-item {
+  #wpadminbar #wp-admin-bar-loyalsec-score.is-mid .ab-item {
     color: #f0b849 !important;
   }
-  #wpadminbar #wp-admin-bar-totalsecwp-score.is-bad .ab-item {
+  #wpadminbar #wp-admin-bar-loyalsec-score.is-bad .ab-item {
     color: #dc3232 !important;
   }
 
@@ -2969,7 +2969,7 @@ body.admin-color-midnight #totalsecwp-app {
     border-color: var(--ts-brand);
   }
   .ts-csp-preset--active {
-    border-color: var(--ts-ok);
+    border-color: var(--ts-good);
     background: #f0fdf4;
     color: #1e293b;
   }
@@ -2995,7 +2995,7 @@ body.admin-color-midnight #totalsecwp-app {
     top: 5px;
     right: 6px;
     font-size: 12px;
-    color: var(--ts-ok);
+    color: var(--ts-good);
     font-weight: 700;
   }
 
@@ -3770,4 +3770,11 @@ body.admin-color-midnight #totalsecwp-app {
   .ts-cloud-alert__cta:hover {
     background: #005a99;
   }
+}
+
+/* DB-IP attribution (CC BY 4.0) under every screen. */
+#loyalsec-app .ts-footer-credit {
+	padding: 8px 24px 16px;
+	font-size: 12px;
+	color: var(--ts-muted);
 }

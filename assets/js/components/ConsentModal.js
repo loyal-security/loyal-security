@@ -1,7 +1,7 @@
 /**
  * First-load GDPR consent modal for anonymous firewall-bypass telemetry.
  *
- * Shown once (per policy version) when window.TotalSecurityWP.telemetry.needs_consent is true.
+ * Shown once (per policy version) when window.LoyalSecurity.telemetry.needs_consent is true.
  * Records an explicit accept/decline; nothing is ever transmitted until the user accepts.
  */
 import { h, useState } from '../el.js';
@@ -19,9 +19,9 @@ export function ConsentModal( { onResolved } ) {
 		setBusy( accepted ? 'accept' : 'decline' );
 		try {
 			await api.post( '/telemetry/consent', { accepted } );
-			if ( window.TotalSecurityWP && window.TotalSecurityWP.telemetry ) {
-				window.TotalSecurityWP.telemetry.needs_consent = false;
-				window.TotalSecurityWP.telemetry.consent_given = accepted;
+			if ( window.LoyalSecurity && window.LoyalSecurity.telemetry ) {
+				window.LoyalSecurity.telemetry.needs_consent = false;
+				window.LoyalSecurity.telemetry.consent_given = accepted;
 			}
 		} catch ( e ) {
 			// The save FAILED — do not report the choice as resolved. Previously onResolved was

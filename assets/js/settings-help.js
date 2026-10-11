@@ -47,6 +47,11 @@ export const SETTINGS_HELP = {
 		on: 'Only these sources are believed when resolving the real client IP, so the header can’t be spoofed by random visitors.',
 		off: 'Empty + “trust proxy” on means any client can forge their IP and evade bans. Fill in your CDN/load-balancer ranges.',
 	},
+	'firewall.trust_cloudflare': {
+		what: 'Reads the visitor’s real IP from Cloudflare’s CF-Connecting-IP header, but only when the request comes from one of Cloudflare’s published addresses (bundled with the plugin).',
+		on: 'Sites behind Cloudflare see real visitor addresses with no setup. Sites not behind Cloudflare are unaffected: their visitors never connect from Cloudflare’s addresses. Cloudflare addresses are also never banned or allowlisted.',
+		off: 'Behind Cloudflare, every visitor looks like a Cloudflare address, so bans, rate limits and logs use the wrong IP unless you add Cloudflare’s ranges under Trusted proxies yourself.',
+	},
 	'firewall.disabled_rules': {
 		what: 'Firewall signature IDs you have explicitly switched off.',
 		on: 'Use this to silence a specific rule that causes a false positive on your site.',
@@ -112,15 +117,30 @@ export const SETTINGS_HELP = {
 		on: 'Filters out lazy bots and scripts, most of which omit a User-Agent.',
 		off: 'Leaving it off (default) avoids blocking rare legitimate tools/monitors that don’t set a User-Agent.',
 	},
+	'firewall.block_http_clients': {
+		what: 'Also blocks generic HTTP libraries: curl, python-requests, Go-http-client and WinHTTP.',
+		on: 'Turns away simple scripts that do not bother to disguise themselves.',
+		off: 'Leaving it off (default) keeps payment webhooks, shipping/accounting integrations, uptime checks and server cron jobs working; many of them use these clients.',
+	},
+	'firewall.block_seo_crawlers': {
+		what: 'Also blocks SEO and backlink crawlers: AhrefsBot, SemrushBot, MJ12bot, DotBot, PetalBot and MegaIndex.',
+		on: 'Saves bandwidth on sites that do not use these tools.',
+		off: 'Leaving it off (default) lets SEO tools you run on your own site crawl it, and keeps Petal Search indexing it.',
+	},
 	'firewall.custom_bad_agents': {
 		what: 'Extra User-Agent substrings to block (one per line), on top of the built-in bad-bot list.',
 		on: 'Add the signatures of bots/scrapers you specifically want to keep out.',
 		off: 'Only the built-in list applies. A niche scraper hitting your site won’t be blocked until you add it here.',
 	},
 	'firewall.geo_mode': {
-		what: 'Country-based access control: off, allow-list only, or block-list.',
-		on: '“allow” lets in only the countries you list; “block” keeps out the countries you list.',
+		what: 'Country-based access control: off, allow-list only, or block-list. Countries come from your CDN’s header when the request really came through it (Cloudflare, or a trusted proxy), otherwise from the IP-to-country table bundled with the plugin: IP Geolocation by DB-IP (db-ip.com, CC BY 4.0), updated with each release. No outside service is contacted.',
+		on: '“allow” lets in only the countries you list; “block” keeps out the countries you list. Addresses with no known country (private networks, unallocated ranges) are never blocked.',
 		off: '“off” means no geographic filtering. Misconfiguring “allow” with an empty list can lock out your whole audience — set the countries first.',
+	},
+	'firewall.geo_credit_on_block_page': {
+		what: 'Adds a small “IP Geolocation by DB-IP” link to the page a visitor sees when a country rule blocks them.',
+		on: 'Country rules use the free DB-IP Lite data bundled with the plugin (CC BY 4.0). DB-IP asks sites that use it for a link back on pages that use its results; turning this on gives that credit on your public block page.',
+		off: 'Off by default, because plugins may not add credit links to your public site without your consent. The Loyal Security admin screens always show the credit.',
 	},
 	'firewall.geo_countries': {
 		what: 'The list of two-letter country codes the geo rule applies to.',
@@ -140,8 +160,8 @@ export const SETTINGS_HELP = {
 		off: 'WordPress runs with its permissive defaults, exposing more surface for reconnaissance and attack.',
 	},
 	'hardening.obfuscate_version': {
-		what: 'Hides the WordPress version from your pages and asset URLs.',
-		on: 'Attackers can’t trivially see which version you run, making it harder to target version-specific exploits.',
+		what: 'Hides the WordPress version from your public pages: removes the generator tag and replaces each asset’s ?ver= with a short hash unique to this site (wp-admin is left as it is).',
+		on: 'Bots can’t read your versions from the page source. Updates still reach visitors and CDNs straight away, because a new version gives a new hash. A determined scanner can still identify a version by fingerprinting core files.',
 		off: 'Your exact WP version is published in the page source, letting bots match it to known vulnerabilities.',
 	},
 	'hardening.disable_xmlrpc': {

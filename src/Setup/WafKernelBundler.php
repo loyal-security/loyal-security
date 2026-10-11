@@ -2,15 +2,15 @@
 /**
  * Deploys a standalone copy of the WAF kernel outside the plugin directory.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Setup;
+namespace LoyalSecurity\Setup;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Firewall\BanStore;
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Modules\Firewall\BanStore;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * The WAF kernel classes (`src/Waf/*.php`), `src/Support/Ip.php`, and the two bundled rule data
@@ -31,7 +31,7 @@ use TotalSecurityWP\Support\Filesystem;
  * also gets the rendered prepend bootstrapper itself ({@see PrependBootstrapTemplate}).
  *
  * Not shipped in source, not tracked, regenerated on demand — mirrors
- * {@see \TotalSecurityWP\Modules\Backup\RecoveryScriptTemplate}'s pattern for the standalone
+ * {@see \LoyalSecurity\Modules\Backup\RecoveryScriptTemplate}'s pattern for the standalone
  * recovery endpoint, applied to the larger WAF kernel.
  */
 class WafKernelBundler {
@@ -40,7 +40,7 @@ class WafKernelBundler {
 	private const MASTER_GUARD = "defined( 'ABSPATH' ) || exit;";
 
 	/** Guard used by the relocated, deployed copies (must tolerate running pre-WordPress). */
-	private const DEPLOYED_GUARD = "if ( ! defined( 'ABSPATH' ) && ! defined( 'TOTALSECWP_WAF_PREPEND' ) ) {\n\texit;\n}";
+	private const DEPLOYED_GUARD = "if ( ! defined( 'ABSPATH' ) && ! defined( 'LOYALSEC_WAF_PREPEND' ) ) {\n\texit;\n}";
 
 	/**
 	 * Absolute path to the deployed WAF-kernel bundle directory, or '' if the uploads directory
@@ -56,7 +56,7 @@ class WafKernelBundler {
 	 * rewritten so they can run pre-WordPress), the rendered prepend bootstrapper, and the
 	 * directory hardening. Safe to call any time Optimized Mode is enabled or being deployed —
 	 * used by the Setup Wizard's initial deploy and by
-	 * {@see \TotalSecurityWP\Modules\Firewall\FirewallModule::maybe_resync_deployed_kernel()}
+	 * {@see \LoyalSecurity\Modules\Firewall\FirewallModule::maybe_resync_deployed_kernel()}
 	 * whenever the master source could have changed.
 	 */
 	public function sync(): bool {
@@ -73,12 +73,12 @@ class WafKernelBundler {
 			return str_replace( self::MASTER_GUARD, self::DEPLOYED_GUARD, $contents );
 		};
 
-		$ok = Filesystem::copy_dir( TOTALSECWP_PATH . 'src/Waf', $dir . '/src/Waf', $transform );
-		$ok = $ok && $this->guarded_copy( TOTALSECWP_PATH . 'src/Support/Ip.php', $dir . '/src/Support/Ip.php' );
-		$ok = $ok && $this->guarded_copy( TOTALSECWP_PATH . 'data/waf-signatures.php', $dir . '/data/waf-signatures.php' );
-		$ok = $ok && $this->guarded_copy( TOTALSECWP_PATH . 'data/virtual-patches.php', $dir . '/data/virtual-patches.php' );
+		$ok = Filesystem::copy_dir( LOYALSEC_PATH . 'src/Waf', $dir . '/src/Waf', $transform );
+		$ok = $ok && $this->guarded_copy( LOYALSEC_PATH . 'src/Support/Ip.php', $dir . '/src/Support/Ip.php' );
+		$ok = $ok && $this->guarded_copy( LOYALSEC_PATH . 'data/waf-signatures.php', $dir . '/data/waf-signatures.php' );
+		$ok = $ok && $this->guarded_copy( LOYALSEC_PATH . 'data/virtual-patches.php', $dir . '/data/virtual-patches.php' );
 
-		$bootstrap_path = $dir . '/totalsecwp-waf.php';
+		$bootstrap_path = $dir . '/loyalsec-waf.php';
 		$ok             = $ok && Filesystem::write( $bootstrap_path, PrependBootstrapTemplate::render() );
 		if ( $ok && function_exists( 'opcache_invalidate' ) ) {
 			opcache_invalidate( $bootstrap_path, true );

@@ -2,14 +2,14 @@
 /**
  * HTTP client for submitting an approved auto-drafted virtual-patch rule to LicenseKit.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\LicenseKit;
+use LoyalSecurity\Core\LicenseKit;
 
 /**
  * Ships a site-derived {@see PatchSuggester} rule — never a file hash — to LicenseKit so it
@@ -35,7 +35,7 @@ class PatchSubmissionClient {
 		}
 
 		$body = array(
-			'plugin_version' => defined( 'TOTALSECWP_VERSION' ) ? TOTALSECWP_VERSION : '',
+			'plugin_version' => defined( 'LOYALSEC_VERSION' ) ? LOYALSEC_VERSION : '',
 			'timestamp'      => time(),
 			'suggestion'     => array(
 				'rule'     => $rule,
@@ -48,7 +48,7 @@ class PatchSubmissionClient {
 			$endpoint,
 			array(
 				'timeout'    => 10,
-				'user-agent' => \TotalSecurityWP\Support\Http::user_agent(),
+				'user-agent' => \LoyalSecurity\Support\Http::user_agent(),
 				'headers'    => LicenseKit::auth_headers( $json, $license_key ),
 				'body'       => $json,
 			)
@@ -57,13 +57,13 @@ class PatchSubmissionClient {
 		if ( is_wp_error( $response ) ) {
 			// Was a silent black box before — same class of mistake already fixed once for
 			// telemetry registration. Log so a persistently-failing submission is diagnosable.
-			\TotalSecurityWP\Support\Debug::log( 'patch submission failed: ' . $response->get_error_message() );
+			\LoyalSecurity\Support\Debug::log( 'patch submission failed: ' . $response->get_error_message() );
 			return array( 'ok' => false, 'error' => $response->get_error_message() );
 		}
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		$raw_body = (string) wp_remote_retrieve_body( $response );
 		if ( $code < 200 || $code >= 300 ) {
-			\TotalSecurityWP\Support\Debug::log( 'patch submission failed: HTTP ' . $code . ' — ' . substr( $raw_body, 0, 500 ) );
+			\LoyalSecurity\Support\Debug::log( 'patch submission failed: HTTP ' . $code . ' — ' . substr( $raw_body, 0, 500 ) );
 			return array( 'ok' => false, 'error' => 'http_' . $code, 'body' => substr( $raw_body, 0, 500 ) );
 		}
 

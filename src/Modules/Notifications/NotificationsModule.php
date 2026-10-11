@@ -2,20 +2,21 @@
 /**
  * Notifications module — email alerts for security events.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Notifications;
+namespace LoyalSecurity\Modules\Notifications;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Core\Cron;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Core\Cron;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Sends real-time email alerts when security events are logged.
  *
- * Hooks onto the `totalsecwp_event_logged` action that {@see \TotalSecurityWP\Modules\Audit\Logger}
+ * Hooks onto the `loyalsec_event_logged` action that {@see \LoyalSecurity\Modules\Audit\Logger}
  * fires after every write. Throttling is transient-based (no extra table needed).
  */
 class NotificationsModule extends AbstractModule {
@@ -26,6 +27,32 @@ class NotificationsModule extends AbstractModule {
 
 	public function title(): string {
 		return __( 'Notifications', 'loyal-security' );
+	}
+
+	/**
+	 * Event types muted by default: blocked-and-handled noise. Attacks on a vulnerable plugin
+	 * (virtual patches), lockouts, file changes, new administrators and the like still email.
+	 *
+	 * @return string[]
+	 */
+	public static function default_muted_events(): array {
+		return array(
+			EventCatalog::WAF_BLOCK,
+			EventCatalog::WAF_BOT_BLOCK,
+			EventCatalog::WAF_RATE_LIMIT,
+			EventCatalog::WAF_QUERY_CARDINALITY,
+			EventCatalog::WAF_GEO_BLOCK,
+			EventCatalog::LOGIN_FAILED,
+			EventCatalog::LOGIN_BLOCKED,
+			EventCatalog::AUTHOR_ENUM_BLOCKED,
+			EventCatalog::LOGIN_URL_PROBE_BLOCKED,
+			EventCatalog::XMLRPC_PROBE,
+			EventCatalog::XMLRPC_MULTICALL,
+			EventCatalog::CORS_BLOCKED,
+			EventCatalog::CSRF_ATTEMPT,
+			EventCatalog::HOST_INJECTION,
+			EventCatalog::HONEYPOT_HIT,
+		);
 	}
 
 	public function default_settings(): array {
@@ -45,7 +72,10 @@ class NotificationsModule extends AbstractModule {
 			/* --- Muted event types --- */
 			// List of event-type strings that should NEVER trigger a notification on any
 			// channel (they are still recorded in the audit log). Managed from the UI.
-			'muted_events'         => array(),
+			// By default: requests the firewall already blocked and handled. Every site sees
+			// these from bots all day, and a store sees a failed sign-in for every customer
+			// typo; emailing each one buried the alerts that need action.
+			'muted_events'         => self::default_muted_events(),
 
 			/* --- History --- */
 			'history_enabled'      => true,         // record sent notifications for the history view
@@ -77,7 +107,7 @@ class NotificationsModule extends AbstractModule {
 
 	public function boot(): void {
 		$dispatcher = new Dispatcher( $this );
-		add_action( 'totalsecwp_event_logged', array( $dispatcher, 'handle' ), 10, 3 );
+		add_action( 'loyalsec_event_logged', array( $dispatcher, 'handle' ), 10, 3 );
 
 		// Prune sent-notification history on the shared daily prune cron.
 		add_action( Cron::PRUNE_LOGS, array( $this, 'prune_history' ) );

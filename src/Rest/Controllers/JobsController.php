@@ -2,15 +2,15 @@
 /**
  * Job-progress polling endpoint.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Support\JobStore;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Support\JobStore;
 use WP_REST_Request;
 
 /**
@@ -40,7 +40,7 @@ class JobsController extends AbstractController {
 		$id  = (string) $request->get_param( 'id' );
 		$job = JobStore::get( $id );
 		if ( ! $job ) {
-			return $this->fail( 'totalsecwp_job_not_found', __( 'Job not found or expired.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_job_not_found', __( 'Job not found or expired.', 'loyal-security' ), 404 );
 		}
 		return $this->ok( $job );
 	}

@@ -2,17 +2,17 @@
 /**
  * Threat Intelligence module — feed sync and CVE scanning.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\ThreatIntel;
+namespace LoyalSecurity\Modules\ThreatIntel;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Core\Cron;
-use TotalSecurityWP\Core\ProStatus;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Core\Cron;
+use LoyalSecurity\Core\ProStatus;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Coordinates the feed client, signature verifier, on-disk store, and CVE scanner.
@@ -44,7 +44,7 @@ class ThreatIntelModule extends AbstractModule {
 		add_action( Cron::THREATINTEL_SYNC, array( $this, 'run_scheduled_sync' ) );
 
 		// Re-apply the sync schedule whenever settings are saved (auto-sync on/off).
-		add_action( 'update_option_' . TOTALSECWP_OPTION_SETTINGS, array( $this, 'maybe_reschedule' ) );
+		add_action( 'update_option_' . LOYALSEC_OPTION_SETTINGS, array( $this, 'maybe_reschedule' ) );
 
 		// Surface known vulnerabilities inline on the Plugins / Themes / Updates screens.
 		if ( is_admin() ) {
@@ -54,7 +54,7 @@ class ThreatIntelModule extends AbstractModule {
 			add_filter( 'theme_row_meta', array( $this, 'theme_row_vuln_notice' ), 10, 4 );
 
 			// Invalidate the per-slug vulnerability cache when the CVE feed changes.
-			add_action( 'totalsecwp_feed_updated', array( $this, 'flush_vuln_cache' ) );
+			add_action( 'loyalsec_feed_updated', array( $this, 'flush_vuln_cache' ) );
 		}
 	}
 
@@ -75,7 +75,7 @@ class ThreatIntelModule extends AbstractModule {
 			return null;
 		}
 
-		$cache_key = 'totalsecwp_vuln_index_' . $type . '_' . md5( $slug );
+		$cache_key = 'loyalsec_vuln_index_' . $type . '_' . md5( $slug );
 		$cached    = get_transient( $cache_key );
 		if ( is_array( $cached ) ) {
 			$hit = $cached['hit'] ?? null;
@@ -127,8 +127,8 @@ class ThreatIntelModule extends AbstractModule {
 			$wpdb->prepare(
 				'DELETE FROM %i WHERE option_name LIKE %s OR option_name LIKE %s',
 				$wpdb->options,
-				$wpdb->esc_like( '_transient_totalsec_vuln_index_' ) . '%',
-				$wpdb->esc_like( '_transient_timeout_totalsec_vuln_index_' ) . '%'
+				$wpdb->esc_like( '_transient_loyalsec_vuln_index_' ) . '%',
+				$wpdb->esc_like( '_transient_timeout_loyalsec_vuln_index_' ) . '%'
 			)
 		);
 	}
@@ -221,12 +221,12 @@ class ThreatIntelModule extends AbstractModule {
 		if ( ! in_array( $hook_suffix, array( 'plugins.php', 'themes.php', 'update-core.php' ), true ) ) {
 			return;
 		}
-		wp_register_style( 'totalsecwp-row-meta', false, array(), TOTALSECWP_VERSION );
-		wp_enqueue_style( 'totalsecwp-row-meta' );
+		wp_register_style( 'loyalsec-row-meta', false, array(), LOYALSEC_VERSION );
+		wp_enqueue_style( 'loyalsec-row-meta' );
 		wp_add_inline_style(
-			'totalsecwp-row-meta',
-			'.totalsecwp-vuln-link{color:#dc3232;font-weight:600}'
-			. '.totalsecwp-vuln-link .dashicons{font-size:14px;height:14px;width:14px;vertical-align:text-top}'
+			'loyalsec-row-meta',
+			'.loyalsec-vuln-link{color:#dc3232;font-weight:600}'
+			. '.loyalsec-vuln-link .dashicons{font-size:14px;height:14px;width:14px;vertical-align:text-top}'
 		);
 	}
 
@@ -246,7 +246,7 @@ class ThreatIntelModule extends AbstractModule {
 			: __( 'Known security vulnerability', 'loyal-security' );
 
 		return sprintf(
-			'<a href="%1$s" class="totalsecwp-vuln-link"><span class="dashicons dashicons-warning" aria-hidden="true"></span> %2$s</a>',
+			'<a href="%1$s" class="loyalsec-vuln-link"><span class="dashicons dashicons-warning" aria-hidden="true"></span> %2$s</a>',
 			esc_url( admin_url( 'admin.php?page=loyal-security#/threatintel' ) ),
 			esc_html( $label )
 		);
@@ -365,7 +365,7 @@ class ThreatIntelModule extends AbstractModule {
 
 	/**
 	 * Reschedule the sync cron when the license tier may have changed.
-	 * Hooked on update_option_totalsecwp_settings.
+	 * Hooked on update_option_loyalsec_settings.
 	 */
 	public function maybe_reschedule(): void {
 		if ( ! $this->is_enabled() || ! $this->setting( 'auto_sync', true ) ) {
@@ -388,12 +388,12 @@ class ThreatIntelModule extends AbstractModule {
 	}
 
 	/** Option holding feed sync health (kept out of the settings option to avoid its save cascade). */
-	private const HEALTH_OPTION = 'totalsecwp_feed_health';
+	private const HEALTH_OPTION = 'loyalsec_feed_health';
 
 	/**
 	 * Record the outcome of a sync run for the "is my threat feed actually updating?" health
 	 * signal. Stored in a dedicated option (NOT the settings option) so writing it every sync
-	 * does not fire update_option_totalsecwp_settings (write_waf_config + cron reschedule).
+	 * does not fire update_option_loyalsec_settings (write_waf_config + cron reschedule).
 	 *
 	 * @param bool                  $reached Whether the feed server responded meaningfully for at
 	 *   least one dataset this run (new data OR a confirmed "already current" — see
@@ -430,7 +430,7 @@ class ThreatIntelModule extends AbstractModule {
 			return false; // Never attempted (fresh install) — don't nag.
 		}
 		$last_ok   = isset( $health['last_success'] ) ? (int) strtotime( (string) $health['last_success'] . ' UTC' ) : 0;
-		$threshold = (int) apply_filters( 'totalsecwp_feed_stale_seconds', 3 * DAY_IN_SECONDS );
+		$threshold = (int) apply_filters( 'loyalsec_feed_stale_seconds', 3 * DAY_IN_SECONDS );
 		return $last_ok <= 0 || ( time() - $last_ok ) > $threshold;
 	}
 
@@ -457,7 +457,7 @@ class ThreatIntelModule extends AbstractModule {
 
 	/**
 	 * Emit a one-time "you are protected, update when you can" event for each patch-gap rule
-	 * that newly covers an installed plugin. The audit Logger fires `totalsecwp_event_logged`,
+	 * that newly covers an installed plugin. The audit Logger fires `loyalsec_event_logged`,
 	 * which the Notifications module turns into email/webhook alerts per the operator's channel
 	 * settings — so this stays fully decoupled from that module.
 	 *

@@ -2,10 +2,10 @@
 /**
  * Groups open findings into one-click repair actions.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -20,7 +20,7 @@ class FindingTriage {
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_scan_findings';
+		return $wpdb->prefix . 'loyalsec_scan_findings';
 	}
 
 	/**
@@ -116,7 +116,7 @@ class FindingTriage {
 	 * @return array{kind:string,slug?:string}
 	 */
 	private function classify( string $raw, array $known_slugs ): array {
-		if ( preg_match( '/^(post|option|user|comment|db|theme):/i', $raw ) ) {
+		if ( preg_match( '/^(post|postmeta|term|termmeta|option|user|usermeta|comment|snippet|db|theme):/i', $raw ) ) {
 			return array( 'kind' => 'db' );
 		}
 
@@ -124,25 +124,25 @@ class FindingTriage {
 
 		// Absolute paths: match against where this site actually keeps each directory, so a
 		// renamed or relocated content directory is still classified correctly.
-		$plugins = wp_normalize_path( \TotalSecurityWP\Support\Paths::plugins() ) . '/';
+		$plugins = wp_normalize_path( \LoyalSecurity\Support\Paths::plugins() ) . '/';
 		if ( 0 === strpos( $p, $plugins ) ) {
 			$first = (string) strtok( substr( $p, strlen( $plugins ) ), '/' );
 			return array( 'kind' => 'plugin', 'slug' => ( substr( $first, -4 ) === '.php' ? '.' : $first ) );
 		}
-		if ( 0 === strpos( $p, wp_normalize_path( \TotalSecurityWP\Support\Paths::themes() ) . '/' ) ) {
+		if ( 0 === strpos( $p, wp_normalize_path( \LoyalSecurity\Support\Paths::themes() ) . '/' ) ) {
 			return array( 'kind' => 'theme' );
 		}
-		if ( 0 === strpos( $p, wp_normalize_path( \TotalSecurityWP\Support\Paths::content() ) . '/' ) ) {
+		if ( 0 === strpos( $p, wp_normalize_path( \LoyalSecurity\Support\Paths::content() ) . '/' ) ) {
 			return array( 'kind' => 'other' );
 		}
-		if ( 0 === strpos( $p, wp_normalize_path( \TotalSecurityWP\Support\Paths::admin() ) . '/' ) || 0 === strpos( $p, wp_normalize_path( \TotalSecurityWP\Support\Paths::includes() ) . '/' ) ) {
+		if ( 0 === strpos( $p, wp_normalize_path( \LoyalSecurity\Support\Paths::admin() ) . '/' ) || 0 === strpos( $p, wp_normalize_path( \LoyalSecurity\Support\Paths::includes() ) . '/' ) ) {
 			return array( 'kind' => 'core' );
 		}
 
 		// Integrity findings store paths relative to the WordPress root / the plugins dir;
 		// absolute root-level files are reduced to the same relative form.
-		$rel = ltrim( \TotalSecurityWP\Support\Paths::relative( $p ), '/' );
-		if ( 0 === strpos( $rel, 'wp-admin/' ) || 0 === strpos( $rel, WPINC . '/' ) ) {
+		$rel = ltrim( \LoyalSecurity\Support\Paths::relative( $p ), '/' );
+		if ( 0 === strpos( $rel, \LoyalSecurity\Support\Paths::admin_name() . '/' ) || 0 === strpos( $rel, WPINC . '/' ) ) {
 			return array( 'kind' => 'core' );
 		}
 		if ( preg_match( '#^(index\.php|xmlrpc\.php|wp-[a-z0-9-]+\.php)$#', $rel ) ) {

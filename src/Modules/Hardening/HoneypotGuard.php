@@ -10,17 +10,16 @@
  * Detection runs on template_redirect (after WordPress has resolved the request but
  * before a template is rendered) and compares the request path only, case-insensitively.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Modules\Firewall\BanStore;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
+use LoyalSecurity\Modules\Firewall\BanStore;
 
 class HoneypotGuard {
 
@@ -84,7 +83,7 @@ class HoneypotGuard {
 			return;
 		}
 
-		$ip = Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() );
+		$ip = \LoyalSecurity\Modules\Firewall\IpResolver::request_ip();
 		$ua = substr( sanitize_text_field( wp_unslash( (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ) ) ), 0, 200 );
 
 		$this->logger->log(

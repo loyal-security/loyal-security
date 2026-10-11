@@ -1,0 +1,22 @@
+country.dat - IP address to country data
+
+IP Geolocation by DB-IP: https://db-ip.com
+Source: "IP to Country Lite" database, release 2026-10 (dbip-country-lite-2026-10.csv.gz),
+downloaded from https://db-ip.com/db/lite.php
+
+Licence: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Changes made: the CSV was converted into a compact binary lookup table (each range's first
+address plus a country-code index; IPv6 ranges are stored per /64). No country assignments were
+added or altered. The conversion is documented in the CountryTable class
+(src/Modules/Firewall/CountryTable.php).
+
+DB-IP provides this data "as is", without warranty; the Lite edition has reduced coverage and
+accuracy compared with DB-IP's commercial databases.
+
+Attribution in this plugin: every Loyal Security admin screen links to DB-IP, notification emails
+that include a country carry the same link, and the readme credits it. The page shown to a visitor
+blocked by a country rule can show the link too (Firewall setting "geo_credit_on_block_page"; off by
+default because WordPress.org does not allow credit links on the public site without the site
+owner's consent).

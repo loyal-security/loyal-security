@@ -2,14 +2,14 @@
 /**
  * Heuristic malware scanner engine (regex signatures + token analysis).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Scanner;
+namespace LoyalSecurity\Modules\Scanner;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Contracts\ScannerInterface;
+use LoyalSecurity\Contracts\ScannerInterface;
 
 /**
  * The core file analyser. Combines the high-confidence regex {@see SignatureDb} with the
@@ -25,14 +25,20 @@ class HeuristicScanner implements ScannerInterface {
 	/** @var array<string, bool> Allowlisted SHA-256 hashes of known-good files. */
 	private array $allow_hashes;
 
+	/** @var array<string, string> Known-good files: normalized absolute path => SHA-256 of its shipped content. */
+	private array $trusted_files;
+
 	/**
-	 * @param array<string, bool> $allow_hashes Optional known-good hash allowlist.
+	 * @param array<string, bool>   $allow_hashes  Optional known-good hash allowlist.
+	 * @param TaintAnalyzer|null    $taint         Optional taint analyser.
+	 * @param array<string, string> $trusted_files Optional path => SHA-256 map ({@see TrustedFiles::map()}).
 	 */
-	public function __construct( ?SignatureDb $signatures = null, ?TokenAnalyzer $tokens = null, array $allow_hashes = array(), ?TaintAnalyzer $taint = null ) {
-		$this->signatures   = $signatures ?? new SignatureDb();
-		$this->tokens       = $tokens ?? new TokenAnalyzer();
-		$this->taint        = $taint ?? new TaintAnalyzer();
-		$this->allow_hashes = $allow_hashes;
+	public function __construct( ?SignatureDb $signatures = null, ?TokenAnalyzer $tokens = null, array $allow_hashes = array(), ?TaintAnalyzer $taint = null, array $trusted_files = array() ) {
+		$this->signatures    = $signatures ?? new SignatureDb();
+		$this->tokens        = $tokens ?? new TokenAnalyzer();
+		$this->taint         = $taint ?? new TaintAnalyzer();
+		$this->allow_hashes  = $allow_hashes;
+		$this->trusted_files = $trusted_files;
 	}
 
 	/**
@@ -51,6 +57,16 @@ class HeuristicScanner implements ScannerInterface {
 		if ( $this->allow_hashes ) {
 			$hash = hash( 'sha256', $content );
 			if ( isset( $this->allow_hashes[ $hash ] ) ) {
+				return array();
+			}
+		}
+
+		// A known file at its own path, byte-for-byte as shipped (e.g. this plugin's signature
+		// lists, which match the very patterns they describe). Any change, or any other file
+		// placed beside it, is scanned as normal.
+		if ( $this->trusted_files ) {
+			$norm = wp_normalize_path( $path );
+			if ( isset( $this->trusted_files[ $norm ] ) && hash_equals( $this->trusted_files[ $norm ], hash( 'sha256', $content ) ) ) {
 				return array();
 			}
 		}
@@ -100,8 +116,8 @@ class HeuristicScanner implements ScannerInterface {
 		// the false-positive concern no longer applies.
 		if ( $skip_core ) {
 			$norm_path    = wp_normalize_path( $path );
-			$norm_abspath = untrailingslashit( wp_normalize_path( \TotalSecurityWP\Support\Paths::root() ) );
-			$core_dirs    = array( wp_normalize_path( \TotalSecurityWP\Support\Paths::includes() ), wp_normalize_path( \TotalSecurityWP\Support\Paths::admin() ) );
+			$norm_abspath = untrailingslashit( wp_normalize_path( \LoyalSecurity\Support\Paths::root() ) );
+			$core_dirs    = array( wp_normalize_path( \LoyalSecurity\Support\Paths::includes() ), wp_normalize_path( \LoyalSecurity\Support\Paths::admin() ) );
 			foreach ( $core_dirs as $core_dir ) {
 				if ( 0 === strpos( $norm_path, $core_dir . '/' ) ) {
 					return array();

@@ -2,10 +2,10 @@
 /**
  * Post-repair site health probe.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -60,16 +60,16 @@ class Loopback {
 	 * @return array{url:string,code:int,healthy:bool}
 	 */
 	private function probe( string $url ): array {
-		$url = add_query_arg( 'totalsecwp-loopback', (string) time(), $url );
+		$url = add_query_arg( 'loyalsec-loopback', (string) time(), $url );
 
 		$response = wp_remote_get(
 			$url,
 			array(
 				'timeout'     => 10,
 				'redirection' => 2,
-				'sslverify'   => \TotalSecurityWP\Support\Http::local_sslverify(),
+				'sslverify'   => \LoyalSecurity\Support\Http::local_sslverify(),
 				'blocking'    => true,
-				'user-agent'  => 'LoyalSecurity-Loopback/' . TOTALSECWP_VERSION,
+				'user-agent'  => 'LoyalSecurity-Loopback/' . LOYALSEC_VERSION,
 				'cookies'     => array(),
 			)
 		);

@@ -5,10 +5,10 @@
  * Events recorded here (before $wpdb exists) are reconciled into the audit `events` table
  * by the Firewall module on the next WordPress request.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Waf;
+namespace LoyalSecurity\Waf;
 
 defined( 'ABSPATH' ) || exit;
 

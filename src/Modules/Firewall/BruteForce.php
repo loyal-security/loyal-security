@@ -2,16 +2,16 @@
 /**
  * Login brute-force protection.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Modules\Audit\Logger;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Tracks failed/successful logins and escalates repeat offenders to temporary then
@@ -32,15 +32,17 @@ class BruteForce {
 	}
 
 	public function register_hooks(): void {
-		add_action( 'wp_login_failed', array( $this, 'on_failed' ), 10, 1 );
+		add_action( 'wp_login_failed', array( $this, 'on_failed' ), 10, 2 );
 		add_action( 'wp_login', array( $this, 'on_success' ), 10, 2 );
-		// Block authentication outright for banned IPs before credentials are checked.
-		add_filter( 'authenticate', array( $this, 'pre_auth_gate' ), 1 );
+		// Refuse sign-in for banned or locked-out addresses. Runs after WordPress's own
+		// checks: wp_authenticate_username_password() (priority 20) ignores an error returned
+		// before it and signs the user in anyway when the password is right.
+		add_filter( 'authenticate', array( $this, 'pre_auth_gate' ), 99 );
 	}
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_login_attempts';
+		return $wpdb->prefix . 'loyalsec_login_attempts';
 	}
 
 	/**
@@ -53,18 +55,92 @@ class BruteForce {
 		$ip = $this->ip->current();
 		if ( $this->bans->is_banned( $ip ) ) {
 			return new \WP_Error(
-				'totalsecwp_banned',
+				'loyalsec_banned',
 				__( 'Access from your IP address has been temporarily blocked due to suspicious activity.', 'loyal-security' )
+			);
+		}
+		$until = (int) get_transient( self::lock_key( $ip ) );
+		if ( $until > time() ) {
+			$minutes = max( 1, (int) ceil( ( $until - time() ) / 60 ) );
+			return new \WP_Error(
+				'loyalsec_login_locked',
+				sprintf(
+					/* translators: %d: minutes until sign-in is possible again. */
+					_n( 'Too many failed sign-in attempts. Please try again in %d minute, or reset your password.', 'Too many failed sign-in attempts. Please try again in %d minutes, or reset your password.', $minutes, 'loyal-security' ),
+					$minutes
+				)
 			);
 		}
 		return $user;
 	}
 
 	/**
-	 * @param string $username Attempted username.
+	 * Lock sign-in for an address without banning it from the site. For add-ons that tighten
+	 * sign-in temporarily (an emergency mode, for example).
+	 *
+	 * @since 1.5.1
+	 *
+	 * @param string $ip      Address.
+	 * @param int    $seconds Lockout length.
 	 */
-	public function on_failed( $username ): void {
+	public static function lock_sign_in( string $ip, int $seconds ): void {
+		if ( '' === $ip || $seconds < 1 ) {
+			return;
+		}
+		$until = time() + $seconds;
+		if ( (int) get_transient( self::lock_key( $ip ) ) < $until ) {
+			set_transient( self::lock_key( $ip ), $until, $seconds );
+		}
+	}
+
+	/**
+	 * Transient holding the end of an address's sign-in lockout.
+	 *
+	 * @param string $ip Address.
+	 */
+	private static function lock_key( string $ip ): string {
+		return 'loyalsec_login_lock_' . md5( $ip );
+	}
+
+	/**
+	 * Login errors that are prompts or incomplete forms, not wrong credentials. WordPress fires
+	 * `wp_login_failed` for every login error, including "enter your two-factor code" after a
+	 * correct password; counting those let a 2FA user collect failures just by signing in
+	 * normally (and get banned outright where a single failure bans).
+	 */
+	private const NOT_FAILURES = array( 'loyalsec_2fa_required', 'empty_username', 'empty_password', 'loyalsec_login_locked' );
+
+	/**
+	 * Whether a login error is a real failed attempt.
+	 *
+	 * @param mixed $error The WP_Error passed with `wp_login_failed` (WordPress 5.4+), if any.
+	 */
+	private function counts_as_failure( $error ): bool {
+		if ( ! $error instanceof \WP_Error ) {
+			return true;
+		}
+		/**
+		 * Filters the login error codes that are not counted as failed logins (prompts such as
+		 * "enter your code", rather than wrong credentials).
+		 *
+		 * @since 1.5.0
+		 *
+		 * @param string[] $codes Error codes.
+		 */
+		$ignored = (array) apply_filters( 'loyalsec_login_failure_ignored_codes', self::NOT_FAILURES );
+		$codes   = $error->get_error_codes();
+		return ! $codes || array_diff( $codes, $ignored );
+	}
+
+	/**
+	 * @param string $username Attempted username.
+	 * @param mixed  $error    The login error (WordPress 5.4+).
+	 */
+	public function on_failed( $username, $error = null ): void {
 		global $wpdb;
+		if ( ! $this->counts_as_failure( $error ) ) {
+			return;
+		}
 		$ip = $this->ip->current();
 
 		$wpdb->insert( // phpcs:ignore WordPress.DB
@@ -87,16 +163,38 @@ class BruteForce {
 		 * @param string $ip       Source IP address.
 		 * @param string $username Attempted username.
 		 */
-		do_action( 'totalsecwp_login_failed', $ip, (string) $username );
+		do_action( 'loyalsec_login_failed', $ip, (string) $username );
+
+		// Behind an unconfigured proxy every visitor shares one internal address; locking it would
+		// lock everyone out of sign-in. The attempt is recorded above; the owner is told to add
+		// the proxy under Trusted proxies.
+		if ( \LoyalSecurity\Support\Ip::behind_unknown_proxy( $ip, \LoyalSecurity\Support\RequestVars::ip_headers() ) ) {
+			return;
+		}
 
 		$window    = (int) $this->settings->get( 'firewall', 'bruteforce_window', 600 );
 		$max_fails = (int) $this->settings->get( 'firewall', 'bruteforce_max', 5 );
+
+		// Count the failures inside the window that came after this address's last successful
+		// sign-in: someone who mistyped twice, got in, and mistypes again later is not guessing.
+		$since       = time() - $window;
+		$last_signin = (string) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- live attempt log.
+			$wpdb->prepare(
+				'SELECT MAX(created_at) FROM %i WHERE ip = %s AND success = 1 AND created_at > %s',
+				$this->table(),
+				$ip,
+				gmdate( 'Y-m-d H:i:s', $since )
+			)
+		);
+		if ( '' !== $last_signin ) {
+			$since = max( $since, (int) strtotime( $last_signin . ' UTC' ) );
+		}
 
 		$recent = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM %i WHERE ip = %s AND success = 0 AND created_at > %s", $this->table(),
 				$ip,
-				gmdate( 'Y-m-d H:i:s', time() - $window )
+				gmdate( 'Y-m-d H:i:s', $since )
 			)
 		);
 
@@ -130,13 +228,23 @@ class BruteForce {
 				}
 			}
 
-			$this->bans->add(
-				$ip,
-				sprintf( 'Brute-force: %d failed logins', $recent ),
-				$permanent ? 'permanent' : 'temporary',
-				$permanent ? null : $lockout,
-				'bruteforce'
-			);
+			if ( $permanent ) {
+				// Four times the limit inside one window is a bot, not a person: the address
+				// loses the whole site.
+				$this->bans->add(
+					$ip,
+					sprintf( 'Brute-force: %d failed logins', $recent ),
+					'permanent',
+					null,
+					'bruteforce'
+				);
+			} else {
+				// Otherwise only sign-in is locked (for longer each time it happens again).
+				// Banning the whole site would also stop a customer who forgot their password
+				// from browsing and checking out, and a whole office or mobile network behind one
+				// address.
+				set_transient( self::lock_key( $ip ), time() + $lockout, $lockout );
+			}
 
 			$this->logger->log(
 				EventCatalog::WAF_BRUTEFORCE,
@@ -146,6 +254,7 @@ class BruteForce {
 					'permanent'       => $permanent,
 					'prior_offenses'  => $offenses,
 					'lockout_seconds' => $permanent ? null : $lockout,
+					'scope'           => $permanent ? 'site' : 'login',
 				)
 			);
 		}

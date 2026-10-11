@@ -2,21 +2,21 @@
 /**
  * Notifications REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Modules\Notifications\Dispatcher;
-use TotalSecurityWP\Modules\Notifications\NotificationLog;
-use TotalSecurityWP\Modules\Notifications\EventGuide;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Plugin;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Modules\Notifications\Dispatcher;
+use LoyalSecurity\Modules\Notifications\NotificationLog;
+use LoyalSecurity\Modules\Notifications\EventGuide;
+use LoyalSecurity\Modules\Audit\Logger;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Plugin;
 use WP_REST_Request;
 
 /**
@@ -123,7 +123,7 @@ class NotificationsController extends AbstractController {
 			return $this->fail( 'module_disabled', __( 'Notifications module is not active.', 'loyal-security' ), 503 );
 		}
 
-		/** @var \TotalSecurityWP\Modules\Notifications\NotificationsModule $module */
+		/** @var \LoyalSecurity\Modules\Notifications\NotificationsModule $module */
 		$dispatcher = new Dispatcher( $module );
 		$sent       = $dispatcher->send_test_email();
 
@@ -145,8 +145,8 @@ class NotificationsController extends AbstractController {
 			return $this->ok( array( 'active' => false ) );
 		}
 
-		/** @var \TotalSecurityWP\Modules\Notifications\NotificationsModule $module */
-		$email_count   = (int) get_transient( 'totalsecwp_notif_throttle_email' );
+		/** @var \LoyalSecurity\Modules\Notifications\NotificationsModule $module */
+		$email_count   = (int) get_transient( 'loyalsec_notif_throttle_email' );
 		$max           = (int) $module->get_setting( 'throttle_max', 10 );
 		$to            = (string) $module->get_setting( 'email_to', '' ) ?: (string) get_option( 'admin_email' );
 
@@ -383,6 +383,17 @@ class NotificationsController extends AbstractController {
 	 * @return array{action:string,value:string,description:string}
 	 */
 	private function whitelist_ip( string $ip ): array {
+		if ( \LoyalSecurity\Modules\Firewall\BanStore::is_proxy_address( $ip ) ) {
+			return array(
+				'action'      => 'refused_proxy_ip',
+				'value'       => $ip,
+				'description' => sprintf(
+					/* translators: IP address */
+					__( 'IP %s belongs to a proxy or CDN in front of your site (such as Cloudflare), so it was not allowlisted: that would let every visitor routed through it skip the firewall.', 'loyal-security' ),
+					$ip
+				),
+			);
+		}
 		$settings = $this->container->make( 'settings' );
 		$current  = array_values( array_unique( array_filter( (array) $settings->get( 'firewall', 'ip_whitelist', array() ) ) ) );
 		if ( ! in_array( $ip, $current, true ) ) {

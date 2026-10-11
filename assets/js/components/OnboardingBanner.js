@@ -3,7 +3,7 @@
  *
  * Fetches `/status/onboarding` (free); dismiss posts to `/status/onboarding/dismiss`. The
  * checklist is re-read whenever the screen changes, the browser tab regains focus, or another
- * screen reports a finished setup step (the `totalsecwp:setup-changed` window event, sent for
+ * screen reports a finished setup step (the `loyalsec:setup-changed` window event, sent for
  * example when a scan completes), so the next step appears as soon as the current one is done.
  * When the last step is completed while the banner is showing, it turns into a short "setup
  * complete" confirmation instead of disappearing without a word.
@@ -12,7 +12,7 @@ import { h, useState, useEffect, useRef } from '../el.js';
 import { api } from '../api.js';
 
 /** Window event other screens send after completing a setup step. */
-export const SETUP_CHANGED_EVENT = 'totalsecwp:setup-changed';
+export const SETUP_CHANGED_EVENT = 'loyalsec:setup-changed';
 
 export function OnboardingBanner() {
 	const [ data, setData ] = useState( null );
@@ -50,7 +50,7 @@ export function OnboardingBanner() {
 	// The full-panel OnboardingWizard sets this flag when the user finishes or dismisses it
 	// ("Don't show this again"), so the banner stops nagging across reloads.
 	let wizardDone = false;
-	try { wizardDone = window.localStorage.getItem( 'totalsecwp_onboarding_done' ) === '1'; } catch ( e ) {}
+	try { wizardDone = window.localStorage.getItem( 'loyalsec_onboarding_done' ) === '1'; } catch ( e ) {}
 
 	const dismiss = () => {
 		setHidden( true );

@@ -2,10 +2,10 @@
 /**
  * Central settings repository.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -32,6 +32,38 @@ class Settings {
 	 * @var array<string, array<string, mixed>>
 	 */
 	private array $defaults = array();
+
+	public function __construct() {
+		// Keep the cache in step with writes that bypass this class (WP-CLI `wp option update`,
+		// another plugin, a migration script). Priority 0 runs before the other listeners on
+		// these hooks, such as the firewall's config writer, so they never read a stale copy.
+		if ( function_exists( 'add_action' ) ) {
+			add_action( 'update_option_' . LOYALSEC_OPTION_SETTINGS, array( $this, 'refresh_cache' ), 0, 2 );
+			add_action( 'add_option_' . LOYALSEC_OPTION_SETTINGS, array( $this, 'refresh_cache_on_add' ), 0, 2 );
+		}
+	}
+
+	/**
+	 * `update_option_{option}`: adopt the value just written.
+	 *
+	 * @param mixed $old_value Previous value.
+	 * @param mixed $value     New value.
+	 */
+	public function refresh_cache( $old_value, $value ): void {
+		unset( $old_value );
+		$this->cache = is_array( $value ) ? $value : array();
+	}
+
+	/**
+	 * `add_option_{option}`: adopt the value just written.
+	 *
+	 * @param string $option Option name.
+	 * @param mixed  $value  New value.
+	 */
+	public function refresh_cache_on_add( $option, $value ): void {
+		unset( $option );
+		$this->cache = is_array( $value ) ? $value : array();
+	}
 
 	/**
 	 * Register a module's default settings.
@@ -108,7 +140,7 @@ class Settings {
 	 */
 	public function all(): array {
 		if ( null === $this->cache ) {
-			$opt         = get_option( TOTALSECWP_OPTION_SETTINGS, array() );
+			$opt         = get_option( LOYALSEC_OPTION_SETTINGS, array() );
 			$this->cache = is_array( $opt ) ? $opt : array();
 		}
 		return $this->cache;
@@ -134,6 +166,6 @@ class Settings {
 	 */
 	private function save( array $store ): void {
 		$this->cache = $store;
-		update_option( TOTALSECWP_OPTION_SETTINGS, $store, true );
+		update_option( LOYALSEC_OPTION_SETTINGS, $store, true );
 	}
 }

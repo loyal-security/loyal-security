@@ -2,10 +2,10 @@
 /**
  * Query/export/prune layer for the audit event table.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Audit;
+namespace LoyalSecurity\Modules\Audit;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,7 +16,7 @@ class LogRepository {
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_events';
+		return $wpdb->prefix . 'loyalsec_events';
 	}
 
 	/**
@@ -167,7 +167,7 @@ class LogRepository {
 	public function prune_to_limit(): void {
 		global $wpdb;
 
-		$module    = \TotalSecurityWP\Plugin::instance()->module( 'audit' );
+		$module    = \LoyalSecurity\Plugin::instance()->module( 'audit' );
 		$configured = $module instanceof AuditModule
 			? (int) $module->setting_public( 'log_retention_days', 90 )
 			: 90;

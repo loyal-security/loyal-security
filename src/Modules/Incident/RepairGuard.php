@@ -2,15 +2,15 @@
 /**
  * Fatal-error safety net for in-flight file fixes.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * A {@see FileFix} or plugin reinstall verifies its work with a loopback request, but that only
@@ -26,7 +26,7 @@ class RepairGuard {
 	private const FATAL = array( E_ERROR, E_PARSE, E_COMPILE_ERROR, E_CORE_ERROR, E_USER_ERROR );
 
 	/** Persisted so the dashboard / admin notice can tell the admin a repair was auto-reverted. */
-	public const NOTICE_OPTION = 'totalsecwp_autorollback_notice';
+	public const NOTICE_OPTION = 'loyalsec_autorollback_notice';
 
 	/** Registered at most once per request (the guard can be armed early *and* at plugins_loaded). */
 	private static bool $armed = false;
@@ -153,7 +153,7 @@ class RepairGuard {
 	 */
 	private function resolve_logger(): ?Logger {
 		try {
-			$logger = \TotalSecurityWP\Plugin::instance()->container()->make( 'logger' );
+			$logger = \LoyalSecurity\Plugin::instance()->container()->make( 'logger' );
 			return $logger instanceof Logger ? $logger : null;
 		} catch ( \Throwable $e ) {
 			return null;

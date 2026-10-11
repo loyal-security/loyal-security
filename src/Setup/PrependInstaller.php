@@ -2,10 +2,10 @@
 /**
  * Safe deployment of the auto_prepend_file directive (with backup, verify, rollback).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Setup;
+namespace LoyalSecurity\Setup;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,10 +27,9 @@ class PrependInstaller {
 	private const MARK_BEGIN = '# BEGIN Loyal Security WAF';
 	private const MARK_END   = '# END Loyal Security WAF';
 
-	/** Current markers plus the ones earlier versions wrote. */
+	/** The markers this plugin wraps its own blocks in. */
 	private const MARKERS = array(
 		array( self::MARK_BEGIN, self::MARK_END ),
-		array( '# BEGIN Total Security WP WAF', '# END Total Security WP WAF' ),
 	);
 
 	private ServerProbe $probe;
@@ -53,6 +52,23 @@ class PrependInstaller {
 			return array( 'ok' => false, 'strategy' => $strategy, 'message' => 'Prepend script missing.', 'target' => '' );
 		}
 
+		// PHP runs only one auto_prepend_file. If another firewall (Wordfence's Extended
+		// Protection, for example) or the host already uses it, taking it over would silently
+		// switch theirs off. Stay in Standard Mode instead, which protects the site as well.
+		$other = $this->foreign_prepend( $strategy, (string) $info['user_ini_name'] );
+		if ( '' !== $other ) {
+			return array(
+				'ok'       => false,
+				'strategy' => $strategy,
+				'message'  => sprintf(
+					/* translators: %s: file name of the other prepend script. */
+					__( 'Another program already runs before WordPress on this site (%s), for example another security plugin’s firewall. PHP allows only one, so Loyal Security stays in Standard Mode, which still inspects every request once WordPress starts. To use Optimized Mode, switch the other firewall off first.', 'loyal-security' ),
+					basename( $other )
+				),
+				'target'   => '',
+			);
+		}
+
 		if ( 'htaccess' === $strategy ) {
 			return $this->deploy_htaccess( $prepend );
 		}
@@ -72,25 +88,13 @@ class PrependInstaller {
 	 * Apache mod_php: add a marked block to the root .htaccess.
 	 */
 	private function deploy_htaccess( string $prepend ): array {
-		$file      = \TotalSecurityWP\Support\Paths::root() . '.htaccess';
-		$site_url  = (string) get_option( 'siteurl' );
-		$canonical = strtolower( (string) wp_parse_url( $site_url, PHP_URL_HOST ) );
-		$scheme    = ( 0 === strpos( $site_url, 'https' ) ) ? 'https' : 'http';
+		$file = \LoyalSecurity\Support\Paths::root() . '.htaccess';
 
-		// Build an optional Host-header enforcement block (requires mod_rewrite).
-		// Escaping: dots are the only regex metachar that appear in valid hostnames.
-		$host_block = '';
-		if ( '' !== $canonical ) {
-			$pattern    = str_replace( '.', '\\.', $canonical );
-			$host_block = '<IfModule mod_rewrite.c>' . "\n"
-				. 'RewriteEngine On' . "\n"
-				. 'RewriteCond %{HTTP_HOST} !^' . $pattern . '$ [NC]' . "\n"
-				. 'RewriteRule ^ ' . $scheme . '://' . $canonical . '%{REQUEST_URI} [R=301,L]' . "\n"
-				. '</IfModule>' . "\n";
-		}
-
+		// No Host-header rewrite rule here: HostHeaderGuard checks the host inside WordPress,
+		// where it also knows the other domains a multilingual or mapped site serves. A rule
+		// allowing only the siteurl host redirected those domains, and looped where home and
+		// siteurl use different hosts.
 		$block = self::MARK_BEGIN . "\n"
-			. $host_block
 			. '<IfModule mod_php.c>' . "\n"
 			. 'php_value auto_prepend_file "' . $prepend . '"' . "\n"
 			. '</IfModule>' . "\n"
@@ -129,7 +133,7 @@ class PrependInstaller {
 	 * CGI/FPM: write/update .user.ini in the web root.
 	 */
 	private function deploy_user_ini( string $prepend, string $name ): array {
-		$file     = \TotalSecurityWP\Support\Paths::root() . $name;
+		$file     = \LoyalSecurity\Support\Paths::root() . $name;
 		$existing = '';
 		if ( is_file( $file ) ) {
 			$raw = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- see class docblock note.
@@ -160,7 +164,7 @@ class PrependInstaller {
 			return array( 'ok' => false, 'strategy' => 'user_ini', 'message' => 'Could not write ' . $name . '.', 'target' => $file );
 		}
 
-		update_option( 'totalsecwp_waf_mode', 'optimized' );
+		update_option( 'loyalsec_waf_mode', 'optimized' );
 
 		return array(
 			'ok'       => true,
@@ -177,17 +181,17 @@ class PrependInstaller {
 	 */
 	public function verify(): array {
 		$response = wp_remote_get(
-			home_url( '/?totalsecwp_selftest=1' ),
+			home_url( '/?loyalsec_selftest=1' ),
 			array(
 				'timeout'   => 10,
-				'sslverify' => \TotalSecurityWP\Support\Http::local_sslverify(),
-				'headers'   => array( 'X-TotalSecWP-Selftest' => '1' ),
+				'sslverify' => \LoyalSecurity\Support\Http::local_sslverify(),
+				'headers'   => array( 'X-LoyalSec-Selftest' => '1' ),
 			)
 		);
 		if ( is_wp_error( $response ) ) {
 			return array( 'ok' => false, 'active' => false, 'message' => $response->get_error_message() );
 		}
-		$header = wp_remote_retrieve_header( $response, 'x-totalsecwp-waf' );
+		$header = wp_remote_retrieve_header( $response, 'x-loyalsec-waf' );
 		$active = ( 'active' === $header || 'blocked' === $header );
 		return array(
 			'ok'      => true,
@@ -203,7 +207,7 @@ class PrependInstaller {
 		$info = $this->probe->detect();
 
 		if ( 'htaccess' === $info['strategy'] ) {
-			$file = \TotalSecurityWP\Support\Paths::root() . '.htaccess';
+			$file = \LoyalSecurity\Support\Paths::root() . '.htaccess';
 			if ( is_file( $file ) ) {
 				$raw = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- see class docblock note.
 				if ( false !== $raw ) {
@@ -213,7 +217,7 @@ class PrependInstaller {
 				}
 			}
 		} else {
-			$file = \TotalSecurityWP\Support\Paths::root() . (string) $info['user_ini_name'];
+			$file = \LoyalSecurity\Support\Paths::root() . (string) $info['user_ini_name'];
 			if ( is_file( $file ) ) {
 				$raw = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- see class docblock note.
 				if ( false !== $raw ) {
@@ -221,7 +225,7 @@ class PrependInstaller {
 					$kept  = array();
 					foreach ( $lines as $line ) {
 						// Only this plugin's own directive; another tool's prepend stays.
-						if ( preg_match( '/^\s*auto_prepend_file\s*=/', $line ) && preg_match( '/totalsecwp|loyal-security|total-security-wp/i', $line ) ) {
+						if ( preg_match( '/^\s*auto_prepend_file\s*=/', $line ) && preg_match( '/loyalsec|loyal-security/i', $line ) ) {
 							continue;
 						}
 						if ( '' !== trim( $line ) ) {
@@ -234,11 +238,52 @@ class PrependInstaller {
 			}
 		}
 
-		update_option( 'totalsecwp_waf_mode', 'standard' );
+		update_option( 'loyalsec_waf_mode', 'standard' );
 		return array( 'ok' => true, 'message' => 'Reverted to Standard Mode.' );
 	}
 
 	/* ------------------------------ helpers -------------------------------- */
+
+	/**
+	 * The path of an auto_prepend_file that is not this plugin's, or ''.
+	 *
+	 * Looks at the value PHP is running with and at the file this installer would edit (a
+	 * directive written there may not be live yet: PHP caches .user.ini for minutes).
+	 *
+	 * @param string $strategy      Deployment strategy.
+	 * @param string $user_ini_name Name of the per-directory ini file.
+	 */
+	private function foreign_prepend( string $strategy, string $user_ini_name ): string {
+		$ours = static function ( string $path ): bool {
+			return 1 === preg_match( '/loyalsec|loyal-security/i', $path );
+		};
+
+		$live = trim( (string) ini_get( 'auto_prepend_file' ) );
+		if ( '' !== $live && ! $ours( $live ) ) {
+			return $live;
+		}
+
+		$file = \LoyalSecurity\Support\Paths::root() . ( 'htaccess' === $strategy ? '.htaccess' : $user_ini_name );
+		if ( '' === $user_ini_name && 'htaccess' !== $strategy ) {
+			return '';
+		}
+		if ( ! is_file( $file ) ) {
+			return '';
+		}
+		$raw = (string) file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- see class docblock note.
+		if ( 'htaccess' === $strategy ) {
+			$raw = $this->strip_block( $raw );
+		}
+		if ( preg_match_all( '/^\s*(?:php_value\s+)?auto_prepend_file\s*=?\s*["\']?([^"\'\r\n]*)/mi', $raw, $m ) ) {
+			foreach ( $m[1] as $path ) {
+				$path = trim( $path );
+				if ( '' !== $path && 'none' !== strtolower( $path ) && ! $ours( $path ) ) {
+					return $path;
+				}
+			}
+		}
+		return '';
+	}
 
 	private function finish( string $strategy, string $target ): array {
 		$check = $this->verify();
@@ -252,7 +297,7 @@ class PrependInstaller {
 				'message'  => 'Self-test failed; automatically rolled back to Standard Mode. ' . $check['message'],
 			);
 		}
-		update_option( 'totalsecwp_waf_mode', 'optimized' );
+		update_option( 'loyalsec_waf_mode', 'optimized' );
 		return array( 'ok' => true, 'strategy' => $strategy, 'target' => $target, 'message' => 'Optimized Mode active and verified.' );
 	}
 
@@ -261,10 +306,10 @@ class PrependInstaller {
 		// Filesystem::backup_config_file()'s own docblock for why: a same-directory backup of
 		// a server-root config file is a predictable-filename plaintext leak on any web server
 		// that doesn't specifically deny it.
-		\TotalSecurityWP\Support\Filesystem::backup_config_file( $file, $contents );
+		\LoyalSecurity\Support\Filesystem::backup_config_file( $file, $contents );
 	}
 
 	private function strip_block( string $content ): string {
-		return \TotalSecurityWP\Support\Markers::strip( $content, self::MARKERS );
+		return \LoyalSecurity\Support\Markers::strip( $content, self::MARKERS );
 	}
 }

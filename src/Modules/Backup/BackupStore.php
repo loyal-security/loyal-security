@@ -2,14 +2,14 @@
 /**
  * Backup storage + manifest management.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Backup;
+namespace LoyalSecurity\Modules\Backup;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Firewall\BanStore;
+use LoyalSecurity\Modules\Firewall\BanStore;
 
 /**
  * Owns the private, non-web-served directory where backups live and the per-backup manifest
@@ -128,6 +128,43 @@ class BackupStore {
 	}
 
 	/**
+	 * Option holding the database dumps' checksums, keyed by backup id.
+	 *
+	 * The manifest records the same value, but it sits in the backup directory beside the dump
+	 * it describes, so anything able to rewrite the dump could rewrite the checksum with it.
+	 * This copy lives in the database instead, which that same access does not reach, and is
+	 * what {@see expected_db_sha256()} prefers.
+	 */
+	private const DB_HASH_OPTION = 'loyalsec_backup_db_hashes';
+
+	/**
+	 * Record a dump's checksum outside the backup directory. Called when a backup is written.
+	 */
+	public function remember_db_sha256( string $id, string $sha256 ): void {
+		$id = $this->safe_id( $id );
+		if ( '' === $id || '' === $sha256 ) {
+			return;
+		}
+		$all        = (array) get_option( self::DB_HASH_OPTION, array() );
+		$all[ $id ] = $sha256;
+		update_option( self::DB_HASH_OPTION, $all, false );
+	}
+
+	/**
+	 * The checksum a backup's database dump must match, preferring the copy held in the
+	 * database over the one in the backup's own manifest. Empty when neither records one.
+	 */
+	public function expected_db_sha256( string $id ): string {
+		$key   = $this->safe_id( $id );
+		$known = (array) get_option( self::DB_HASH_OPTION, array() );
+		if ( '' !== $key && ! empty( $known[ $key ] ) ) {
+			return (string) $known[ $key ];
+		}
+		$manifest = $this->manifest( $id );
+		return (string) ( $manifest['db_sha256'] ?? '' );
+	}
+
+	/**
 	 * Permanently delete a backup directory.
 	 */
 	public function delete( string $id ): bool {
@@ -135,8 +172,22 @@ class BackupStore {
 		if ( '' === $path || ! is_dir( $path ) ) {
 			return false;
 		}
-		\TotalSecurityWP\Support\Filesystem::delete_dir( $path );
+		\LoyalSecurity\Support\Filesystem::delete_dir( $path );
+		$this->forget_db_sha256( $id );
 		return true;
+	}
+
+	/**
+	 * Drop a deleted backup's recorded checksum so the option does not grow without bound.
+	 */
+	private function forget_db_sha256( string $id ): void {
+		$key = $this->safe_id( $id );
+		$all = (array) get_option( self::DB_HASH_OPTION, array() );
+		if ( '' === $key || ! array_key_exists( $key, $all ) ) {
+			return;
+		}
+		unset( $all[ $key ] );
+		update_option( self::DB_HASH_OPTION, $all, false );
 	}
 
 	/**

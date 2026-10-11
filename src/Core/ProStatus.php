@@ -2,10 +2,10 @@
 /**
  * Whether the separate Loyal Security Pro plugin is active.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,7 +28,7 @@ class ProStatus {
 		 *
 		 * @param bool $active Default false.
 		 */
-		return (bool) apply_filters( 'totalsecwp_pro_active', false );
+		return (bool) apply_filters( 'loyalsec_pro_active', false );
 	}
 
 	/**

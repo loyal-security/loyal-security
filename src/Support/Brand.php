@@ -2,10 +2,10 @@
 /**
  * Product name shown in admin screens, alert emails and passkey prompts.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Support;
+namespace LoyalSecurity\Support;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -23,7 +23,7 @@ final class Brand {
 		 *
 		 * @param string $name Default 'Loyal Security'.
 		 */
-		$name = apply_filters( 'totalsecwp_brand_name', self::NAME );
+		$name = apply_filters( 'loyalsec_brand_name', self::NAME );
 		$name = is_string( $name ) ? trim( wp_strip_all_tags( $name ) ) : '';
 		return '' !== $name ? $name : self::NAME;
 	}

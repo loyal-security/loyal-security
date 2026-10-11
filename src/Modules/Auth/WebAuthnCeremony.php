@@ -2,17 +2,17 @@
 /**
  * Passkey (WebAuthn) registration & authentication ceremonies.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Crypto;
-use TotalSecurityWP\Vendor\WebAuthn\WebAuthn;
-use TotalSecurityWP\Vendor\WebAuthn\WebAuthnException;
-use TotalSecurityWP\Vendor\WebAuthn\Binary\ByteBuffer;
+use LoyalSecurity\Support\Crypto;
+use LoyalSecurity\Vendor\WebAuthn\WebAuthn;
+use LoyalSecurity\Vendor\WebAuthn\WebAuthnException;
+use LoyalSecurity\Vendor\WebAuthn\Binary\ByteBuffer;
 
 /**
  * Thin glue between the vendored {@see WebAuthn} library and this plugin's storage
@@ -51,7 +51,7 @@ class WebAuthnCeremony {
 
 	private function rp_name(): string {
 		try {
-			return \TotalSecurityWP\Support\Brand::name();
+			return \LoyalSecurity\Support\Brand::name();
 		} catch ( \Throwable $e ) {
 			return get_bloginfo( 'name' ) ?: 'WordPress';
 		}
@@ -213,11 +213,11 @@ class WebAuthnCeremony {
 	/* ------------------------------ helpers ------------------------------ */
 
 	private function reg_key( int $user_id ): string {
-		return 'totalsecwp_wan_reg_' . $user_id;
+		return 'loyalsec_wan_reg_' . $user_id;
 	}
 
 	private function login_key( string $flow ): string {
-		return 'totalsecwp_wan_login_' . $flow;
+		return 'loyalsec_wan_login_' . $flow;
 	}
 
 	/**

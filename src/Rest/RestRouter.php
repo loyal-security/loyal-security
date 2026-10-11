@@ -2,32 +2,32 @@
 /**
  * REST router — registers every plugin controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest;
+namespace LoyalSecurity\Rest;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Container;
-use TotalSecurityWP\Rest\Controllers\StatusController;
-use TotalSecurityWP\Rest\Controllers\SettingsController;
-use TotalSecurityWP\Rest\Controllers\FirewallController;
-use TotalSecurityWP\Rest\Controllers\ScannerController;
-use TotalSecurityWP\Rest\Controllers\LogsController;
-use TotalSecurityWP\Rest\Controllers\HardeningController;
-use TotalSecurityWP\Rest\Controllers\QuarantineController;
-use TotalSecurityWP\Rest\Controllers\RepairController;
-use TotalSecurityWP\Rest\Controllers\AuthController;
-use TotalSecurityWP\Rest\Controllers\WizardController;
-use TotalSecurityWP\Rest\Controllers\NotificationsController;
-use TotalSecurityWP\Rest\Controllers\BackupController;
-use TotalSecurityWP\Rest\Controllers\ThreatIntelController;
-use TotalSecurityWP\Rest\Controllers\TrafficController;
-use TotalSecurityWP\Rest\Controllers\CspController;
-use TotalSecurityWP\Rest\Controllers\JobsController;
-use TotalSecurityWP\Rest\Controllers\TelemetryController;
-use TotalSecurityWP\Rest\Controllers\UpgradeController;
+use LoyalSecurity\Container;
+use LoyalSecurity\Rest\Controllers\StatusController;
+use LoyalSecurity\Rest\Controllers\SettingsController;
+use LoyalSecurity\Rest\Controllers\FirewallController;
+use LoyalSecurity\Rest\Controllers\ScannerController;
+use LoyalSecurity\Rest\Controllers\LogsController;
+use LoyalSecurity\Rest\Controllers\HardeningController;
+use LoyalSecurity\Rest\Controllers\QuarantineController;
+use LoyalSecurity\Rest\Controllers\RepairController;
+use LoyalSecurity\Rest\Controllers\AuthController;
+use LoyalSecurity\Rest\Controllers\WizardController;
+use LoyalSecurity\Rest\Controllers\NotificationsController;
+use LoyalSecurity\Rest\Controllers\BackupController;
+use LoyalSecurity\Rest\Controllers\ThreatIntelController;
+use LoyalSecurity\Rest\Controllers\TrafficController;
+use LoyalSecurity\Rest\Controllers\CspController;
+use LoyalSecurity\Rest\Controllers\JobsController;
+use LoyalSecurity\Rest\Controllers\TelemetryController;
+use LoyalSecurity\Rest\Controllers\UpgradeController;
 
 /**
  * Instantiates and registers all REST controllers on `rest_api_init`. Controllers are

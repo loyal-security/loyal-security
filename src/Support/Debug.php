@@ -2,10 +2,10 @@
 /**
  * Opt-in diagnostic logging.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Support;
+namespace LoyalSecurity\Support;
 
 defined( 'ABSPATH' ) || exit;
 

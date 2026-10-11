@@ -2,15 +2,15 @@
 /**
  * Auto-drafts a virtual-patch rule from a confirmed tainted-sink scanner finding.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Integrity\PluginChecksums;
-use TotalSecurityWP\Modules\Scanner\Finding;
+use LoyalSecurity\Modules\Integrity\PluginChecksums;
+use LoyalSecurity\Modules\Scanner\Finding;
 
 /**
  * The site that found a `TaintAnalyzer` sink already has everything needed to draft a
@@ -322,7 +322,7 @@ class PatchSuggester {
 	 */
 	private function slug_from_path( string $path ): string {
 		$p       = wp_normalize_path( $path );
-		$plugins = wp_normalize_path( \TotalSecurityWP\Support\Paths::plugins() ) . '/';
+		$plugins = wp_normalize_path( \LoyalSecurity\Support\Paths::plugins() ) . '/';
 		if ( ! str_starts_with( $p, $plugins ) ) {
 			return '';
 		}

@@ -2,17 +2,17 @@
 /**
  * Filesystem locations of WordPress itself.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Support;
+namespace LoyalSecurity\Support;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * The single place this plugin resolves where WordPress keeps its own files.
  *
- * The plugin's own files are always located from its main file (`TOTALSECWP_PATH`, i.e.
+ * The plugin's own files are always located from its main file (`LOYALSEC_PATH`, i.e.
  * `plugin_dir_path( __FILE__ )`) and everything it writes lives under `wp_upload_dir()`. What
  * remains — and what this class is for — are locations a security plugin has to inspect or
  * repair *because they are WordPress's own*: the core files it verifies against WordPress.org
@@ -33,9 +33,50 @@ final class Paths {
 		return trailingslashit( ABSPATH );
 	}
 
-	/** Core `wp-admin` directory (no trailing slash). */
+	/** Memoized admin directory name — see {@see admin_name()}. */
+	private static ?string $admin_name = null;
+
+	/**
+	 * The name of the core admin directory, without any path around it (normally `wp-admin`).
+	 *
+	 * WordPress exposes no constant for this one directory, so it is derived the way core
+	 * itself addresses it: `admin_url()` relative to the install URL (`site_url()`). The
+	 * literal is only reached when those URLs are not usable yet, or when the admin URL has
+	 * been filtered to somewhere outside the install.
+	 */
+	public static function admin_name(): string {
+		if ( null === self::$admin_name ) {
+			if ( ! function_exists( 'admin_url' ) || ! function_exists( 'site_url' ) ) {
+				return 'wp-admin'; // Called before WordPress is loaded; do not memoize.
+			}
+			$admin = wp_parse_url( admin_url( '/' ) );
+			$site  = wp_parse_url( site_url( '/' ) );
+			$seg   = '';
+
+			// Only a URL on the install's own host says anything about a directory inside it.
+			// `admin_url` can be filtered to another host entirely, and the scheme may differ
+			// from the site's on its own (FORCE_SSL_ADMIN), which is not a reason to give up.
+			$same_host = is_array( $admin ) && is_array( $site )
+				&& '' !== (string) ( $site['host'] ?? '' )
+				&& strtolower( (string) ( $admin['host'] ?? '' ) ) === strtolower( (string) ( $site['host'] ?? '' ) );
+
+			if ( $same_host ) {
+				$admin_path = (string) ( $admin['path'] ?? '' );
+				$site_path  = (string) ( $site['path'] ?? '' );
+				if ( '' !== $site_path && 0 === strpos( $admin_path, $site_path ) ) {
+					$seg = trim( substr( $admin_path, strlen( $site_path ) ), '/' );
+				}
+			}
+
+			// A single directory name, or nothing usable — never a nested or empty path.
+			self::$admin_name = ( '' !== $seg && false === strpos( $seg, '/' ) ) ? $seg : 'wp-admin';
+		}
+		return self::$admin_name;
+	}
+
+	/** Core admin directory (no trailing slash). */
 	public static function admin(): string {
-		return self::root() . 'wp-admin';
+		return self::root() . self::admin_name();
 	}
 
 	/** Core `wp-includes` directory (no trailing slash). */

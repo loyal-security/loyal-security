@@ -2,24 +2,24 @@
 /**
  * Plugin bootstrap and central Module Factory.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP;
+namespace LoyalSecurity;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Contracts\ModuleInterface;
-use TotalSecurityWP\Core\Assets;
-use TotalSecurityWP\Core\Cron;
-use TotalSecurityWP\Core\Installer;
-use TotalSecurityWP\Core\ProStatus;
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Admin\AdminMenu;
-use TotalSecurityWP\Admin\Notices;
-use TotalSecurityWP\Admin\UninstallPrompt;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Rest\RestRouter;
+use LoyalSecurity\Contracts\ModuleInterface;
+use LoyalSecurity\Core\Assets;
+use LoyalSecurity\Core\Cron;
+use LoyalSecurity\Core\Installer;
+use LoyalSecurity\Core\ProStatus;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Admin\AdminMenu;
+use LoyalSecurity\Admin\Notices;
+use LoyalSecurity\Admin\UninstallPrompt;
+use LoyalSecurity\Modules\Audit\Logger;
+use LoyalSecurity\Rest\RestRouter;
 
 /**
  * Singleton entry point. Wires the DI container, registers shared services, and runs the
@@ -45,19 +45,19 @@ final class Plugin {
 	 * @var string[]
 	 */
 	private array $module_classes = array(
-		\TotalSecurityWP\Modules\Firewall\FirewallModule::class,
-		\TotalSecurityWP\Modules\Hardening\HardeningModule::class,
-		\TotalSecurityWP\Modules\Scanner\ScannerModule::class,
-		\TotalSecurityWP\Modules\Integrity\IntegrityModule::class,
-		\TotalSecurityWP\Modules\Incident\IncidentModule::class,
-		\TotalSecurityWP\Modules\Auth\AuthModule::class,
-		\TotalSecurityWP\Modules\Audit\AuditModule::class,
-		\TotalSecurityWP\Modules\Notifications\NotificationsModule::class,
-		\TotalSecurityWP\Modules\Backup\BackupModule::class,
-		\TotalSecurityWP\Modules\ThreatIntel\ThreatIntelModule::class,
-		\TotalSecurityWP\Modules\Traffic\TrafficModule::class,
-		\TotalSecurityWP\Modules\Csp\CspModule::class,
-		\TotalSecurityWP\Modules\Telemetry\TelemetryModule::class,
+		\LoyalSecurity\Modules\Firewall\FirewallModule::class,
+		\LoyalSecurity\Modules\Hardening\HardeningModule::class,
+		\LoyalSecurity\Modules\Scanner\ScannerModule::class,
+		\LoyalSecurity\Modules\Integrity\IntegrityModule::class,
+		\LoyalSecurity\Modules\Incident\IncidentModule::class,
+		\LoyalSecurity\Modules\Auth\AuthModule::class,
+		\LoyalSecurity\Modules\Audit\AuditModule::class,
+		\LoyalSecurity\Modules\Notifications\NotificationsModule::class,
+		\LoyalSecurity\Modules\Backup\BackupModule::class,
+		\LoyalSecurity\Modules\ThreatIntel\ThreatIntelModule::class,
+		\LoyalSecurity\Modules\Traffic\TrafficModule::class,
+		\LoyalSecurity\Modules\Csp\CspModule::class,
+		\LoyalSecurity\Modules\Telemetry\TelemetryModule::class,
 	);
 
 	private function __construct() {
@@ -103,8 +103,8 @@ final class Plugin {
 
 		// WP-CLI commands (loaded only under the CLI runtime).
 		if ( defined( 'WP_CLI' ) && \WP_CLI ) {
-			require_once TOTALSECWP_PATH . 'src/Cli/TotalSecurityWPCommand.php';
-			\WP_CLI::add_command( 'loyal-security', \TotalSecurityWP\Cli\TotalSecurityWPCommand::class );
+			require_once LOYALSEC_PATH . 'src/Cli/LoyalSecurityCommand.php';
+			\WP_CLI::add_command( 'loyal-security', \LoyalSecurity\Cli\LoyalSecurityCommand::class );
 		}
 
 		/**
@@ -112,7 +112,7 @@ final class Plugin {
 		 *
 		 * @param Plugin $plugin
 		 */
-		do_action( 'totalsecwp_booted', $this );
+		do_action( 'loyalsec_booted', $this );
 	}
 
 	/**
@@ -138,13 +138,16 @@ final class Plugin {
 	 * Attach hooks for the always-on core services.
 	 */
 	private function boot_core_services(): void {
+		// On multisite the management capability belongs to super admins only.
+		add_filter( 'map_meta_cap', array( \LoyalSecurity\Core\Capabilities::class, 'restrict_on_multisite' ), 10, 3 );
+
 		$this->container->make( 'cron' )->register_hooks();
 		$this->container->make( 'assets' )->register_hooks();
 		$this->container->make( 'rest' )->register_hooks();
 
 		// Admin-bar score badge. Registered unconditionally because the admin bar renders on
 		// the front end too; the node is capability-gated inside the class.
-		( new \TotalSecurityWP\Admin\AdminBarScore() )->register_hooks();
+		( new \LoyalSecurity\Admin\AdminBarScore() )->register_hooks();
 
 		if ( is_admin() ) {
 			$this->container->make( 'admin_menu' )->register_hooks();
@@ -187,7 +190,7 @@ final class Plugin {
 				}
 			} catch ( \Throwable $e ) {
 				if ( function_exists( 'error_log' ) ) {
-					\TotalSecurityWP\Support\Debug::log( 'module ' . $class . ' failed to boot — ' . $e->getMessage() );
+					\LoyalSecurity\Support\Debug::log( 'module ' . $class . ' failed to boot — ' . $e->getMessage() );
 				}
 				continue;
 			}

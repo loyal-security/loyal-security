@@ -27,9 +27,9 @@ export function Wizard() {
 		setBusy( 'consent' );
 		try {
 			await api.post( '/telemetry/consent', { accepted } );
-			if ( window.TotalSecurityWP && window.TotalSecurityWP.telemetry ) {
-				window.TotalSecurityWP.telemetry.needs_consent = false;
-				window.TotalSecurityWP.telemetry.consent_given = accepted;
+			if ( window.LoyalSecurity && window.LoyalSecurity.telemetry ) {
+				window.LoyalSecurity.telemetry.needs_consent = false;
+				window.LoyalSecurity.telemetry.consent_given = accepted;
 			}
 			store.toast( accepted ? 'Thanks — anonymous sharing enabled.' : 'Sharing left off.', 'success' );
 			await loadTelemetry();
@@ -82,6 +82,7 @@ export function Wizard() {
 			Card,
 			{ title: 'Step 2 — Whitelist your IP' },
 			h( 'p', null, 'Add your IP to the firewall whitelist so you can never accidentally lock yourself out. The IP below was detected from your current request.' ),
+			status.my_ip_is_proxy && h( 'p', { className: 'ts-notice ts-notice--warn' }, 'Your request reached this site through a proxy or CDN, and only its address is visible, so it is not offered here: allowing it would let every visitor through. Add the proxy under Firewall → Trusted proxies (Cloudflare is recognised automatically while “Trust Cloudflare” is on), then reload this page.' ),
 			h( 'div', { className: 'ts-actions-row', style: { alignItems: 'center', gap: '8px' } },
 				h( 'input', {
 					id: 'ts-wizard-whitelist-ip',

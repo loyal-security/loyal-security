@@ -2,10 +2,10 @@
 /**
  * Nonce-tags inline <script> tags for strict CSP enforcement.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Csp;
+namespace LoyalSecurity\Modules\Csp;
 
 defined( 'ABSPATH' ) || exit;
 

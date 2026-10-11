@@ -2,14 +2,14 @@
 /**
  * Admin-bar security score indicator.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Admin;
+namespace LoyalSecurity\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\HealthScore;
+use LoyalSecurity\Core\HealthScore;
 
 /**
  * Adds a small "🛡 A–F" node to the WordPress admin bar (front-end and back-end) showing the
@@ -23,7 +23,7 @@ use TotalSecurityWP\Core\HealthScore;
 class AdminBarScore {
 
 	/** Transient that caches the most recently computed health score. */
-	private const CACHE_KEY = 'totalsecwp_health_score_cache';
+	private const CACHE_KEY = 'loyalsec_health_score_cache';
 
 	/** Cache lifetime for the score (30 minutes) — an upper bound; real changes invalidate sooner. */
 	private const CACHE_TTL = 30 * MINUTE_IN_SECONDS;
@@ -36,7 +36,7 @@ class AdminBarScore {
 		// Every settings change, scan completion, and finding status change (quarantine, fix,
 		// ignore, whitelist, new finding, ...) logs an audit event through this generic hook —
 		// it's the single choke point for "something HealthScore::compute() reads has changed".
-		add_action( 'totalsecwp_event_logged', array( $this, 'invalidate_cache' ) );
+		add_action( 'loyalsec_event_logged', array( $this, 'invalidate_cache' ) );
 	}
 
 	/**
@@ -53,18 +53,18 @@ class AdminBarScore {
 	 * Style the grade node by attaching a few rules to core's admin-bar stylesheet.
 	 */
 	public function enqueue_style(): void {
-		if ( ! is_admin_bar_showing() || ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) ) {
+		if ( ! is_admin_bar_showing() || ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) ) {
 			return;
 		}
 		// Matches the app's --ts-good/--ts-mid/--ts-bad tokens (assets/css/admin.css) — the same
 		// three values the dashboard uses, so a score reads the same color anywhere it appears.
 		wp_add_inline_style(
 			'admin-bar',
-			'#wpadminbar #wp-toolbar #wp-admin-bar-totalsecwp-score .ab-icon{margin-top:2px}'
-			. '#wpadminbar #wp-toolbar #wp-admin-bar-totalsecwp-score span.ab-label{font-weight:600}'
-			. '#wpadminbar #wp-toolbar #wp-admin-bar-totalsecwp-score span.totalsecwp-grade--good{color:#16a34a}'
-			. '#wpadminbar #wp-toolbar #wp-admin-bar-totalsecwp-score span.totalsecwp-grade--mid{color:#d97706}'
-			. '#wpadminbar #wp-toolbar #wp-admin-bar-totalsecwp-score span.totalsecwp-grade--bad{color:#dc2626}'
+			'#wpadminbar #wp-toolbar #wp-admin-bar-loyalsec-score .ab-icon{margin-top:2px}'
+			. '#wpadminbar #wp-toolbar #wp-admin-bar-loyalsec-score span.ab-label{font-weight:600}'
+			. '#wpadminbar #wp-toolbar #wp-admin-bar-loyalsec-score span.loyalsec-grade--good{color:#16a34a}'
+			. '#wpadminbar #wp-toolbar #wp-admin-bar-loyalsec-score span.loyalsec-grade--mid{color:#d97706}'
+			. '#wpadminbar #wp-toolbar #wp-admin-bar-loyalsec-score span.loyalsec-grade--bad{color:#dc2626}'
 		);
 	}
 
@@ -78,7 +78,7 @@ class AdminBarScore {
 			return;
 		}
 		// Only privileged users see (and can act on) the score.
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
 
@@ -87,20 +87,20 @@ class AdminBarScore {
 		$title = sprintf(
 			'<span class="ab-icon" aria-hidden="true">&#128737;</span>'
 				. '<span class="ab-label %1$s">%2$s</span>',
-			esc_attr( 'totalsecwp-grade--' . $this->tone( $score ) ),
+			esc_attr( 'loyalsec-grade--' . $this->tone( $score ) ),
 			esc_html( $grade )
 		);
 
 		$bar->add_node(
 			array(
-				'id'    => 'totalsecwp-score',
+				'id'    => 'loyalsec-score',
 				'title' => $title,
 				'href'  => esc_url( admin_url( 'admin.php?page=loyal-security' ) ),
 				'meta'  => array(
 					'title' => sprintf(
 						/* translators: %1$s: brand name, %2$s: letter grade, %3$d: numeric score. */
 						__( '%1$s: grade %2$s (%3$d/100)', 'loyal-security' ),
-						\TotalSecurityWP\Support\Brand::name(),
+						\LoyalSecurity\Support\Brand::name(),
 						$grade,
 						$score
 					),
@@ -132,7 +132,7 @@ class AdminBarScore {
 		if ( $score >= 80 ) {
 			return 'good';
 		}
-		if ( $score >= 60 ) {
+		if ( $score >= 65 ) {
 			return 'mid';
 		}
 		return 'bad';

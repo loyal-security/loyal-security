@@ -2,14 +2,13 @@
 /**
  * Shutdown-hook traffic capture (Live Traffic, all-traffic mode).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Traffic;
+namespace LoyalSecurity\Modules\Traffic;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Ip;
 
 /**
  * Hooks to PHP's shutdown handler and writes one entry per request into the
@@ -59,6 +58,39 @@ class TrafficCapture {
 		);
 	}
 
+	/**
+	 * `loyalsec_event_logged` listener: tag this request's buffer entry with the most severe
+	 * security event it raised (a WAF block, a bot block, a failed sign-in...). Without it every
+	 * entry read "Normal" and the Blocked counter stayed at 0.
+	 *
+	 * @param string               $type Event type.
+	 * @param array<string, mixed> $data Logged row.
+	 */
+	public static function on_event( $type, $data ): void {
+		$severity = (int) ( $data['severity'] ?? 0 );
+		if ( $severity < \LoyalSecurity\Modules\Audit\EventCatalog::SEV_NOTICE ) {
+			return;
+		}
+		$ctx = json_decode( (string) ( $data['context'] ?? '' ), true );
+		$ctx = is_array( $ctx ) ? $ctx : array();
+		// Events replayed from earlier Optimized-Mode requests belong to those requests.
+		if ( 'prepend' === ( $ctx['via'] ?? '' ) ) {
+			return;
+		}
+		if ( self::$security_context && (int) self::$security_context['severity'] >= $severity ) {
+			return;
+		}
+		$rule = $ctx['rule_id'] ?? ( $ctx['rule'] ?? null );
+		self::annotate(
+			(string) $type,
+			$severity,
+			array(
+				'rule_id'       => is_scalar( $rule ) ? (string) $rule : null,
+				'rule_category' => isset( $ctx['category'] ) && is_scalar( $ctx['category'] ) ? (string) $ctx['category'] : null,
+			)
+		);
+	}
+
 	/* ------------------------------------------------------------------ */
 	/* Hook registration                                                    */
 	/* ------------------------------------------------------------------ */
@@ -88,10 +120,13 @@ class TrafficCapture {
 			return;
 		}
 
-		$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REQUEST_URI'] ) ) : '/';
+		// Same reading as the audit log: sanitize_text_field() strips percent-encoded bytes, which
+		// turned an attack like ?x=%24%7Bjndi... into an unrecognisable "?x=jndi...".
+		$uri = \LoyalSecurity\Support\RequestVars::uri();
+		$uri = '' === $uri ? '/' : $uri;
 
 		// Skip our own REST polling so the buffer doesn't fill with internal calls.
-		if ( str_contains( $uri, '/' . trim( rest_get_url_prefix(), '/' ) . '/' . TOTALSECWP_REST_NAMESPACE . '/' ) || str_contains( $uri, 'rest_route=/' . TOTALSECWP_REST_NAMESPACE ) ) {
+		if ( str_contains( $uri, '/' . trim( rest_get_url_prefix(), '/' ) . '/' . LOYALSEC_REST_NAMESPACE . '/' ) || str_contains( $uri, 'rest_route=/' . LOYALSEC_REST_NAMESPACE ) ) {
 			return;
 		}
 
@@ -109,18 +144,16 @@ class TrafficCapture {
 		$ua      = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_USER_AGENT'] ) ) : '';
 		$referer = isset( $_SERVER['HTTP_REFERER'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_REFERER'] ) ) : '';
 
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- Ip::client_ip() validates every candidate with filter_var( FILTER_VALIDATE_IP ) internally; nothing unvalidated is ever returned.
-		$ip      = Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() );
+		$ip      = \LoyalSecurity\Modules\Firewall\IpResolver::request_ip();
 		$status  = http_response_code();
 		$elapsed = (int) ( microtime( true ) * 1000 ) - $this->started_ms;
 
 		$parsed = UserAgentParser::parse( $ua );
 
-		// Country may already be in context or come from a server variable (Cloudflare, etc.).
-		$country = '';
-		if ( isset( $_SERVER['HTTP_CF_IPCOUNTRY'] ) ) {
-			$country = strtoupper( substr( sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_CF_IPCOUNTRY'] ) ), 0, 2 ) );
-		}
+		// The CDN's country header when the request really came through it, otherwise the
+		// bundled IP-to-country table (the same resolution the firewall's country rules use).
+		$country = ( new \LoyalSecurity\Modules\Firewall\GeoBlocker( \LoyalSecurity\Plugin::instance()->container()->make( 'settings' ) ) )
+			->country( $ip, \LoyalSecurity\Support\RequestVars::geo_headers() );
 
 		$sec = self::$security_context;
 

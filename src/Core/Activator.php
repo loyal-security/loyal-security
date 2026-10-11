@@ -2,10 +2,10 @@
 /**
  * Plugin activation routine.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -19,14 +19,14 @@ class Activator {
 	 * @param bool $network_wide Whether activated network-wide.
 	 */
 	public static function activate( bool $network_wide = false ): void {
-		if ( version_compare( PHP_VERSION, TOTALSECWP_MIN_PHP, '<' ) ) {
-			deactivate_plugins( TOTALSECWP_BASENAME );
+		if ( version_compare( PHP_VERSION, LOYALSEC_MIN_PHP, '<' ) ) {
+			deactivate_plugins( LOYALSEC_BASENAME );
 			wp_die(
 				esc_html(
 					sprintf(
 						/* translators: 1: required PHP, 2: current PHP */
 						__( 'Loyal Security requires PHP %1$s or higher. You are running %2$s.', 'loyal-security' ),
-						TOTALSECWP_MIN_PHP,
+						LOYALSEC_MIN_PHP,
 						PHP_VERSION
 					)
 				)
@@ -34,20 +34,20 @@ class Activator {
 		}
 
 		Installer::install();
-		update_option( 'totalsecwp_db_version', TOTALSECWP_DB_VERSION, true );
+		update_option( 'loyalsec_db_version', LOYALSEC_DB_VERSION, true );
 
 		Capabilities::grant();
 
 		// Mark that the setup wizard has not yet completed.
-		if ( false === get_option( 'totalsecwp_setup_complete', false ) ) {
-			add_option( 'totalsecwp_setup_complete', false, '', false );
+		if ( false === get_option( 'loyalsec_setup_complete', false ) ) {
+			add_option( 'loyalsec_setup_complete', false, '', false );
 		}
 
 		// Anonymous bypass-telemetry consent starts OUT until the admin explicitly opts in
 		// (GDPR). Nothing is ever transmitted while this is false.
-		if ( false === get_option( 'totalsecwp_telemetry_consent', false ) ) {
+		if ( false === get_option( 'loyalsec_telemetry_consent', false ) ) {
 			add_option(
-				'totalsecwp_telemetry_consent',
+				'loyalsec_telemetry_consent',
 				array( 'given' => false, 'timestamp' => 0, 'version' => 0, 'user_id' => 0 ),
 				'',
 				false
@@ -56,8 +56,8 @@ class Activator {
 
 		// Opaque, random install identifier — the ONLY site identity sent with telemetry
 		// (never home_url()). Generated once and reused.
-		if ( false === get_option( 'totalsecwp_install_id', false ) ) {
-			add_option( 'totalsecwp_install_id', self::generate_install_id(), '', true );
+		if ( false === get_option( 'loyalsec_install_id', false ) ) {
+			add_option( 'loyalsec_install_id', self::generate_install_id(), '', true );
 		}
 
 		Cron::schedule_all();
@@ -74,7 +74,7 @@ class Activator {
 		// screen, would be actively confusing) — Notices::maybe_redirect_after_activation()
 		// consumes this on the very next admin_init and self-deletes either way.
 		if ( ! $network_wide && ! ( defined( 'WP_CLI' ) && WP_CLI ) && ! isset( $_GET['activate-multi'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presence-only check for WP core's own bulk-activation query arg, nothing is read from it.
-			set_transient( 'totalsecwp_activation_redirect', 1, 30 );
+			set_transient( 'loyalsec_activation_redirect', 1, 30 );
 		}
 	}
 
@@ -86,7 +86,7 @@ class Activator {
 		try {
 			return bin2hex( random_bytes( 16 ) );
 		} catch ( \Throwable $e ) {
-			return md5( uniqid( 'totalsec', true ) . wp_rand() );
+			return md5( uniqid( 'loyalsec', true ) . wp_rand() );
 		}
 	}
 

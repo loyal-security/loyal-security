@@ -3,17 +3,17 @@
  *
  * Loaded on every wp-admin screen (via admin_enqueue_scripts, not the React dashboard) so it
  * works regardless of capability — a role like Editor (a default force_2fa_roles member) can
- * be enforced without ever having the manage_total_security_wp capability the plugin's own
+ * be enforced without ever having the manage_loyal_security capability the plugin's own
  * admin page requires, so linking out to that page would just trade one wall for another.
  * Enrollment and disabling both happen entirely inside this popup instead.
  *
- * Two ways this script is enqueued (window.TotalSecWP2faPrompt.autoShow tells them apart):
+ * Two ways this script is enqueued (window.LoyalSec2faPrompt.autoShow tells them apart):
  *   - Reminder (autoShow: true, from TwoFactorEnrollPrompt) — shows itself automatically for a
  *     non-enrolled user in an enforced role. Two states driven by cfg.enforced: within the
  *     grace period it's dismissible ("Remind me tomorrow" / the close button both snooze it a
  *     day via wp-ajax); once the grace period ends there's no close/snooze affordance at all.
  *   - Manage (autoShow: false, from TwoFactorProfileSection on profile.php) — sits inert until
- *     window.totalsecwp2faOpen() is called from a button click. Always dismissible. Opens
+ *     window.loyalsec2faOpen() is called from a button click. Always dismissible. Opens
  *     straight to enrollment if the user has no 2FA yet, or a status+disable view if they do —
  *     this is the only self-service way to remove 2FA for a user who can't open the plugin's
  *     own admin page at all.
@@ -21,7 +21,7 @@
 ( function () {
 	'use strict';
 
-	var cfg = window.TotalSecWP2faPrompt || {};
+	var cfg = window.LoyalSec2faPrompt || {};
 	var overlayEl = null;
 
 	document.addEventListener( 'DOMContentLoaded', function () {
@@ -29,23 +29,23 @@
 			render( 'intro' );
 		}
 		// The "Set up / Manage two-factor authentication" button on profile.php.
-		var openers = document.querySelectorAll( '[data-totalsecwp-2fa-open]' );
+		var openers = document.querySelectorAll( '[data-loyalsec-2fa-open]' );
 		for ( var i = 0; i < openers.length; i++ ) {
 			openers[ i ].addEventListener( 'click', function () {
-				window.totalsecwp2faOpen();
+				window.loyalsec2faOpen();
 			} );
 		}
 	} );
 
 	// Manage-mode entry point — wired to the "Manage two-factor authentication" button
 	// TwoFactorProfileSection renders on profile.php.
-	window.totalsecwp2faOpen = function () {
+	window.loyalsec2faOpen = function () {
 		render( cfg.alreadyEnabled ? 'manage' : 'intro' );
 	};
 
 	function snoozeThenClose() {
 		var body = new FormData();
-		body.append( 'action', 'totalsecwp_2fa_snooze' );
+		body.append( 'action', 'loyalsec_2fa_snooze' );
 		body.append( 'nonce', cfg.nonce );
 		fetch( cfg.ajaxUrl, { method: 'POST', body: body, credentials: 'same-origin' } )
 			.then( function ( res ) {
@@ -62,7 +62,7 @@
 				// Genuinely failed server-side (expired session, nonce lifetime, etc.) — leave
 				// the popup open rather than closing it while the state didn't actually change,
 				// which is exactly the bug this replaces (looked like it worked, silently didn't).
-				var btn = document.getElementById( 'totalsecwp-2fa-snooze' ) || document.getElementById( 'totalsecwp-2fa-close' );
+				var btn = document.getElementById( 'loyalsec-2fa-snooze' ) || document.getElementById( 'loyalsec-2fa-close' );
 				if ( btn ) {
 					btn.disabled = false;
 					if ( btn.textContent ) btn.textContent = 'Remind me tomorrow';
@@ -104,7 +104,7 @@
 
 		if ( ! overlayEl ) {
 			overlayEl = document.createElement( 'div' );
-			overlayEl.id = 'totalsecwp-2fa-overlay';
+			overlayEl.id = 'loyalsec-2fa-overlay';
 			overlayEl.style.cssText =
 				'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100000;' +
 				'display:flex;align-items:center;justify-content:center';
@@ -154,7 +154,7 @@
 				var qr = window.qrcode( 0, 'M' );
 				qr.addData( data.otpauth );
 				qr.make();
-				var target = document.getElementById( 'totalsecwp-2fa-qr' );
+				var target = document.getElementById( 'loyalsec-2fa-qr' );
 				if ( target ) target.innerHTML = qr.createSvgTag( 5, 8 );
 			} catch ( e ) {
 				// Manual key is still shown — QR rendering is a nice-to-have.
@@ -169,7 +169,7 @@
 
 		var closeBtn = enforced
 			? ''
-			: '<button id="totalsecwp-2fa-close" type="button" aria-label="Close" ' +
+			: '<button id="loyalsec-2fa-close" type="button" aria-label="Close" ' +
 				'style="position:absolute;top:10px;right:14px;border:0;background:none;' +
 				'font-size:20px;line-height:1;cursor:pointer;color:#787c82">&times;</button>';
 
@@ -195,17 +195,17 @@
 			deadlineLine +
 			'<div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:20px">' +
 			( enforced || manage ? '' :
-				'<button id="totalsecwp-2fa-snooze" type="button" ' +
+				'<button id="loyalsec-2fa-snooze" type="button" ' +
 				'style="padding:6px 14px;border:1px solid #dcdcde;border-radius:3px;' +
 				'background:#fff;cursor:pointer;font-size:13px">Remind me tomorrow</button>'
 			) +
 			( manage ? '' :
-				'<a id="totalsecwp-2fa-logout" href="' + cfg.logoutUrl + '" ' +
+				'<a id="loyalsec-2fa-logout" href="' + cfg.logoutUrl + '" ' +
 				'style="padding:6px 14px;border:1px solid #dcdcde;border-radius:3px;' +
 				'background:#fff;cursor:pointer;font-size:13px;color:#1d2327;text-decoration:none;' +
 				'display:inline-flex;align-items:center">Log out</a>'
 			) +
-			'<button id="totalsecwp-2fa-begin" type="button" ' +
+			'<button id="loyalsec-2fa-begin" type="button" ' +
 			'style="padding:6px 16px;border:none;border-radius:3px;' +
 			'background:#2271b1;color:#fff;cursor:pointer;font-size:13px;font-weight:600">' +
 			'Set up now</button>' +
@@ -221,17 +221,17 @@
 
 		return (
 			'<h2 style="margin-top:0;font-size:18px;color:#1d2327">Scan with your authenticator app</h2>' +
-			'<div id="totalsecwp-2fa-qr" style="display:flex;justify-content:center;margin:12px 0"></div>' +
+			'<div id="loyalsec-2fa-qr" style="display:flex;justify-content:center;margin:12px 0"></div>' +
 			'<p style="font-size:12px;color:#646970;text-align:center;word-break:break-all">' +
 			'Can’t scan? Enter this key manually: <code>' + escapeHtml( data.manual_key || '' ) + '</code></p>' +
-			'<label for="totalsecwp-2fa-code" style="display:block;margin-top:14px;font-weight:600">' +
+			'<label for="loyalsec-2fa-code" style="display:block;margin-top:14px;font-weight:600">' +
 			'Enter the 6-digit code</label>' +
-			'<input id="totalsecwp-2fa-code" type="text" inputmode="numeric" autocomplete="one-time-code" ' +
+			'<input id="loyalsec-2fa-code" type="text" inputmode="numeric" autocomplete="one-time-code" ' +
 			'maxlength="6" style="width:100%;box-sizing:border-box;font-size:16px;letter-spacing:2px;' +
 			'padding:6px 8px;margin-top:4px" />' +
 			error +
 			'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">' +
-			'<button id="totalsecwp-2fa-confirm" type="button" ' +
+			'<button id="loyalsec-2fa-confirm" type="button" ' +
 			'style="padding:6px 16px;border:none;border-radius:3px;' +
 			'background:#2271b1;color:#fff;cursor:pointer;font-size:13px;font-weight:600">Confirm</button>' +
 			'</div>'
@@ -251,7 +251,7 @@
 			codesHtml +
 			'</div>' +
 			'<div style="display:flex;justify-content:flex-end;margin-top:20px">' +
-			'<button id="totalsecwp-2fa-finish" type="button" ' +
+			'<button id="loyalsec-2fa-finish" type="button" ' +
 			'style="padding:6px 16px;border:none;border-radius:3px;' +
 			'background:#2271b1;color:#fff;cursor:pointer;font-size:13px;font-weight:600">Done</button>' +
 			'</div>'
@@ -265,14 +265,14 @@
 			: '';
 
 		return (
-			'<button id="totalsecwp-2fa-close" type="button" aria-label="Close" ' +
+			'<button id="loyalsec-2fa-close" type="button" aria-label="Close" ' +
 			'style="position:absolute;top:10px;right:14px;border:0;background:none;' +
 			'font-size:20px;line-height:1;cursor:pointer;color:#787c82">&times;</button>' +
 			'<h2 style="margin-top:0;font-size:18px;color:#1d2327">Two-factor authentication</h2>' +
 			'<p style="color:#00a32a;font-weight:600;margin-bottom:16px">Enabled for your account.</p>' +
 			error +
 			'<div style="display:flex;justify-content:flex-end;margin-top:20px">' +
-			'<button id="totalsecwp-2fa-disable" type="button" ' +
+			'<button id="loyalsec-2fa-disable" type="button" ' +
 			'style="padding:6px 16px;border:none;border-radius:3px;' +
 			'background:#d63638;color:#fff;cursor:pointer;font-size:13px;font-weight:600">Disable 2FA</button>' +
 			'</div>'
@@ -286,17 +286,17 @@
 	}
 
 	function wire( view, data ) {
-		var closeEl = document.getElementById( 'totalsecwp-2fa-close' );
+		var closeEl = document.getElementById( 'loyalsec-2fa-close' );
 		if ( closeEl ) closeEl.addEventListener( 'click', cfg.autoShow ? snoozeThenClose : close );
 
-		var snoozeEl = document.getElementById( 'totalsecwp-2fa-snooze' );
+		var snoozeEl = document.getElementById( 'loyalsec-2fa-snooze' );
 		if ( snoozeEl ) snoozeEl.addEventListener( 'click', function () {
 			this.disabled = true;
 			this.textContent = 'Snoozing…';
 			snoozeThenClose();
 		} );
 
-		var beginEl = document.getElementById( 'totalsecwp-2fa-begin' );
+		var beginEl = document.getElementById( 'loyalsec-2fa-begin' );
 		if ( beginEl ) beginEl.addEventListener( 'click', function () {
 			var btn = this;
 			btn.disabled = true;
@@ -310,10 +310,10 @@
 				} );
 		} );
 
-		var confirmEl = document.getElementById( 'totalsecwp-2fa-confirm' );
+		var confirmEl = document.getElementById( 'loyalsec-2fa-confirm' );
 		if ( confirmEl ) confirmEl.addEventListener( 'click', function () {
 			var btn = this;
-			var input = document.getElementById( 'totalsecwp-2fa-code' );
+			var input = document.getElementById( 'loyalsec-2fa-code' );
 			var code = input ? input.value.trim() : '';
 			if ( ! code ) {
 				render( 'confirm-error', Object.assign( {}, data, { error: 'Enter the code from your authenticator app.' } ) );
@@ -330,7 +330,7 @@
 				} );
 		} );
 
-		var disableEl = document.getElementById( 'totalsecwp-2fa-disable' );
+		var disableEl = document.getElementById( 'loyalsec-2fa-disable' );
 		if ( disableEl ) disableEl.addEventListener( 'click', function () {
 			if ( ! window.confirm( 'Disable two-factor authentication for your account?' ) ) return;
 			var btn = this;
@@ -345,7 +345,7 @@
 				} );
 		} );
 
-		var finishEl = document.getElementById( 'totalsecwp-2fa-finish' );
+		var finishEl = document.getElementById( 'loyalsec-2fa-finish' );
 		if ( finishEl ) finishEl.addEventListener( 'click', function () {
 			// A full reload, not just closing the overlay: this user is now enrolled, so every
 			// other piece of state that depended on "not yet enrolled" (this popup's own

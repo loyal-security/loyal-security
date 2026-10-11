@@ -2,14 +2,14 @@
 /**
  * Notification dispatcher — sends email alerts.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Notifications;
+namespace LoyalSecurity\Modules\Notifications;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Receives a logged event and fans it out to each configured channel, subject to
@@ -23,7 +23,7 @@ class Dispatcher {
 	private ?NotificationLog $log = null;
 
 	/** Transient key prefix for throttle counters (one per channel). */
-	private const TRANSIENT_PREFIX = 'totalsecwp_notif_throttle_';
+	private const TRANSIENT_PREFIX = 'loyalsec_notif_throttle_';
 
 	public function __construct( NotificationsModule $module ) {
 		$this->module = $module;
@@ -33,11 +33,11 @@ class Dispatcher {
 	 * Display name for outbound notifications.
 	 */
 	private function brand_name(): string {
-		return \TotalSecurityWP\Support\Brand::name();
+		return \LoyalSecurity\Support\Brand::name();
 	}
 
 	/**
-	 * Entry-point hooked to `totalsecwp_event_logged`.
+	 * Entry-point hooked to `loyalsec_event_logged`.
 	 *
 	 * @param string               $type  Event type constant.
 	 * @param array<string, mixed> $data  Full row data as written to DB (already scrubbed).
@@ -68,7 +68,7 @@ class Dispatcher {
 		 * @param NotificationsModule $module  The notifications module (settings access).
 		 */
 		do_action(
-			'totalsecwp_notification_event',
+			'loyalsec_notification_event',
 			array( 'type' => $type, 'data' => $data, 'severity' => $severity, 'guide' => $guide, 'id' => $id ),
 			$this->module
 		);
@@ -149,6 +149,21 @@ class Dispatcher {
 			return;
 		}
 
+		/**
+		 * Filters whether an event is emailed. An add-on that already sends its own, more
+		 * specific email for an event can return false here so the owner gets one email, not two.
+		 *
+		 * @since 1.5.0
+		 *
+		 * @param bool                 $send     Whether to email the event.
+		 * @param string               $type     Event type.
+		 * @param array<string, mixed> $data     Event row.
+		 * @param int                  $severity Severity.
+		 */
+		if ( ! apply_filters( 'loyalsec_notification_email', true, $type, $data, $severity ) ) {
+			return;
+		}
+
 		if ( ! $this->allow( 'email' ) ) {
 			return;
 		}
@@ -166,6 +181,22 @@ class Dispatcher {
 		);
 
 		$this->record( $event_id, $type, $severity, 'email', $to, $subject, $guide['meaning'], (bool) $ok );
+	}
+
+	/**
+	 * Credit line for emails whose details include a country (country blocks, impossible travel,
+	 * anything with a country in its context): country data comes from DB-IP Lite, whose
+	 * licence (CC BY 4.0) asks for a link wherever its results are shown.
+	 *
+	 * @param string               $type Event type.
+	 * @param array<string, mixed> $data Event row.
+	 */
+	private function country_credit( string $type, array $data ): string {
+		$context = isset( $data['context'] ) ? (string) $data['context'] : '';
+		if ( 0 !== strpos( $type, 'waf.geo' ) && false === stripos( $context, 'country' ) ) {
+			return '';
+		}
+		return '<p style="font-size:11px;color:#999;margin:8px 0 0;">Country data: <a href="' . esc_url( 'https://db-ip.com' ) . '" style="color:#999;">IP Geolocation by DB-IP</a></p>';
 	}
 
 	/**
@@ -257,6 +288,7 @@ class Dispatcher {
 			/* Details */
 			. '<h2 style="font-size:15px;margin:0 0 6px;color:#333;">Details</h2>'
 			. '<table style="border-collapse:collapse;width:100%;font-size:13px;border:1px solid #eee;">' . $rows . '</table>'
+			. $this->country_credit( $type, $data )
 
 			/* Actions */
 			. '<div style="margin:22px 0 6px;">'

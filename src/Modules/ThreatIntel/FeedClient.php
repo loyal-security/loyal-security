@@ -2,17 +2,17 @@
 /**
  * HTTP client for the ThreatIntel feed server.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\ThreatIntel;
+namespace LoyalSecurity\Modules\ThreatIntel;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\ProStatus;
-use TotalSecurityWP\Core\LicenseKit;
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Support\Http;
+use LoyalSecurity\Core\ProStatus;
+use LoyalSecurity\Core\LicenseKit;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Support\Http;
 
 /**
  * Fetches a signed dataset bundle from the remote feed server.
@@ -52,8 +52,8 @@ class FeedClient {
 	 */
 	public function fetch( string $dataset ): array {
 		// Default to the configured LicenseKit deployment ({base}/api/v1/sync); the
-		// totalsecwp_feed_url filter can still point sync at a staging/self-hosted feed.
-		$url = (string) apply_filters( 'totalsecwp_feed_url', LicenseKit::feed_url() );
+		// loyalsec_feed_url filter can still point sync at a staging/self-hosted feed.
+		$url = (string) apply_filters( 'loyalsec_feed_url', LicenseKit::feed_url() );
 		if ( '' === $url ) {
 			return array( 'status' => self::STATUS_ERROR, 'bundle' => null ); // No API base configured.
 		}

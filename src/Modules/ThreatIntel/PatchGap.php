@@ -2,10 +2,10 @@
 /**
  * Patch-gap intelligence — maps early-virtual-patch rules to installed plugins.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\ThreatIntel;
+namespace LoyalSecurity\Modules\ThreatIntel;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * When a plugin ships a security fix, LicenseKit analyses the update diff and publishes a
  * virtual-patch rule tagged `source: patch_gap` through the existing signed `patches` feed.
- * Those rules are already *enforced* by {@see \TotalSecurityWP\Waf\VirtualPatch} (which honours
+ * Those rules are already *enforced* by {@see \LoyalSecurity\Waf\VirtualPatch} (which honours
  * `slug` + `max_version`, in both Standard Mode and the Optimized-Mode prepend). This class
  * provides the *visibility* layer: it reads the cached patch feed, keeps only patch-gap rules,
  * and reports which of the site's installed

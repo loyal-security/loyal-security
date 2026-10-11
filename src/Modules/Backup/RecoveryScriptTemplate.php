@@ -2,10 +2,10 @@
 /**
  * Source template for the standalone recovery endpoint.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Backup;
+namespace LoyalSecurity\Modules\Backup;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -43,7 +43,7 @@ class RecoveryScriptTemplate {
 	 * The tool's source, with quoted `{{PLACEHOLDER}}` literals for {@see render()} to fill.
 	 */
 	private static function source(): string {
-		return <<<'TOTALSECWP_RECOVERY_SCRIPT'
+		return <<<'LOYALSEC_RECOVERY_SCRIPT'
 <?php
 /**
  * Loyal Security — standalone recovery tool.
@@ -65,33 +65,33 @@ class RecoveryScriptTemplate {
  * This file intentionally has NO external dependencies and does not include the plugin
  * autoloader, so it remains usable when the rest of the site is broken. It cannot use
  * ABSPATH-gating, WordPress nonces, $wpdb, or WP_Filesystem for that same reason — WordPress
- * is never booted here. Its own token+lockout auth (see totalsecwp_authenticate()) is the
+ * is never booted here. Its own token+lockout auth (see loyalsec_authenticate()) is the
  * access-control layer that would normally be a capability check + nonce.
  *
  * This file was generated for one specific site by the Loyal Security dashboard (Backup &
  * Recovery → Download recovery tool). Download a fresh copy after moving the site.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
 // phpcs:disable WordPress.WP.AlternativeFunctions, WordPress.PHP.NoSilencedErrors, WordPress.Security.EscapeOutput, WordPress.DB.RestrictedFunctions, Squiz.PHP.DiscouragedFunctions -- standalone, zero-WordPress-dependency script by design (see file header); direct filesystem/mysqli calls and set_time_limit() are the only tools available pre-boot.
 
-define( 'TOTALSECWP_RECOVERY', true );
+define( 'LOYALSEC_RECOVERY', true );
 
 // Built in by the dashboard when this copy was downloaded.
-const TOTALSECWP_STATE_FILE   = '{{STATE_FILE}}';
-const TOTALSECWP_WP_ROOT      = '{{WP_ROOT}}';
-const TOTALSECWP_WP_CONFIG    = '{{WP_CONFIG}}';
+const LOYALSEC_STATE_FILE   = '{{STATE_FILE}}';
+const LOYALSEC_WP_ROOT      = '{{WP_ROOT}}';
+const LOYALSEC_WP_CONFIG    = '{{WP_CONFIG}}';
 
-const TOTALSECWP_MAX_ATTEMPTS = 5;
-const TOTALSECWP_LOCK_SECONDS = 900;
-const TOTALSECWP_DB_DELIM     = "\n-- TOTALSECWP-STATEMENT --\n";
+const LOYALSEC_MAX_ATTEMPTS = 5;
+const LOYALSEC_LOCK_SECONDS = 900;
+const LOYALSEC_DB_DELIM     = "\n-- LOYALSEC-STATEMENT --\n";
 
 header( 'Content-Type: text/html; charset=utf-8' );
 header( 'X-Robots-Tag: noindex, nofollow', true );
 header( 'Cache-Control: no-store, no-cache, must-revalidate' );
 
-$totalsecwp_state_file = TOTALSECWP_STATE_FILE;
+$loyalsec_state_file = LOYALSEC_STATE_FILE;
 
 /**
  * Read a $_POST value as a length-capped, slash-stripped string. Standalone equivalent of
@@ -99,8 +99,8 @@ $totalsecwp_state_file = TOTALSECWP_STATE_FILE;
  * added magic-quotes slashes to superglobals since 5.4, so stripslashes() is a defensive
  * no-op; it exists so this never silently regresses if that ever changes.
  */
-function totalsecwp_post_string( $key, $max = 512 ) {
-	if ( ! isset( $_POST[ $key ] ) || ! is_scalar( $_POST[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- this standalone endpoint has its own token+lockout auth (see totalsecwp_authenticate()) in place of a WordPress nonce, which requires a logged-in session that doesn't exist pre-boot.
+function loyalsec_post_string( $key, $max = 512 ) {
+	if ( ! isset( $_POST[ $key ] ) || ! is_scalar( $_POST[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- this standalone endpoint has its own token+lockout auth (see loyalsec_authenticate()) in place of a WordPress nonce, which requires a logged-in session that doesn't exist pre-boot.
 		return '';
 	}
 	return substr( stripslashes( (string) $_POST[ $key ] ), 0, $max ); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- wp_unslash()/sanitize_text_field() are unavailable pre-boot; stripslashes() + the length cap are this file's equivalent (see the docblock above), and the nonce justification is the same as the isset() check above.
@@ -109,10 +109,10 @@ function totalsecwp_post_string( $key, $max = 512 ) {
 /**
  * Render a minimal page and stop.
  */
-function totalsecwp_page( $title, $body, $status = 200 ) {
+function loyalsec_page( $title, $body, $status = 200 ) {
 	http_response_code( $status );
 	echo '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">';
-	echo '<title>' . htmlspecialchars( $title ) . '</title>';
+	echo '<title>' . htmlspecialchars( $title, ENT_QUOTES ) . '</title>';
 	// Plain, unstyled page: this tool runs without WordPress, so nothing can be enqueued.
 	echo '</head><body>' . $body . '</body></html>';
 	exit;
@@ -121,7 +121,7 @@ function totalsecwp_page( $title, $body, $status = 200 ) {
 /**
  * Load shared recovery state.
  */
-function totalsecwp_load_state( $file ) {
+function loyalsec_load_state( $file ) {
 	if ( ! is_file( $file ) ) {
 		return array();
 	}
@@ -132,10 +132,10 @@ function totalsecwp_load_state( $file ) {
 /**
  * Persist recovery state back to disk (preserving the guard).
  */
-function totalsecwp_save_state( $file, $state ) {
+function loyalsec_save_state( $file, $state ) {
 	$php = "<?php\n"
 		. "// Auto-generated by Loyal Security. Holds a bcrypt token hash only — no plaintext secret.\n"
-		. "defined( 'TOTALSECWP_RECOVERY' ) || exit;\n"
+		. "defined( 'LOYALSEC_RECOVERY' ) || exit;\n"
 		. 'return ' . var_export( $state, true ) . ";\n"; // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export -- serializes the state array as valid PHP source for a fast native include; not debug output.
 	@file_put_contents( $file, $php, LOCK_EX );
 	@chmod( $file, 0600 );
@@ -144,14 +144,14 @@ function totalsecwp_save_state( $file, $state ) {
 /**
  * Locate wp-config.php by walking up from this endpoint.
  */
-function totalsecwp_find_wp_config() {
-	return ( '' !== TOTALSECWP_WP_CONFIG && is_file( TOTALSECWP_WP_CONFIG ) ) ? TOTALSECWP_WP_CONFIG : '';
+function loyalsec_find_wp_config() {
+	return ( '' !== LOYALSEC_WP_CONFIG && is_file( LOYALSEC_WP_CONFIG ) ) ? LOYALSEC_WP_CONFIG : '';
 }
 
 /**
  * Extract a constant's value from wp-config.php source.
  */
-function totalsecwp_wpconf_const( $src, $name ) {
+function loyalsec_wpconf_const( $src, $name ) {
 	if ( preg_match( '/define\(\s*[\'"]' . preg_quote( $name, '/' ) . '[\'"]\s*,\s*[\'"](.*?)[\'"]\s*\)/s', $src, $m ) ) {
 		return $m[1];
 	}
@@ -161,14 +161,14 @@ function totalsecwp_wpconf_const( $src, $name ) {
 /**
  * The WordPress root directory this tool was generated for.
  */
-function totalsecwp_abspath() {
-	return rtrim( str_replace( '\\', '/', TOTALSECWP_WP_ROOT ), '/' );
+function loyalsec_abspath() {
+	return rtrim( str_replace( '\\', '/', LOYALSEC_WP_ROOT ), '/' );
 }
 
 /**
  * List restorable backups from the private storage directory.
  */
-function totalsecwp_list_backups( $storage ) {
+function loyalsec_list_backups( $storage ) {
 	$out = array();
 	if ( ! $storage || ! is_dir( $storage ) ) {
 		return $out;
@@ -189,7 +189,7 @@ function totalsecwp_list_backups( $storage ) {
 /**
  * Reject zip entries that would escape the destination.
  */
-function totalsecwp_unsafe_entry( $name ) {
+function loyalsec_unsafe_entry( $name ) {
 	$norm = str_replace( '\\', '/', $name );
 	if ( '' === $norm || '/' === $norm[0] || preg_match( '#^[A-Za-z]:#', $norm ) ) {
 		return true;
@@ -205,7 +205,7 @@ function totalsecwp_unsafe_entry( $name ) {
 /**
  * Path-safe zip extraction into $dest.
  */
-function totalsecwp_extract_zip( $zip_path, $dest ) {
+function loyalsec_extract_zip( $zip_path, $dest ) {
 	if ( ! class_exists( 'ZipArchive' ) || ! is_file( $zip_path ) ) {
 		return -1;
 	}
@@ -217,7 +217,7 @@ function totalsecwp_extract_zip( $zip_path, $dest ) {
 	$n    = 0;
 	for ( $i = 0; $i < $zip->numFiles; $i++ ) {
 		$name = $zip->getNameIndex( $i );
-		if ( totalsecwp_unsafe_entry( $name ) ) {
+		if ( loyalsec_unsafe_entry( $name ) ) {
 			continue;
 		}
 		$target = $dest . '/' . ltrim( str_replace( '\\', '/', $name ), '/' );
@@ -247,7 +247,7 @@ function totalsecwp_extract_zip( $zip_path, $dest ) {
  * Verify a TOTP (RFC 6238) one-time code against a Base32 secret. Self-contained so the
  * standalone endpoint never depends on the plugin autoloader. Mirrors Modules\Auth\Totp.
  */
-function totalsecwp_totp_verify( $secret, $code, $window = 1 ) {
+function loyalsec_totp_verify( $secret, $code, $window = 1 ) {
 	$code = preg_replace( '/\s+/', '', (string) $code );
 	if ( ! preg_match( '/^\d{6}$/', $code ) ) {
 		return false;
@@ -302,25 +302,36 @@ function totalsecwp_totp_verify( $secret, $code, $window = 1 ) {
  *
  * Uses mysqli directly (not $wpdb) because WordPress is never bootstrapped in this file.
  */
-function totalsecwp_import_db( $sql_path, $wpconfig, $expected_sha256 = '' ) {
+function loyalsec_import_db( $sql_path, $wpconfig, $expected_sha256 = '' ) {
 	if ( function_exists( 'set_time_limit' ) ) {
 		@set_time_limit( 0 );
 	}
 	if ( ! is_file( $sql_path ) ) {
 		return array( 'ok' => false, 'msg' => 'Backup contains no database dump.' );
 	}
-	// Never replay a dump whose bytes differ from what the backup recorded.
-	if ( '' !== (string) $expected_sha256 && ! hash_equals( (string) $expected_sha256, (string) hash_file( 'sha256', $sql_path ) ) ) {
+	// Never replay a dump whose bytes differ from what the backup recorded — and never replay one
+	// with nothing to compare against.
+	//
+	// This is the control that matters here. Every statement executed below is recorded SQL, and
+	// while the shape check confines it to this site's own table prefix, a shape-valid CREATE
+	// TABLE is still arbitrary DDL; binding the INSERT values would not change that. What makes
+	// the replay safe is that the bytes are the bytes this plugin wrote. Treating a missing
+	// checksum as "proceed anyway" quietly removed that guarantee for exactly the file an
+	// attacker would have tampered with, so a dump that cannot be verified is now refused.
+	if ( '' === (string) $expected_sha256 ) {
+		return array( 'ok' => false, 'msg' => 'This backup has no recorded database checksum, so the dump could not be verified and was not restored. Restore the files below, then import the database from the dashboard once the site loads.' );
+	}
+	if ( ! hash_equals( (string) $expected_sha256, (string) hash_file( 'sha256', $sql_path ) ) ) {
 		return array( 'ok' => false, 'msg' => 'The database dump does not match the checksum recorded when this backup was made, so it was not restored.' );
 	}
 	if ( ! function_exists( 'mysqli_connect' ) || '' === $wpconfig ) {
 		return array( 'ok' => false, 'msg' => 'Database restore unavailable here (mysqli extension or wp-config.php missing). Restore files below, then import the database from the dashboard once the site loads.' );
 	}
 	$src  = (string) file_get_contents( $wpconfig );
-	$name = totalsecwp_wpconf_const( $src, 'DB_NAME' );
-	$user = totalsecwp_wpconf_const( $src, 'DB_USER' );
-	$pass = totalsecwp_wpconf_const( $src, 'DB_PASSWORD' );
-	$host = totalsecwp_wpconf_const( $src, 'DB_HOST' );
+	$name = loyalsec_wpconf_const( $src, 'DB_NAME' );
+	$user = loyalsec_wpconf_const( $src, 'DB_USER' );
+	$pass = loyalsec_wpconf_const( $src, 'DB_PASSWORD' );
+	$host = loyalsec_wpconf_const( $src, 'DB_HOST' );
 	if ( null === $name || null === $host ) {
 		return array( 'ok' => false, 'msg' => 'Could not read the database credentials from wp-config.php (they may be set via environment variables). Restore the database from the dashboard once the site is reachable.' );
 	}
@@ -349,10 +360,10 @@ function totalsecwp_import_db( $sql_path, $wpconfig, $expected_sha256 = '' ) {
 		mysqli_close( $mysqli );
 		return array( 'ok' => false, 'msg' => 'Could not read the database dump file.' );
 	}
-	$ok = 0; $err = 0; $buffer = ''; $dlen = strlen( TOTALSECWP_DB_DELIM );
+	$ok = 0; $err = 0; $buffer = ''; $dlen = strlen( LOYALSEC_DB_DELIM );
 	// Only the statement shapes the plugin's own dump writes are executed, and only on tables
 	// with this site's prefix — mirrors DatabaseDump::is_dump_statement().
-	$prefix = totalsecwp_wpconf_var( $src, 'table_prefix' );
+	$prefix = loyalsec_wpconf_var( $src, 'table_prefix' );
 	$table  = '`' . preg_quote( null === $prefix ? 'wp_' : $prefix, '/' ) . '[A-Za-z0-9_]+`';
 	$shape  = '/^(?:SET FOREIGN_KEY_CHECKS=[01];?|DROP TABLE IF EXISTS ' . $table . ';?|CREATE TABLE ' . $table . '\s*\(|INSERT INTO ' . $table . '\s*\()/';
 	$run = function ( $stmt ) use ( $mysqli, &$ok, &$err, $shape ) {
@@ -372,7 +383,7 @@ function totalsecwp_import_db( $sql_path, $wpconfig, $expected_sha256 = '' ) {
 	};
 	while ( ! feof( $fh ) ) {
 		$buffer .= (string) fread( $fh, 1 << 20 );
-		while ( false !== ( $pos = strpos( $buffer, TOTALSECWP_DB_DELIM ) ) ) {
+		while ( false !== ( $pos = strpos( $buffer, LOYALSEC_DB_DELIM ) ) ) {
 			$run( substr( $buffer, 0, $pos ) );
 			$buffer = substr( $buffer, $pos + $dlen );
 		}
@@ -387,22 +398,22 @@ function totalsecwp_import_db( $sql_path, $wpconfig, $expected_sha256 = '' ) {
  * Request handling.
  * ------------------------------------------------------------------ */
 
-$totalsecwp_state = totalsecwp_load_state( $totalsecwp_state_file );
+$loyalsec_state = loyalsec_load_state( $loyalsec_state_file );
 
 // Disabled / not configured → indistinguishable generic response.
-if ( empty( $totalsecwp_state['enabled'] ) || empty( $totalsecwp_state['token_hash'] ) ) {
-	totalsecwp_page( 'Not found', '<h1>404</h1><p class="muted">Nothing to see here.</p>', 404 );
+if ( empty( $loyalsec_state['enabled'] ) || empty( $loyalsec_state['token_hash'] ) ) {
+	loyalsec_page( 'Not found', '<h1>404</h1><p class="muted">Nothing to see here.</p>', 404 );
 }
 
 // Lockout check.
-$totalsecwp_now = time();
-if ( ! empty( $totalsecwp_state['lock_until'] ) && $totalsecwp_now < (int) $totalsecwp_state['lock_until'] ) {
-	$totalsecwp_wait = (int) ceil( ( (int) $totalsecwp_state['lock_until'] - $totalsecwp_now ) / 60 );
-	totalsecwp_page( 'Locked', '<h1>Temporarily locked</h1><p class="err">Too many attempts. Try again in about ' . (int) $totalsecwp_wait . ' minute(s).</p>', 429 );
+$loyalsec_now = time();
+if ( ! empty( $loyalsec_state['lock_until'] ) && $loyalsec_now < (int) $loyalsec_state['lock_until'] ) {
+	$loyalsec_wait = (int) ceil( ( (int) $loyalsec_state['lock_until'] - $loyalsec_now ) / 60 );
+	loyalsec_page( 'Locked', '<h1>Temporarily locked</h1><p class="err">Too many attempts. Try again in about ' . (int) $loyalsec_wait . ' minute(s).</p>', 429 );
 }
 
-$totalsecwp_storage     = isset( $totalsecwp_state['storage'] ) ? (string) $totalsecwp_state['storage'] : '';
-$totalsecwp_otp_enabled = ! empty( $totalsecwp_state['otp_enabled'] ) && ! empty( $totalsecwp_state['otp_secret'] );
+$loyalsec_storage     = isset( $loyalsec_state['storage'] ) ? (string) $loyalsec_state['storage'] : '';
+$loyalsec_otp_enabled = ! empty( $loyalsec_state['otp_enabled'] ) && ! empty( $loyalsec_state['otp_secret'] );
 
 /**
  * Verify the submitted credentials (token + optional OTP) with brute-force accounting.
@@ -410,27 +421,27 @@ $totalsecwp_otp_enabled = ! empty( $totalsecwp_state['otp_enabled'] ) && ! empty
  * caller can assume an authenticated context afterward. Token and OTP are validated together
  * and reported with a single generic message so neither can be probed independently.
  */
-function totalsecwp_authenticate( $state_file, &$state, $now, $otp_enabled ) {
-	$token = totalsecwp_post_string( 'token' );
-	$otp   = totalsecwp_post_string( 'otp', 16 );
+function loyalsec_authenticate( $state_file, &$state, $now, $otp_enabled ) {
+	$token = loyalsec_post_string( 'token' );
+	$otp   = loyalsec_post_string( 'otp', 16 );
 
 	$token_ok = password_verify( $token, (string) $state['token_hash'] );
-	$otp_ok   = ! $otp_enabled || totalsecwp_totp_verify( (string) ( $state['otp_secret'] ?? '' ), $otp );
+	$otp_ok   = ! $otp_enabled || loyalsec_totp_verify( (string) ( $state['otp_secret'] ?? '' ), $otp );
 
 	if ( ! $token_ok || ! $otp_ok ) {
 		$state['attempts'] = (int) ( $state['attempts'] ?? 0 ) + 1;
-		if ( $state['attempts'] >= TOTALSECWP_MAX_ATTEMPTS ) {
-			$state['lock_until'] = $now + TOTALSECWP_LOCK_SECONDS;
+		if ( $state['attempts'] >= LOYALSEC_MAX_ATTEMPTS ) {
+			$state['lock_until'] = $now + LOYALSEC_LOCK_SECONDS;
 			$state['attempts']   = 0;
 		}
-		totalsecwp_save_state( $state_file, $state );
-		totalsecwp_page( 'Recovery', '<h1>Loyal Security — Recovery</h1><p class="err">Invalid credentials.</p><p class="muted"><a class="link" href="">Back</a></p>', 403 );
+		loyalsec_save_state( $state_file, $state );
+		loyalsec_page( 'Recovery', '<h1>Loyal Security — Recovery</h1><p class="err">Invalid credentials.</p><p class="muted"><a class="link" href="">Back</a></p>', 403 );
 	}
 
 	// Success — reset the counter.
 	$state['attempts']   = 0;
 	$state['lock_until'] = 0;
-	totalsecwp_save_state( $state_file, $state );
+	loyalsec_save_state( $state_file, $state );
 	return true;
 }
 
@@ -439,23 +450,23 @@ function totalsecwp_authenticate( $state_file, &$state, $now, $otp_enabled ) {
  * forward as hidden fields so the operator authenticates once. NOTHING about the site, its
  * version, or its backups is shown until this point.
  */
-function totalsecwp_authed_form( $backups, $token, $otp ) {
+function loyalsec_authed_form( $backups, $token, $otp ) {
 	$options = '';
 	foreach ( $backups as $bid => $m ) {
-		$label    = htmlspecialchars( $bid . ' · ' . ( $m['scope'] ?? '' ) . ( ! empty( $m['db_included'] ) ? ' +DB' : '' ) . ' · ' . ( $m['created'] ?? '' ) );
-		$options .= '<option value="' . htmlspecialchars( $bid ) . '">' . $label . '</option>';
+		$label    = htmlspecialchars( $bid . ' · ' . ( $m['scope'] ?? '' ) . ( ! empty( $m['db_included'] ) ? ' +DB' : '' ) . ' · ' . ( $m['created'] ?? '' ), ENT_QUOTES );
+		$options .= '<option value="' . htmlspecialchars( $bid, ENT_QUOTES ) . '">' . $label . '</option>';
 	}
 	if ( '' === $options ) {
 		$options = '<option value="">No backups found</option>';
 	}
 
-	totalsecwp_page(
+	loyalsec_page(
 		'Loyal Security — Recovery',
 		'<h1>Loyal Security — Recovery</h1>'
 		. '<p class="ok">Authenticated.</p>'
 		. '<form method="post">'
-		. '<input type="hidden" name="token" value="' . htmlspecialchars( $token ) . '">'
-		. '<input type="hidden" name="otp" value="' . htmlspecialchars( $otp ) . '">'
+		. '<input type="hidden" name="token" value="' . htmlspecialchars( $token, ENT_QUOTES ) . '">'
+		. '<input type="hidden" name="otp" value="' . htmlspecialchars( $otp, ENT_QUOTES ) . '">'
 		. '<label>Backup</label><select name="backup">' . $options . '</select>'
 		. '<label class="opt"><input type="checkbox" name="restore_db" value="1">Also restore the database</label>'
 		. '<button type="submit" name="do_restore" value="1">Restore now</button>'
@@ -466,79 +477,79 @@ function totalsecwp_authed_form( $backups, $token, $otp ) {
 /**
  * Extract a `$table_prefix = '...';` assignment from wp-config.php source.
  */
-function totalsecwp_wpconf_var( $src, $name ) {
+function loyalsec_wpconf_var( $src, $name ) {
 	if ( preg_match( '/\$' . preg_quote( $name, '/' ) . '\s*=\s*[\'"](.*?)[\'"]\s*;/s', $src, $m ) ) {
 		return $m[1];
 	}
 	return null;
 }
 
-$totalsecwp_request_method = isset( $_SERVER['REQUEST_METHOD'] ) && is_string( $_SERVER['REQUEST_METHOD'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- wp_unslash() is unavailable pre-boot; stripslashes() + the 10-char cap + strtoupper() below are this file's equivalent.
+$loyalsec_request_method = isset( $_SERVER['REQUEST_METHOD'] ) && is_string( $_SERVER['REQUEST_METHOD'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- wp_unslash() is unavailable pre-boot; stripslashes() + the 10-char cap + strtoupper() below are this file's equivalent.
 	? strtoupper( substr( stripslashes( $_SERVER['REQUEST_METHOD'] ), 0, 10 ) ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- same as above.
 	: 'GET';
 
-if ( 'POST' === $totalsecwp_request_method ) {
+if ( 'POST' === $loyalsec_request_method ) {
 	// Always authenticate first — no backup data is read or revealed before this passes.
-	totalsecwp_authenticate( $totalsecwp_state_file, $totalsecwp_state, $totalsecwp_now, $totalsecwp_otp_enabled );
+	loyalsec_authenticate( $loyalsec_state_file, $loyalsec_state, $loyalsec_now, $loyalsec_otp_enabled );
 
-	$totalsecwp_backups = totalsecwp_list_backups( $totalsecwp_storage );
-	$totalsecwp_token    = totalsecwp_post_string( 'token' );
-	$totalsecwp_otp      = totalsecwp_post_string( 'otp', 16 );
+	$loyalsec_backups = loyalsec_list_backups( $loyalsec_storage );
+	$loyalsec_token    = loyalsec_post_string( 'token' );
+	$loyalsec_otp      = loyalsec_post_string( 'otp', 16 );
 
 	// First authenticated POST (no restore action yet) → show the restore form.
-	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- see totalsecwp_post_string()'s docblock; this endpoint's token+lockout auth replaces a WordPress nonce.
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- see loyalsec_post_string()'s docblock; this endpoint's token+lockout auth replaces a WordPress nonce.
 	if ( empty( $_POST['do_restore'] ) ) {
-		totalsecwp_authed_form( $totalsecwp_backups, $totalsecwp_token, $totalsecwp_otp );
+		loyalsec_authed_form( $loyalsec_backups, $loyalsec_token, $loyalsec_otp );
 	}
 
-	$totalsecwp_id     = preg_replace( '/[^A-Za-z0-9_-]/', '', totalsecwp_post_string( 'backup', 128 ) );
-	$totalsecwp_do_db  = ! empty( $_POST['restore_db'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- see totalsecwp_post_string()'s docblock.
+	$loyalsec_id     = preg_replace( '/[^A-Za-z0-9_-]/', '', loyalsec_post_string( 'backup', 128 ) );
+	$loyalsec_do_db  = ! empty( $_POST['restore_db'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- see loyalsec_post_string()'s docblock.
 
-	if ( ! isset( $totalsecwp_backups[ $totalsecwp_id ] ) ) {
-		totalsecwp_page( 'Recovery', '<h1>Recovery</h1><p class="err">Unknown backup selected.</p>', 422 );
+	if ( ! isset( $loyalsec_backups[ $loyalsec_id ] ) ) {
+		loyalsec_page( 'Recovery', '<h1>Recovery</h1><p class="err">Unknown backup selected.</p>', 422 );
 	}
 
-	$totalsecwp_dir = rtrim( $totalsecwp_storage, '/' ) . '/' . $totalsecwp_id;
+	$loyalsec_dir = rtrim( $loyalsec_storage, '/' ) . '/' . $loyalsec_id;
 	// Prefer the ABSPATH recorded in the manifest at backup time; fall back to deriving it
 	// from this endpoint's location.
-	$totalsecwp_abspath_dir = ( ! empty( $totalsecwp_backups[ $totalsecwp_id ]['abspath'] ) && is_dir( $totalsecwp_backups[ $totalsecwp_id ]['abspath'] ) )
-		? rtrim( str_replace( '\\', '/', (string) $totalsecwp_backups[ $totalsecwp_id ]['abspath'] ), '/' )
-		: totalsecwp_abspath();
-	$totalsecwp_report = array();
+	$loyalsec_abspath_dir = ( ! empty( $loyalsec_backups[ $loyalsec_id ]['abspath'] ) && is_dir( $loyalsec_backups[ $loyalsec_id ]['abspath'] ) )
+		? rtrim( str_replace( '\\', '/', (string) $loyalsec_backups[ $loyalsec_id ]['abspath'] ), '/' )
+		: loyalsec_abspath();
+	$loyalsec_report = array();
 
 	// Extracting a large archive can exceed the default execution limit; lift it best-effort.
 	if ( function_exists( 'set_time_limit' ) ) {
 		@set_time_limit( 0 );
 	}
 
-	$totalsecwp_files    = totalsecwp_extract_zip( $totalsecwp_dir . '/files.zip', $totalsecwp_abspath_dir );
-	$totalsecwp_report[] = $totalsecwp_files >= 0 ? "<span class=\"ok\">Files restored: {$totalsecwp_files}</span>" : '<span class="err">File restore failed.</span>';
+	$loyalsec_files    = loyalsec_extract_zip( $loyalsec_dir . '/files.zip', $loyalsec_abspath_dir );
+	$loyalsec_report[] = $loyalsec_files >= 0 ? "<span class=\"ok\">Files restored: {$loyalsec_files}</span>" : '<span class="err">File restore failed.</span>';
 
-	if ( $totalsecwp_do_db && ! empty( $totalsecwp_backups[ $totalsecwp_id ]['db_included'] ) ) {
-		$totalsecwp_db       = totalsecwp_import_db( $totalsecwp_dir . '/database.sql', totalsecwp_find_wp_config(), (string) ( $totalsecwp_backups[ $totalsecwp_id ]['db_sha256'] ?? '' ) );
-		$totalsecwp_report[] = ( $totalsecwp_db['ok'] ? '<span class="ok">' : '<span class="err">' ) . 'Database: ' . htmlspecialchars( $totalsecwp_db['msg'] ) . '</span>';
+	if ( $loyalsec_do_db && ! empty( $loyalsec_backups[ $loyalsec_id ]['db_included'] ) ) {
+		$loyalsec_db       = loyalsec_import_db( $loyalsec_dir . '/database.sql', loyalsec_find_wp_config(), (string) ( $loyalsec_backups[ $loyalsec_id ]['db_sha256'] ?? '' ) );
+		$loyalsec_report[] = ( $loyalsec_db['ok'] ? '<span class="ok">' : '<span class="err">' ) . 'Database: ' . htmlspecialchars( $loyalsec_db['msg'], ENT_QUOTES ) . '</span>';
 	}
 
-	totalsecwp_page( 'Recovery complete', '<h1>Recovery complete</h1><p>' . implode( '</p><p>', $totalsecwp_report ) . '</p><p class="muted">Delete this file from your server once the site is healthy (you can download a fresh copy from the dashboard any time).</p>' );
+	loyalsec_page( 'Recovery complete', '<h1>Recovery complete</h1><p>' . implode( '</p><p>', $loyalsec_report ) . '</p><p class="muted">Delete this file from your server once the site is healthy (you can download a fresh copy from the dashboard any time).</p>' );
 }
 
 /* GET — pre-auth screen. Reveals NOTHING about the site, its version, or its backups: only a
  * generic heading + token field (+ OTP field when OTP is enabled). */
-$totalsecwp_otp_field = $totalsecwp_otp_enabled
+$loyalsec_otp_field = $loyalsec_otp_enabled
 	? '<label>One-time code</label><input type="text" name="otp" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required>'
 	: '';
 
-totalsecwp_page(
+loyalsec_page(
 	'Loyal Security — Recovery',
 	'<h1>Loyal Security — Recovery</h1>'
 	. '<p class="muted">Enter your recovery token to continue.</p>'
 	. '<form method="post">'
 	. '<label>Recovery token</label><input type="password" name="token" autocomplete="off" required>'
-	. $totalsecwp_otp_field
+	. $loyalsec_otp_field
 	. '<button type="submit">Continue</button>'
 	. '</form>'
 );
 
-TOTALSECWP_RECOVERY_SCRIPT;
+LOYALSEC_RECOVERY_SCRIPT;
 	}
 }

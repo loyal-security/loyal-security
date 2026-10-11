@@ -2,10 +2,10 @@
 /**
  * Catalogue of audit event types and their default severities.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Audit;
+namespace LoyalSecurity\Modules\Audit;
 
 defined( 'ABSPATH' ) || exit;
 

@@ -2,16 +2,16 @@
 /**
  * Threat Intelligence REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Modules\ThreatIntel\ThreatIntelModule;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Modules\ThreatIntel\ThreatIntelModule;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -75,11 +75,11 @@ class ThreatIntelController extends AbstractController {
 	 * clock) is misconfigured so the operator can pinpoint the problem.
 	 */
 	public function connection_test( WP_REST_Request $request ): WP_REST_Response {
-		/** @var \TotalSecurityWP\Core\Settings $settings */
+		/** @var \LoyalSecurity\Core\Settings $settings */
 		$settings    = $this->container->make( 'settings' );
 		$license_key = (string) $settings->get( 'threatintel', 'license_key', '' );
 
-		return $this->ok( \TotalSecurityWP\Core\LicenseKit::connection_test( $license_key ) );
+		return $this->ok( \LoyalSecurity\Core\LicenseKit::connection_test( $license_key ) );
 	}
 
 	public function get_vulnerabilities( WP_REST_Request $request ): WP_REST_Response {
@@ -89,12 +89,12 @@ class ThreatIntelController extends AbstractController {
 		}
 
 		// Check whether the CVE database has been populated from the feed yet.
-		$store     = new \TotalSecurityWP\Modules\ThreatIntel\FeedStore();
+		$store     = new \LoyalSecurity\Modules\ThreatIntel\FeedStore();
 		$cve_db    = $store->get_rules( 'cve' );
 		$db_loaded = ! empty( $cve_db );
 
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_scan_findings';
+		$table = $wpdb->prefix . 'loyalsec_scan_findings';
 		$rows  = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name built from $wpdb->prefix, not user input.
 			$wpdb->prepare(
 				"SELECT * FROM %i WHERE status = 'open' AND category = 'vulnerability' ORDER BY id DESC LIMIT %d", $table,
@@ -144,7 +144,7 @@ class ThreatIntelController extends AbstractController {
 				}
 				// Prefer the live advisory's version fields; fall back to what the finding stored.
 				$check = isset( $cve_index[ $cid ] ) && is_array( $cve_index[ $cid ] ) ? $cve_index[ $cid ] : $ctx;
-				if ( ! \TotalSecurityWP\Modules\ThreatIntel\VulnerabilityScanner::version_affected( $check, $current ) ) {
+				if ( ! \LoyalSecurity\Modules\ThreatIntel\VulnerabilityScanner::version_affected( $check, $current ) ) {
 					continue; // Patched in the running version (or unverifiable) → hide.
 				}
 			}

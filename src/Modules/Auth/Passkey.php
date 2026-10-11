@@ -2,10 +2,10 @@
 /**
  * Passkey (WebAuthn) credential storage.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
 class Passkey {
 
 	/** Usermeta key holding the per-user list of passkey records. */
-	private const META_KEY = '_totalsecwp_passkeys';
+	private const META_KEY = '_loyalsec_passkeys';
 
 	/**
 	 * @return array<int, array<string, mixed>>

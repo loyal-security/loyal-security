@@ -2,25 +2,25 @@
 /**
  * Firewall REST controller — bans, stats, live activity.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Modules\Firewall\BanStore;
-use TotalSecurityWP\Modules\Firewall\CompetitorImporter;
-use TotalSecurityWP\Modules\Firewall\CustomBotRules;
-use TotalSecurityWP\Modules\Firewall\CustomVirtualPatches;
-use TotalSecurityWP\Modules\Firewall\FirewallModule;
-use TotalSecurityWP\Waf\BotSignatures;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Scanner\ScannerModule;
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Modules\Firewall\BanStore;
+use LoyalSecurity\Modules\Firewall\CompetitorImporter;
+use LoyalSecurity\Modules\Firewall\CustomBotRules;
+use LoyalSecurity\Modules\Firewall\CustomVirtualPatches;
+use LoyalSecurity\Modules\Firewall\FirewallModule;
+use LoyalSecurity\Waf\BotSignatures;
+use LoyalSecurity\Modules\Audit\Logger;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Scanner\ScannerModule;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Support\Ip;
 use WP_REST_Request;
 
 /**
@@ -213,7 +213,7 @@ class FirewallController extends AbstractController {
 	/**
 	 * Convenience accessor for the settings repository.
 	 */
-	private function settings(): \TotalSecurityWP\Core\Settings {
+	private function settings(): \LoyalSecurity\Core\Settings {
 		return $this->container->make( 'settings' );
 	}
 
@@ -240,18 +240,18 @@ class FirewallController extends AbstractController {
 			[ $subnet, $bits ] = array_pad( explode( '/', $ip, 2 ), 2, null );
 			$max = ( false !== strpos( (string) $subnet, ':' ) ) ? 128 : 32;
 			if ( ! Ip::is_valid( (string) $subnet ) || ! ctype_digit( (string) $bits ) || (int) $bits < 0 || (int) $bits > $max ) {
-				return $this->fail( 'totalsecwp_bad_ip', __( 'Invalid IP address or CIDR range.', 'loyal-security' ), 422 );
+				return $this->fail( 'loyalsec_bad_ip', __( 'Invalid IP address or CIDR range.', 'loyal-security' ), 422 );
 			}
 			$cidr = $subnet . '/' . (int) $bits;
 			$ip   = (string) $subnet;
 		} elseif ( ! Ip::is_valid( $ip ) ) {
-			return $this->fail( 'totalsecwp_bad_ip', __( 'Invalid IP address or CIDR range.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_ip', __( 'Invalid IP address or CIDR range.', 'loyal-security' ), 422 );
 		}
 
 		$store = new BanStore();
 		$ok    = $store->add( $ip, $reason, $type, 'permanent' === $type ? null : $ttl, 'manual', $cidr );
 		if ( ! $ok ) {
-			return $this->fail( 'totalsecwp_ban_failed', __( 'Could not add the ban.', 'loyal-security' ), 500 );
+			return $this->fail( 'loyalsec_ban_failed', __( 'Could not add the ban.', 'loyal-security' ), 500 );
 		}
 
 		$this->logger()->log( EventCatalog::WAF_BAN_ADDED, array( 'ip' => $ip, 'type' => $type, 'reason' => $reason ) );
@@ -267,7 +267,7 @@ class FirewallController extends AbstractController {
 
 	public function stats( WP_REST_Request $request ) {
 		global $wpdb;
-		$events = $wpdb->prefix . 'totalsecwp_events';
+		$events = $wpdb->prefix . 'loyalsec_events';
 		$since  = gmdate( 'Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS );
 
 		$by_type = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name built from $wpdb->prefix, not user input.
@@ -291,9 +291,9 @@ class FirewallController extends AbstractController {
 		// Patch-gap coverage: how many installed plugins are currently shielded by an early
 		// virtual patch. Guarded so the firewall stats never fail if ThreatIntel is absent.
 		$patch_gap = 0;
-		if ( class_exists( \TotalSecurityWP\Modules\ThreatIntel\PatchGap::class ) ) {
+		if ( class_exists( \LoyalSecurity\Modules\ThreatIntel\PatchGap::class ) ) {
 			try {
-				$summary   = ( new \TotalSecurityWP\Modules\ThreatIntel\PatchGap() )->summary();
+				$summary   = ( new \LoyalSecurity\Modules\ThreatIntel\PatchGap() )->summary();
 				$patch_gap = (int) ( $summary['count'] ?? 0 );
 			} catch ( \Throwable $e ) {
 				$patch_gap = 0;
@@ -302,7 +302,7 @@ class FirewallController extends AbstractController {
 
 		return $this->ok(
 			array(
-				'mode'      => get_option( 'totalsecwp_waf_mode', 'standard' ),
+				'mode'      => get_option( 'loyalsec_waf_mode', 'standard' ),
 				'by_type'   => is_array( $by_type ) ? $by_type : array(),
 				'top_ips'   => is_array( $top_ips ) ? $top_ips : array(),
 				'patch_gap' => $patch_gap,
@@ -335,7 +335,7 @@ class FirewallController extends AbstractController {
 	public function patch_debug( WP_REST_Request $request ) {
 		$firewall = Plugin::instance()->module( 'firewall' );
 		if ( ! $firewall instanceof FirewallModule ) {
-			return $this->fail( 'totalsecwp_firewall_off', __( 'The firewall module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_firewall_off', __( 'The firewall module is disabled.', 'loyal-security' ), 409 );
 		}
 		return $this->ok( $firewall->debug_virtual_patch_state() );
 	}
@@ -370,12 +370,12 @@ class FirewallController extends AbstractController {
 		$id      = (string) $request->get_param( 'id' );
 		$enabled = (bool) $request->get_param( 'enabled' );
 		if ( '' === $id ) {
-			return $this->fail( 'totalsecwp_bad_request', __( 'Missing rule id.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_request', __( 'Missing rule id.', 'loyal-security' ), 422 );
 		}
 
 		$firewall = Plugin::instance()->module( 'firewall' );
 		if ( ! $firewall instanceof FirewallModule ) {
-			return $this->fail( 'totalsecwp_firewall_off', __( 'The firewall module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_firewall_off', __( 'The firewall module is disabled.', 'loyal-security' ), 409 );
 		}
 
 		$custom = new CustomVirtualPatches();
@@ -384,7 +384,7 @@ class FirewallController extends AbstractController {
 		} elseif ( $firewall->bundled_or_feed_virtual_patch_exists( $id ) ) {
 			$firewall->set_virtual_patch_disabled( $id, ! $enabled );
 		} else {
-			return $this->fail( 'totalsecwp_not_found', __( 'Virtual patch not found.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_not_found', __( 'Virtual patch not found.', 'loyal-security' ), 404 );
 		}
 
 		$firewall->write_waf_config();
@@ -398,11 +398,11 @@ class FirewallController extends AbstractController {
 	public function delete_virtual_patch( WP_REST_Request $request ) {
 		$id = (string) $request->get_param( 'id' );
 		if ( '' === $id ) {
-			return $this->fail( 'totalsecwp_bad_request', __( 'Missing rule id.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_request', __( 'Missing rule id.', 'loyal-security' ), 422 );
 		}
 
 		if ( ! ( new CustomVirtualPatches() )->remove( $id ) ) {
-			return $this->fail( 'totalsecwp_not_found', __( 'Virtual patch not found.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_not_found', __( 'Virtual patch not found.', 'loyal-security' ), 404 );
 		}
 
 		$firewall = Plugin::instance()->module( 'firewall' );
@@ -474,7 +474,7 @@ class FirewallController extends AbstractController {
 	public function set_bot_rate_limit( WP_REST_Request $request ) {
 		$signature = strtolower( trim( (string) $request->get_param( 'signature' ) ) );
 		if ( '' === $signature ) {
-			return $this->fail( 'totalsecwp_bad_request', __( 'Missing signature.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_request', __( 'Missing signature.', 'loyal-security' ), 422 );
 		}
 
 		$overrides = (array) $this->settings()->get( 'firewall', 'bot_rate_overrides', array() );
@@ -485,7 +485,7 @@ class FirewallController extends AbstractController {
 			$requests = (int) $request->get_param( 'requests' );
 			$window   = (int) $request->get_param( 'window' );
 			if ( $requests <= 0 || $window <= 0 ) {
-				return $this->fail( 'totalsecwp_bad_request', __( 'requests and window must both be positive numbers.', 'loyal-security' ), 422 );
+				return $this->fail( 'loyalsec_bad_request', __( 'requests and window must both be positive numbers.', 'loyal-security' ), 422 );
 			}
 			$overrides[ $signature ] = array( 'requests' => $requests, 'window' => $window );
 		}
@@ -512,7 +512,7 @@ class FirewallController extends AbstractController {
 		$note      = sanitize_text_field( (string) $request->get_param( 'note' ) );
 
 		if ( '' === $signature || ! in_array( $type, array( 'verified', 'blocked' ), true ) ) {
-			return $this->fail( 'totalsecwp_bad_request', __( 'A signature and a valid type (verified or blocked) are required.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_request', __( 'A signature and a valid type (verified or blocked) are required.', 'loyal-security' ), 422 );
 		}
 
 		$rule = array(
@@ -546,7 +546,7 @@ class FirewallController extends AbstractController {
 		$id      = (string) $request->get_param( 'id' );
 		$enabled = (bool) $request->get_param( 'enabled' );
 		if ( '' === $id ) {
-			return $this->fail( 'totalsecwp_bad_request', __( 'Missing rule id.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_request', __( 'Missing rule id.', 'loyal-security' ), 422 );
 		}
 
 		$custom = new CustomBotRules();
@@ -560,7 +560,7 @@ class FirewallController extends AbstractController {
 			}
 			$this->settings()->update_module( 'firewall', array( 'disabled_builtin_bots' => $disabled ) );
 		} else {
-			return $this->fail( 'totalsecwp_not_found', __( 'Bot rule not found.', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_not_found', __( 'Bot rule not found.', 'loyal-security' ), 404 );
 		}
 
 		$firewall = Plugin::instance()->module( 'firewall' );
@@ -577,11 +577,11 @@ class FirewallController extends AbstractController {
 	public function delete_bot_rule( WP_REST_Request $request ) {
 		$id = (string) $request->get_param( 'id' );
 		if ( '' === $id ) {
-			return $this->fail( 'totalsecwp_bad_request', __( 'Missing rule id.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_bad_request', __( 'Missing rule id.', 'loyal-security' ), 422 );
 		}
 
 		if ( ! ( new CustomBotRules() )->remove( $id ) ) {
-			return $this->fail( 'totalsecwp_not_found', __( 'Bot rule not found (builtin rules can be disabled but not removed).', 'loyal-security' ), 404 );
+			return $this->fail( 'loyalsec_not_found', __( 'Bot rule not found (builtin rules can be disabled but not removed).', 'loyal-security' ), 404 );
 		}
 
 		$firewall = Plugin::instance()->module( 'firewall' );

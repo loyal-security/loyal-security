@@ -2,14 +2,14 @@
 /**
  * Clean reinstall of WordPress.org-hosted plugins.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * Classifies installed plugins into those that can be auto-repaired (hosted on WordPress.org,
@@ -24,7 +24,7 @@ class PluginRepair {
 
 	private function findings_table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_scan_findings';
+		return $wpdb->prefix . 'loyalsec_scan_findings';
 	}
 
 	/**
@@ -130,7 +130,7 @@ class PluginRepair {
 			return array( 'ok' => false, 'message' => __( 'This plugin is not on WordPress.org and must be reinstalled manually.', 'loyal-security' ) );
 		}
 
-		$plugin_dir = \TotalSecurityWP\Support\Paths::plugin( $slug );
+		$plugin_dir = \LoyalSecurity\Support\Paths::plugin( $slug );
 		if ( ! is_dir( $plugin_dir ) ) {
 			return array( 'ok' => false, 'message' => __( 'Plugin directory not found.', 'loyal-security' ) );
 		}
@@ -238,7 +238,7 @@ class PluginRepair {
 	 * Cached WordPress.org availability check (the API call is relatively expensive).
 	 */
 	private function is_on_wporg( PackageProvider $provider, string $slug, string $version ): bool {
-		$key    = 'totalsecwp_wporg_' . md5( $slug . '|' . $version );
+		$key    = 'loyalsec_wporg_' . md5( $slug . '|' . $version );
 		$cached = get_transient( $key );
 		if ( '1' === $cached ) {
 			return true;
@@ -259,7 +259,7 @@ class PluginRepair {
 	 */
 	private function find_issues( string $slug, string $file ): array {
 		global $wpdb;
-		$abs  = wp_normalize_path( \TotalSecurityWP\Support\Paths::plugins() . '/' . ( '.' === $slug ? $file : $slug ) );
+		$abs  = wp_normalize_path( \LoyalSecurity\Support\Paths::plugins() . '/' . ( '.' === $slug ? $file : $slug ) );
 		$like = ( '.' === $slug ) ? '%' . $wpdb->esc_like( $file ) : '%' . $wpdb->esc_like( $slug . '/' ) . '%';
 		// Stored paths can use OS-native separators (backslashes on Windows); normalise the
 		// column to forward slashes so matching is platform-independent.
@@ -296,7 +296,7 @@ class PluginRepair {
 	 */
 	private function resolve_findings( string $slug ): int {
 		global $wpdb;
-		$abs  = wp_normalize_path( \TotalSecurityWP\Support\Paths::plugin( $slug ) );
+		$abs  = wp_normalize_path( \LoyalSecurity\Support\Paths::plugin( $slug ) );
 		return (int) $wpdb->query( // phpcs:ignore WordPress.DB, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name built from $wpdb->prefix, not user input.
 			$wpdb->prepare(
 				"UPDATE %i SET status = 'resolved' WHERE status = 'open' AND ( REPLACE( path, '\\\\', '/' ) LIKE %s OR REPLACE( path, '\\\\', '/' ) LIKE %s )", $this->findings_table(),

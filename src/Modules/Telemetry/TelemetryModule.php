@@ -2,17 +2,17 @@
 /**
  * Bypass-telemetry module — anonymous, opt-in reporting of firewall bypasses.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Telemetry;
+namespace LoyalSecurity\Modules\Telemetry;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Waf\Decision;
-use TotalSecurityWP\Waf\RequestContext;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Waf\Decision;
+use LoyalSecurity\Waf\RequestContext;
 
 /**
  * When an attack is *confirmed* to have slipped past the firewall (malware found, core file
@@ -26,7 +26,7 @@ use TotalSecurityWP\Waf\RequestContext;
  */
 class TelemetryModule extends AbstractModule {
 
-	private const FLUSH_HOOK = 'totalsecwp_telemetry_flush';
+	private const FLUSH_HOOK = 'loyalsec_telemetry_flush';
 
 	/** Compromise events that may indicate a firewall bypass. */
 	private const TRIGGERS = array(
@@ -63,14 +63,14 @@ class TelemetryModule extends AbstractModule {
 
 	public function register_hooks(): void {
 		// Cheap to attach; the handlers gate on consent + firewall state before doing work.
-		add_action( 'totalsecwp_event_logged', array( $this, 'on_event_logged' ), 20, 3 );
+		add_action( 'loyalsec_event_logged', array( $this, 'on_event_logged' ), 20, 3 );
 		add_action( self::FLUSH_HOOK, array( $this, 'flush' ) );
 	}
 
 	public function boot(): void {
 		// Near-miss capture only runs once the admin has consented — no consent, no data at rest.
 		if ( self::consent() && (bool) $this->setting( 'near_miss_capture', true ) ) {
-			add_action( 'totalsecwp_waf_near_miss', array( $this, 'on_near_miss' ), 10, 2 );
+			add_action( 'loyalsec_waf_near_miss', array( $this, 'on_near_miss' ), 10, 2 );
 		}
 
 		if ( ! wp_next_scheduled( self::FLUSH_HOOK ) ) {

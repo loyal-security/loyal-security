@@ -2,17 +2,17 @@
 /**
  * Custom Login URL — Apache rewrite deployment (with backup, verify, rollback).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Writes the .htaccess rewrite that lets `/<slug>` serve wp-login.php, then confirms it
  * actually works with a live self-test request before the runtime guard starts blocking the
- * original `/wp-login.php` path — mirrors {@see \TotalSecurityWP\Setup\PrependInstaller}'s
+ * original `/wp-login.php` path — mirrors {@see \LoyalSecurity\Setup\PrependInstaller}'s
  * apply → verify → auto-rollback pattern so a server that can't support the rewrite (no
  * mod_rewrite, AllowOverride off) can never leave the site locked out.
  *
@@ -34,10 +34,9 @@ class LoginUrlInstaller {
 	private const MARK_BEGIN = '# BEGIN Loyal Security Login URL';
 	private const MARK_END   = '# END Loyal Security Login URL';
 
-	/** Current markers plus the ones earlier versions wrote. */
+	/** The markers this plugin wraps its own blocks in. */
 	private const MARKERS = array(
 		array( self::MARK_BEGIN, self::MARK_END ),
-		array( '# BEGIN Total Security WP Login URL', '# END Total Security WP Login URL' ),
 	);
 
 	/**
@@ -49,7 +48,7 @@ class LoginUrlInstaller {
 			return array( 'ok' => false, 'message' => __( 'A slug is required.', 'loyal-security' ) );
 		}
 
-		$file = \TotalSecurityWP\Support\Paths::root() . '.htaccess';
+		$file = \LoyalSecurity\Support\Paths::root() . '.htaccess';
 		$dir  = dirname( $file );
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- read-only pre-flight check on a server-root path; not a WP_Filesystem-abstracted write.
 		if ( ! is_writable( $dir ) && ! ( is_file( $file ) && is_writable( $file ) ) ) {
@@ -99,7 +98,7 @@ class LoginUrlInstaller {
 	 * Remove the rewrite block, restoring the original /wp-login.php as the only entry point.
 	 */
 	public function revert(): void {
-		$file = \TotalSecurityWP\Support\Paths::root() . '.htaccess';
+		$file = \LoyalSecurity\Support\Paths::root() . '.htaccess';
 		if ( is_file( $file ) ) {
 			$raw = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- see class docblock note.
 			if ( false === $raw ) {
@@ -111,12 +110,12 @@ class LoginUrlInstaller {
 	}
 
 	public function is_applied(): bool {
-		$file = \TotalSecurityWP\Support\Paths::root() . '.htaccess';
+		$file = \LoyalSecurity\Support\Paths::root() . '.htaccess';
 		if ( ! is_file( $file ) ) {
 			return false;
 		}
 		$raw = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- see class docblock note.
-		return false !== $raw && \TotalSecurityWP\Support\Markers::present( $raw, self::MARKERS );
+		return false !== $raw && \LoyalSecurity\Support\Markers::present( $raw, self::MARKERS );
 	}
 
 	/**
@@ -130,7 +129,7 @@ class LoginUrlInstaller {
 	public function verify( string $slug ): array {
 		$response = wp_remote_get(
 			home_url( '/' . $slug ),
-			array( 'timeout' => 8, 'sslverify' => \TotalSecurityWP\Support\Http::local_sslverify(), 'redirection' => 0 )
+			array( 'timeout' => 8, 'sslverify' => \LoyalSecurity\Support\Http::local_sslverify(), 'redirection' => 0 )
 		);
 		if ( is_wp_error( $response ) ) {
 			return array( 'ok' => false, 'message' => $response->get_error_message() );
@@ -175,8 +174,8 @@ class LoginUrlInstaller {
 			. '# wp-login.php location\'s contents in below the marked line, keeping the header' . "\n"
 			. '# line so the plugin can see the real request path.' . "\n"
 			. 'location = /' . $slug . ' {' . "\n"
-			. '    # fastcgi_pass setups: fastcgi_param HTTP_X_TOTALSECWP_ORIGINAL_URI $request_uri;' . "\n"
-			. '    # proxy_pass setups:   proxy_set_header X-TotalSecWP-Original-Uri $request_uri;' . "\n"
+			. '    # fastcgi_pass setups: fastcgi_param HTTP_X_LOYALSEC_ORIGINAL_URI $request_uri;' . "\n"
+			. '    # proxy_pass setups:   proxy_set_header X-LoyalSec-Original-Uri $request_uri;' . "\n"
 			. '    # --- paste your existing wp-login.php location\'s directives below ---' . "\n"
 			. '}' . "\n";
 	}
@@ -186,10 +185,10 @@ class LoginUrlInstaller {
 		// same-directory backup of a server-root config file is a predictable-filename
 		// plaintext leak on any web server that doesn't specifically deny it. See
 		// Filesystem::backup_config_file()'s own docblock for the full reasoning.
-		\TotalSecurityWP\Support\Filesystem::backup_config_file( $file, $content );
+		\LoyalSecurity\Support\Filesystem::backup_config_file( $file, $content );
 	}
 
 	private function strip( string $content ): string {
-		return \TotalSecurityWP\Support\Markers::strip( $content, self::MARKERS );
+		return \LoyalSecurity\Support\Markers::strip( $content, self::MARKERS );
 	}
 }

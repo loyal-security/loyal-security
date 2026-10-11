@@ -2,10 +2,10 @@
 /**
  * Malware signature database for the file scanner.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Scanner;
+namespace LoyalSecurity\Modules\Scanner;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,7 +21,7 @@ class SignatureDb {
 
 	public function __construct( ?array $rules = null, string $version = '' ) {
 		if ( null === $rules ) {
-			$file    = TOTALSECWP_PATH . 'data/malware-signatures.php';
+			$file    = LOYALSEC_PATH . 'data/malware-signatures.php';
 			$data    = is_file( $file ) ? include $file : array();
 			$rules   = isset( $data['rules'] ) ? (array) $data['rules'] : array();
 			$version = isset( $data['version'] ) ? (string) $data['version'] : '';

@@ -2,14 +2,14 @@
 /**
  * Base REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest;
+namespace LoyalSecurity\Rest;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Container;
+use LoyalSecurity\Container;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -40,9 +40,9 @@ abstract class AbstractController {
 	 * @return bool|WP_Error
 	 */
 	public function permission_check() {
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return new WP_Error(
-				'totalsecwp_forbidden',
+				'loyalsec_forbidden',
 				__( 'You do not have permission to manage Loyal Security.', 'loyal-security' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
@@ -95,7 +95,7 @@ abstract class AbstractController {
 	 * Full REST route base for this plugin.
 	 */
 	protected function namespace(): string {
-		return TOTALSECWP_REST_NAMESPACE;
+		return LOYALSEC_REST_NAMESPACE;
 	}
 
 	/**
@@ -124,7 +124,7 @@ abstract class AbstractController {
 		// Relative to the WordPress root, or — for a relocated content directory, which is where
 		// the private storage dir lives too — relative to that directory's parent, so the
 		// server's absolute path (…/home/<user>/…/public_html/…) is never exposed.
-		$short = \TotalSecurityWP\Support\Paths::display( $path );
+		$short = \LoyalSecurity\Support\Paths::display( $path );
 		return null !== $short ? $short : $path;
 	}
 
@@ -135,7 +135,7 @@ abstract class AbstractController {
 	 * without disturbing the rest of the string. Handles both forward- and native-separator forms.
 	 */
 	protected function strip_server_root( string $value ): string {
-		$root = untrailingslashit( \TotalSecurityWP\Support\Paths::root() );
+		$root = untrailingslashit( \LoyalSecurity\Support\Paths::root() );
 		if ( '' === $root ) {
 			return $value;
 		}

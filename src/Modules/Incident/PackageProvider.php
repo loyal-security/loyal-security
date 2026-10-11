@@ -2,16 +2,16 @@
 /**
  * Downloads and unpacks clean source packages from WordPress.org.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Firewall\BanStore;
-use TotalSecurityWP\Modules\Integrity\PluginChecksums;
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Modules\Firewall\BanStore;
+use LoyalSecurity\Modules\Integrity\PluginChecksums;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * Resolves the canonical WordPress.org download URLs for the exact installed core/plugin

@@ -2,10 +2,10 @@
 /**
  * Database schema installer and migration runner.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -15,20 +15,20 @@ defined( 'ABSPATH' ) || exit;
  */
 class Installer {
 
-	private const VERSION_OPTION = 'totalsecwp_db_version';
+	private const VERSION_OPTION = 'loyalsec_db_version';
 
 	/**
 	 * Create/upgrade all tables if the stored version is behind.
 	 */
 	public static function maybe_install(): void {
 		$installed = get_option( self::VERSION_OPTION, '' );
-		if ( TOTALSECWP_DB_VERSION === $installed ) {
+		if ( LOYALSEC_DB_VERSION === $installed ) {
 			return;
 		}
 		self::install();
 		Cron::clear_retired_events();
 		Assets::remove_legacy_htaccess();
-		update_option( self::VERSION_OPTION, TOTALSECWP_DB_VERSION, true );
+		update_option( self::VERSION_OPTION, LOYALSEC_DB_VERSION, true );
 	}
 
 	/**
@@ -39,7 +39,7 @@ class Installer {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
 		$charset = $wpdb->get_charset_collate();
-		$prefix  = $wpdb->prefix . 'totalsecwp_';
+		$prefix  = $wpdb->prefix . 'loyalsec_';
 
 		$queries = array();
 
@@ -146,7 +146,7 @@ class Installer {
 		) {$charset};";
 
 		// File integrity baseline.
-		// source: was VARCHAR(20) until TOTALSECWP_DB_VERSION 1.1.0 — too short for
+		// source: was VARCHAR(20) until LOYALSEC_DB_VERSION 1.1.0 — too short for
 		// 'theme:' . $stylesheet (e.g. 'theme:twentytwentyfive' is 22 chars). wpdb::insert()
 		// rejected the overlong value and logged a DB error that nothing checked, so
 		// Baseline::snapshot() silently recorded zero rows for every theme while still

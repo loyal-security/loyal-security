@@ -2,10 +2,10 @@
 /**
  * Virtual patching engine.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Waf;
+namespace LoyalSecurity\Waf;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -71,7 +71,7 @@ class VirtualPatch {
 	 * Two physical copies of this class exist when Optimized Mode is deployed: this one (loaded
 	 * only by Standard Mode, after WordPress boots) and a relocated copy under
 	 * uploads/loyal-security/waf-kernel/ that the prepend loads (see
-	 * TotalSecurityWP\Setup\WafKernelBundler). Only THIS copy's `match_auth_gate()` is ever called
+	 * LoyalSecurity\Setup\WafKernelBundler). Only THIS copy's `match_auth_gate()` is ever called
 	 * — the prepend calls `evaluate()` exclusively, which skips `require_auth` rules — so the
 	 * relocated copy carries this method but never exercises it. Keep it that way; don't add a
 	 * prepend-side caller without also solving the "WordPress isn't booted yet" problem this

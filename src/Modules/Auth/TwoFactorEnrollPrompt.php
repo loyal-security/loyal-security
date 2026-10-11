@@ -2,14 +2,14 @@
 /**
  * Two-factor enrollment reminder popup.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
+use LoyalSecurity\Core\Settings;
 
 /**
  * Enqueues a framework-free popup (same pattern as UninstallPrompt) on every wp-admin screen —
@@ -31,7 +31,7 @@ use TotalSecurityWP\Core\Settings;
  *  - Manage (click-to-open, profile.php only): available to ANY logged-in user regardless of
  *    force_2fa/role/grace state, because it's the only self-service way to enroll OR remove 2FA
  *    for someone who can't open the plugin's own admin page (which requires the
- *    manage_total_security_wp capability an Editor, say, will never have).
+ *    manage_loyal_security capability an Editor, say, will never have).
  */
 class TwoFactorEnrollPrompt {
 
@@ -47,7 +47,7 @@ class TwoFactorEnrollPrompt {
 
 	public function register_hooks(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue' ) );
-		add_action( 'wp_ajax_totalsecwp_2fa_snooze', array( $this, 'ajax_snooze' ) );
+		add_action( 'wp_ajax_loyalsec_2fa_snooze', array( $this, 'ajax_snooze' ) );
 	}
 
 	public function maybe_enqueue( string $hook ): void {
@@ -64,37 +64,37 @@ class TwoFactorEnrollPrompt {
 		// exactly the access this popup exists to work around (see class docblock), so it must
 		// be pulled in here too.
 		wp_enqueue_script(
-			'totalsecwp-qrcode',
-			TOTALSECWP_URL . 'assets/js/vendor/qrcode.js',
+			'loyalsec-qrcode',
+			LOYALSEC_URL . 'assets/js/vendor/qrcode.js',
 			array(),
 			'1.4.4',
 			true
 		);
 
 		wp_enqueue_script(
-			'totalsecwp-2fa-enroll-prompt',
-			TOTALSECWP_URL . 'assets/js/2fa-enroll-prompt.js',
-			array( 'totalsecwp-qrcode' ),
-			TOTALSECWP_VERSION,
+			'loyalsec-2fa-enroll-prompt',
+			LOYALSEC_URL . 'assets/js/2fa-enroll-prompt.js',
+			array( 'loyalsec-qrcode' ),
+			LOYALSEC_VERSION,
 			true
 		);
 
 		wp_localize_script(
-			'totalsecwp-2fa-enroll-prompt',
-			'TotalSecWP2faPrompt',
+			'loyalsec-2fa-enroll-prompt',
+			'LoyalSec2faPrompt',
 			array(
 				'autoShow'      => $reminder,
 				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
-				'nonce'         => wp_create_nonce( 'totalsecwp_2fa_snooze' ),
+				'nonce'         => wp_create_nonce( 'loyalsec_2fa_snooze' ),
 				// REST credentials for the enrollment flow itself: begin/confirm/disable are
 				// gated by logged_in_check (any authenticated user), not the
-				// manage_total_security_wp capability the admin page requires — deliberately, so
+				// manage_loyal_security capability the admin page requires — deliberately, so
 				// a role like Editor (a default force_2fa_roles member) that can't open that page
 				// at all can still enroll or remove 2FA entirely from this popup.
-				'restRoot'      => esc_url_raw( rest_url( TOTALSECWP_REST_NAMESPACE ) ),
+				'restRoot'      => esc_url_raw( rest_url( LOYALSEC_REST_NAMESPACE ) ),
 				'restNonce'     => wp_create_nonce( 'wp_rest' ),
 				'enrollUrl'     => admin_url( 'admin.php?page=loyal-security#/2fa' ),
-				'canOpenPlugin' => current_user_can( TOTALSECWP_CAP ) || current_user_can( 'manage_options' ),
+				'canOpenPlugin' => \LoyalSecurity\Core\Capabilities::can_manage(),
 				'logoutUrl'     => wp_logout_url(),
 				'enforced'      => $reminder && $this->grace->is_enforced_now( $user_id ),
 				'remainingDays' => $reminder ? $this->grace->remaining_days( $user_id ) : 0,
@@ -129,7 +129,7 @@ class TwoFactorEnrollPrompt {
 		// check_ajax_referer() only ever looks at `_ajax_nonce`/`_wpnonce` — it would silently
 		// fail this check on every call and wp_die(-1) before snooze() ever runs. Confirmed:
 		// this exact mismatch was live and meant "Remind me tomorrow" never actually persisted.
-		check_ajax_referer( 'totalsecwp_2fa_snooze', 'nonce' );
+		check_ajax_referer( 'loyalsec_2fa_snooze', 'nonce' );
 		if ( ! is_user_logged_in() ) {
 			wp_die( -1 );
 		}

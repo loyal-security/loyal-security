@@ -2,10 +2,10 @@
 /**
  * Backup restore engine (in-WordPress path).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Backup;
+namespace LoyalSecurity\Modules\Backup;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -53,7 +53,7 @@ class RestoreEngine {
 			if ( ! is_file( $zip ) ) {
 				return array( 'ok' => false, 'message' => __( 'The file archive is missing from this backup.', 'loyal-security' ) );
 			}
-			$files = $this->extract_zip( $zip, \TotalSecurityWP\Support\Paths::root() );
+			$files = $this->extract_zip( $zip, \LoyalSecurity\Support\Paths::root() );
 			if ( $files < 0 ) {
 				return array( 'ok' => false, 'message' => __( 'Could not extract the file archive.', 'loyal-security' ) );
 			}
@@ -63,8 +63,8 @@ class RestoreEngine {
 		if ( $restore_db && ! empty( $manifest['db_included'] ) ) {
 			$sql_path = $dir . '/database.sql';
 			if ( is_file( $sql_path ) ) {
-				$expected = (string) ( $manifest['db_sha256'] ?? '' );
-				if ( '' !== $expected && ! hash_equals( $expected, (string) \TotalSecurityWP\Support\Filesystem::sha256( $sql_path ) ) ) {
+				$expected = $this->store->expected_db_sha256( $id );
+				if ( '' !== $expected && ! hash_equals( $expected, (string) \LoyalSecurity\Support\Filesystem::sha256( $sql_path ) ) ) {
 					return array( 'ok' => false, 'message' => __( 'The database dump does not match the checksum recorded when this backup was made, so it was not restored.', 'loyal-security' ), 'files' => $files );
 				}
 				// Stream-import so a large dump is never read whole into memory (OOM risk).
@@ -86,7 +86,7 @@ class RestoreEngine {
 		 * @param array<string,mixed> $result   { ok, message, files, db }.
 		 * @param array<string,mixed> $manifest The restored backup's manifest.
 		 */
-		$filtered = apply_filters( 'totalsecwp_restore_result', $result, $manifest );
+		$filtered = apply_filters( 'loyalsec_restore_result', $result, $manifest );
 		return is_array( $filtered ) ? $filtered : $result;
 	}
 

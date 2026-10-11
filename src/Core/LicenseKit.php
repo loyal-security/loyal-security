@@ -2,18 +2,18 @@
 /**
  * LicenseKit API base + shared crypto + connection self-test.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Telemetry\BypassReporter;
+use LoyalSecurity\Modules\Telemetry\BypassReporter;
 
 /**
  * Single source of truth for the LicenseKit integration: the API base URL (derived from the one
- * configurable `TOTALSECWP_LICENSE_API_URL` constant), the canonical header hashes every endpoint
+ * configurable `LOYALSEC_LICENSE_API_URL` constant), the canonical header hashes every endpoint
  * shares, and the two "did I wire it up correctly?" probes from the integration reference —
  * `GET /health` (liveness) and `POST /diagnostics` (one-call self-test).
  *
@@ -25,7 +25,7 @@ class LicenseKit {
 
 	/** Host base (no /api/v1), from the single configurable constant. Empty if unset. */
 	public static function host(): string {
-		$host = defined( 'TOTALSECWP_LICENSE_API_URL' ) ? (string) \TOTALSECWP_LICENSE_API_URL : '';
+		$host = defined( 'LOYALSEC_LICENSE_API_URL' ) ? (string) \LOYALSEC_LICENSE_API_URL : '';
 		return rtrim( $host, '/' );
 	}
 
@@ -68,7 +68,7 @@ class LicenseKit {
 			$base . '/products/' . rawurlencode( $item_slug ) . '/pricing',
 			array(
 				'timeout'    => 10,
-				'user-agent' => \TotalSecurityWP\Support\Http::user_agent(),
+				'user-agent' => \LoyalSecurity\Support\Http::user_agent(),
 			)
 		);
 		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
@@ -90,7 +90,7 @@ class LicenseKit {
 	}
 
 	/**
-	 * Canonical license-key hash for the `X-TotalSec-License` header. MUST be
+	 * Canonical license-key hash for the `X-LoyalSec-License` header. MUST be
 	 * `sha256(strtoupper(trim(key)))` — exactly how the server stores `key_hash` — or the server
 	 * does not recognise a valid subscription key.
 	 */
@@ -109,7 +109,7 @@ class LicenseKit {
 		if ( '' === $base ) {
 			return null;
 		}
-		$res = wp_remote_get( $base . '/health', array( 'timeout' => 10, 'user-agent' => \TotalSecurityWP\Support\Http::user_agent() ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		$res = wp_remote_get( $base . '/health', array( 'timeout' => 10, 'user-agent' => \LoyalSecurity\Support\Http::user_agent() ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 		if ( is_wp_error( $res ) ) {
 			return null;
 		}
@@ -152,7 +152,7 @@ class LicenseKit {
 			$base . '/diagnostics',
 			array(
 				'timeout'    => 12,
-				'user-agent' => \TotalSecurityWP\Support\Http::user_agent(),
+				'user-agent' => \LoyalSecurity\Support\Http::user_agent(),
 				'headers'    => $headers,
 				'body'    => $raw,
 			)
@@ -179,14 +179,14 @@ class LicenseKit {
 	private static function reputation_headers( string $raw_body, string $license_key ): array {
 		$headers = array(
 			'Content-Type'       => 'application/json',
-			'X-TotalSec-Install' => BypassReporter::install_id(),
+			'X-LoyalSec-Install' => BypassReporter::install_id(),
 		);
 		if ( '' !== $license_key ) {
-			$headers['X-TotalSec-License'] = self::license_key_hash( $license_key );
+			$headers['X-LoyalSec-License'] = self::license_key_hash( $license_key );
 		}
-		$secret = (string) get_option( 'totalsecwp_telemetry_secret', '' );
+		$secret = (string) get_option( 'loyalsec_telemetry_secret', '' );
 		if ( '' !== $secret ) {
-			$headers['X-TotalSec-Sig'] = hash_hmac( 'sha256', $raw_body, $secret );
+			$headers['X-LoyalSec-Sig'] = hash_hmac( 'sha256', $raw_body, $secret );
 		}
 		return $headers;
 	}

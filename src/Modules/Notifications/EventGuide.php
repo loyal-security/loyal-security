@@ -13,17 +13,17 @@
  *
  * This is the single source of truth shared by the e-mail template
  * ({@see Dispatcher::email_body()}) and the dashboard notification centre (exposed via
- * {@see \TotalSecurityWP\Rest\Controllers\NotificationsController}). Keep it dependency-light
+ * {@see \LoyalSecurity\Rest\Controllers\NotificationsController}). Keep it dependency-light
  * and side-effect-free.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Notifications;
+namespace LoyalSecurity\Modules\Notifications;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\EventCatalog;
 
 /**
  * Static catalogue of per-event guidance plus a context humaniser.
@@ -441,6 +441,29 @@ final class EventGuide {
 				'meaning' => 'A request failed its security token check, which can indicate a forged action submitted on a user\'s behalf.',
 				'legit'   => 'Often a stale browser tab or an expired form rather than an attack.',
 				'fix'     => array( 'If a user reports it, ask them to reload the page and try again. No action otherwise.' ),
+			),
+
+			/* ---- Intelligence ----------------------------------------------- */
+			EventCatalog::IMPOSSIBLE_TRAVEL_DETECTED => array(
+				'title'   => 'Impossible travel: sign-in from two distant places',
+				'icon'    => '🧭',
+				'meaning' => 'An account signed in from a country it could not have reached since its previous sign-in, which usually means someone else is using the password. Its sessions were signed out.',
+				'legit'   => 'A VPN switching countries, a mobile network routing through another country, or travel with a long gap between sign-ins.',
+				'fix'     => array( 'Ask the user whether both sign-ins were theirs.', 'If not, reset their password and turn on two-factor authentication for the account.' ),
+			),
+			EventCatalog::IP_REPUTATION_REFRESHED => array(
+				'title'   => 'IP reputation list refreshed',
+				'icon'    => '🧭',
+				'meaning' => 'The list of addresses known for attacks was updated and its bans were applied.',
+				'legit'   => 'Routine: it runs on a schedule.',
+				'fix'     => array( 'No action needed.' ),
+			),
+			EventCatalog::VIRTUAL_PATCH_AUTO_APPLIED => array(
+				'title'   => 'A virtual patch was applied automatically',
+				'icon'    => '🩹',
+				'meaning' => 'A firewall rule that blocks attacks on a known vulnerability in one of your plugins was switched on automatically.',
+				'legit'   => 'Expected when a vulnerability is published for something you run.',
+				'fix'     => array( 'Update the affected plugin when a fixed version is available; the patch can then be removed.' ),
 			),
 
 			/* ---- Notifications self-test ----------------------------------- */

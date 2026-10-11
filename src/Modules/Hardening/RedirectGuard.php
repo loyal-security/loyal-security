@@ -6,20 +6,22 @@
  * redirects. WordPress itself doesn't prevent wp_redirect() from sending
  * users to external URLs — this guard adds that layer.
  *
- * A redirect is "open" when the Location header points to a host that differs
- * from the current site. Safe-list exceptions: the WordPress.org admin update
- * handshake URLs are allowed because core uses wp_redirect() for those.
+ * A redirect is "open" when it sends the visitor to another site AND that destination came
+ * from the request itself (a `?redirect_to=https://evil.example` an attacker put in a link).
+ * Redirects a plugin builds on its own are left alone: payment pages, OAuth sign-in (Google,
+ * Jetpack, PayPal and Stripe onboarding), and redirect rules the owner created. Blocking those
+ * sent customers and admins to the home page instead. The WordPress.org admin update handshake
+ * URLs are always allowed because core uses wp_redirect() for those.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
 
 class RedirectGuard {
 
@@ -70,6 +72,10 @@ class RedirectGuard {
 			return $location;
 		}
 
+		if ( ! $this->destination_from_request( $dest_host ) ) {
+			return $location;
+		}
+
 		$this->logger->log(
 			EventCatalog::OPEN_REDIRECT,
 			array(
@@ -77,7 +83,7 @@ class RedirectGuard {
 				'dest_host' => $dest_host,
 				'site_host' => $site_host,
 				'user_id'   => get_current_user_id(),
-				'ip'        => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ),
+				'ip'        => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip(),
 				'referer'   => substr( sanitize_text_field( wp_unslash( (string) ( $_SERVER['HTTP_REFERER'] ?? '' ) ) ), 0, 300 ),
 			),
 			EventCatalog::SEV_WARNING
@@ -90,5 +96,22 @@ class RedirectGuard {
 		}
 
 		return $location;
+	}
+
+	/**
+	 * Whether the redirect's host appears in the requested URL's query string, i.e. whoever
+	 * made the link chose where it goes. Open redirects are abused through links, so the query
+	 * string is where the destination travels.
+	 *
+	 * @param string $dest_host Destination host.
+	 */
+	private function destination_from_request( string $dest_host ): bool {
+		$query = (string) wp_parse_url( \LoyalSecurity\Support\RequestVars::uri(), PHP_URL_QUERY );
+		if ( '' === $query ) {
+			return false;
+		}
+		// Decode twice: a destination is often encoded once more inside another parameter.
+		$query = strtolower( rawurldecode( rawurldecode( $query ) ) );
+		return false !== strpos( $query, strtolower( $dest_host ) );
 	}
 }

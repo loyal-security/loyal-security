@@ -2,10 +2,10 @@
 /**
  * Input normalization to defeat common WAF-evasion encodings.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Waf;
+namespace LoyalSecurity\Waf;
 
 defined( 'ABSPATH' ) || exit;
 

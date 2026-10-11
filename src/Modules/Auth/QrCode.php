@@ -2,10 +2,10 @@
 /**
  * TOTP enrollment helper (provisioning URI + manual-entry formatting).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 

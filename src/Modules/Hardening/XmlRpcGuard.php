@@ -2,16 +2,15 @@
 /**
  * XML-RPC hardening.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
 
 /**
  * Disables or restricts XML-RPC, which is a frequent target for brute-force amplification
@@ -30,6 +29,14 @@ class XmlRpcGuard {
 	}
 
 	public function register(): void {
+		if ( $this->disable && $this->needed_by_other_plugin() ) {
+			// Jetpack's connection to WordPress.com runs over xmlrpc.php; closing it breaks
+			// Jetpack outright. Keep the endpoint, still without pingbacks and system.multicall
+			// (the amplification method password-guessing relies on).
+			$this->disable          = false;
+			$this->disable_pingback = true;
+		}
+
 		if ( $this->disable ) {
 			add_filter( 'xmlrpc_enabled', '__return_false' );
 			add_filter( 'xmlrpc_methods', '__return_empty_array' );
@@ -53,6 +60,22 @@ class XmlRpcGuard {
 	 *
 	 * @param string $method The XML-RPC method name being called.
 	 */
+	/**
+	 * Whether an active plugin depends on XML-RPC (Jetpack).
+	 */
+	private function needed_by_other_plugin(): bool {
+		$needed = defined( 'JETPACK__VERSION' ) || class_exists( 'Jetpack', false );
+		/**
+		 * Filters whether XML-RPC stays reachable even though "Disable XML-RPC" is on, because
+		 * another plugin needs it. Pingbacks and system.multicall stay disabled either way.
+		 *
+		 * @since 1.5.1
+		 *
+		 * @param bool $needed True when Jetpack is active.
+		 */
+		return (bool) apply_filters( 'loyalsec_xmlrpc_needed', $needed );
+	}
+
 	public function log_xmlrpc_call( $method ): void {
 		if ( null === $this->logger ) {
 			return;
@@ -61,13 +84,13 @@ class XmlRpcGuard {
 		if ( 'system.listMethods' === $method || 'system.getCapabilities' === $method ) {
 			$this->logger->log(
 				EventCatalog::XMLRPC_PROBE,
-				array( 'method' => $method, 'ip' => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ) )
+				array( 'method' => $method, 'ip' => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip() )
 			);
 		}
 		if ( 'system.multicall' === $method ) {
 			$this->logger->log(
 				EventCatalog::XMLRPC_MULTICALL,
-				array( 'method' => $method, 'ip' => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ) ),
+				array( 'method' => $method, 'ip' => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip() ),
 				EventCatalog::SEV_WARNING
 			);
 		}
@@ -81,13 +104,13 @@ class XmlRpcGuard {
 				if ( 'system.multicall' === $method ) {
 					$this->logger->log(
 						EventCatalog::XMLRPC_MULTICALL,
-						array( 'method' => $method, 'ip' => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ), 'blocked' => true ),
+						array( 'method' => $method, 'ip' => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip(), 'blocked' => true ),
 						EventCatalog::SEV_WARNING
 					);
 				} else {
 					$this->logger->log(
 						EventCatalog::XMLRPC_PROBE,
-						array( 'method' => $method ?: 'unknown', 'ip' => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ), 'blocked' => true )
+						array( 'method' => $method ?: 'unknown', 'ip' => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip(), 'blocked' => true )
 					);
 				}
 			}

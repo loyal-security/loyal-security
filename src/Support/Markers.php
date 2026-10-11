@@ -2,10 +2,10 @@
 /**
  * Marked blocks in server configuration files (.htaccess, wp-config.php).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Support;
+namespace LoyalSecurity\Support;
 
 defined( 'ABSPATH' ) || exit;
 

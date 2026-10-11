@@ -12,28 +12,41 @@
  *
  * Patterns are written to favour decoded input and to limit catastrophic backtracking.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
 defined( 'ABSPATH' ) || exit;
 
 return array(
-	'version' => '2026.07.1',
+	'version' => '2026.10.1',
 	'rules'   => array(
 
 		/* ---------------------------- SQL Injection ---------------------------- */
 		array( 'id' => 'sqli-union', 'category' => 'sqli', 'score' => 12, 'regex' => '/union[\s\/\*]+(all[\s\/\*]+)?select/i', 'desc' => 'SQL UNION SELECT' ),
 		array( 'id' => 'sqli-bool', 'category' => 'sqli', 'score' => 7, 'regex' => '/(\bor\b|\band\b)\s+[\'"`]?\d+[\'"`]?\s*=\s*[\'"`]?\d+/i', 'desc' => 'Boolean-based SQLi (e.g. OR 1=1)' ),
-		array( 'id' => 'sqli-comment', 'category' => 'sqli', 'score' => 5, 'regex' => '/(--[\s-]|#|\/\*).*(\bor\b|\band\b|union|select)/i', 'desc' => 'SQL comment with keyword' ),
-		array( 'id' => 'sqli-stmt', 'category' => 'sqli', 'score' => 8, 'regex' => '/\b(select|insert|update|delete|drop|truncate|alter|create)\b[\s\S]{0,40}\b(from|into|table|database|where)\b/i', 'desc' => 'SQL statement structure' ),
-		array( 'id' => 'sqli-func', 'category' => 'sqli', 'score' => 12, 'regex' => '/\b(sleep|benchmark|pg_sleep|waitfor\s+delay|extractvalue|updatexml|load_file|group_concat|information_schema)\b/i', 'desc' => 'SQLi function / time-based / error-based' ),
-		// Stacked / chained queries via ; separator — often used to append DROP/DELETE after a SELECT.
-		array( 'id' => 'sqli-stacked', 'category' => 'sqli', 'score' => 8, 'regex' => '/;\s*(select|insert|update|delete|drop|truncate|create|exec|execute)\b/i', 'desc' => 'Stacked SQL query (semicolon separator)' ),
+		// SQL comments as attackers use them: right after a closing quote or bracket, after a
+		// number at the end of the value, or as inline whitespace next to a keyword. A "#" or
+		// "--" in ordinary text ("Apt #5 and 6", "back door -- or call me") does not count.
+		array( 'id' => 'sqli-comment', 'category' => 'sqli', 'score' => 5, 'regex' => '/[\'"`)]\s*(?:--[\s-]|--$|#)|\d\s*--[\s-]*$|\/\*[\s\S]{0,40}?\*\/\s*(?:union|select|and|or|from|where|having|order)\b|\b(?:union|select|and|or|from|where)\s*\/\*/i', 'desc' => 'SQL comment with keyword' ),
+		// Real statement shapes (SELECT cols FROM t, INSERT INTO t (, UPDATE t SET c=, DELETE FROM t,
+		// DROP TABLE t), not English that happens to use the same verbs ("please delete my data
+		// from your systems", "drop it from the porch", "update the address where we live").
+		array( 'id' => 'sqli-stmt', 'category' => 'sqli', 'score' => 8, 'regex' => '/\bselect\s+(?:distinct\s+|all\s+)?(?:\*|[\w`"@.()]+(?:\s*,\s*[\w`"@.()]+)*)\s+from\s+[\w`".]+|\binsert\s+into\s+[\w`".]+\s*(?:\(|\bvalues\b|\bselect\b)|\bupdate\s+[\w`".]+\s+set\s+[\w`".]+\s*=|\bdelete\s+from\s+[\w`".]+\s*(?:\bwhere\b|;|$)|\bdrop\s+(?:table|database|schema)\s+(?:if\s+exists\s+)?[\w`".]+|\btruncate\s+table\s+[\w`".]+|\balter\s+table\s+[\w`".]+\s+(?:add|drop|modify|change|rename)\b|\bcreate\s+(?:table\s+[\w`".]+\s*\(|database\s+[\w`".]+\s*(?:;|$)|user\s+[\'"`]?\w+[\'"`]?@)/i', 'desc' => 'SQL statement structure' ),
+		array( 'id' => 'sqli-func', 'category' => 'sqli', 'score' => 12, 'regex' => '/\b(sleep|benchmark|pg_sleep|waitfor\s+delay|extractvalue|updatexml|load_file|group_concat|information_schema)\b|@@(?:version|datadir|hostname|basedir)\b|\b(?:xp_cmdshell|sp_executesql|sp_oacreate)\b/i', 'desc' => 'SQLi function / time-based / error-based' ),
+		// Stacked / chained queries via ; separator — often used to append DROP/DELETE after a
+		// SELECT. Requires the statement's shape after the verb, so "; update me when shipped" or
+		// "; select one size up" in an order note is not a stacked query.
+		array( 'id' => 'sqli-stacked', 'category' => 'sqli', 'score' => 8, 'regex' => '/;\s*(?:select\b[\s\S]{0,120}?\bfrom\s+[\w`".]+|insert\s+into\s+[\w`".]+|update\s+[\w`".]+\s+set\b|delete\s+from\s+[\w`".]+|drop\s+(?:table|database|schema)\b|truncate\s+(?:table\s+)?[\w`".]+\s*(?:;|$)|create\s+(?:table|database|user)\b|alter\s+table\b|exec(?:ute)?\s*(?:\(|\s+(?:xp_|sp_|master\.))|shutdown\s*(?:;|--|$)|declare\s+@)/i', 'desc' => 'Stacked SQL query (semicolon separator)' ),
 		array( 'id' => 'sqli-quote', 'category' => 'sqli', 'score' => 4, 'regex' => '/[\'"`]\s*(or|and)\s*[\'"`]?\s*[\'"`0-9]/i', 'desc' => 'Quote breakout' ),
+		// Column-count probing after a quote: ' ORDER BY 3-- -
+		array( 'id' => 'sqli-orderby', 'category' => 'sqli', 'score' => 8, 'regex' => '/[\'"`)]\s*(?:order|group)\s+by\s+\d+/i', 'desc' => 'ORDER BY / GROUP BY column probing' ),
+		// A quote broken out into a comparison: ' OR '1'='1, " AND 1=CONVERT(...
+		array( 'id' => 'sqli-taut', 'category' => 'sqli', 'score' => 6, 'regex' => '/[\'"`]\s*\)?\s*(?:or|and|xor|\|\||&&)\s+\(?\s*[\'"`]?[\w@]+[\'"`]?\s*(?:=|<>|!=|<=?|>=?|\blike\b|\bis\b)/i', 'desc' => 'Quote breakout into a comparison' ),
 
 		/* ------------------------------- XSS ----------------------------------- */
 		array( 'id' => 'xss-script', 'category' => 'xss', 'score' => 12, 'regex' => '/<\s*scr[\s\S]{0,5}?ipt[\s\S]{0,80}?>/i', 'desc' => '<script> tag (handles newline-split evasion)' ),
-		array( 'id' => 'xss-event', 'category' => 'xss', 'score' => 7, 'regex' => '/\bon(error|load|click|mouseover|focus|submit|toggle|animationend)\s*=/i', 'desc' => 'Inline event handler' ),
+		array( 'id' => 'xss-event', 'category' => 'xss', 'score' => 7, 'regex' => '/\bon(?:error|load|click|dblclick|auxclick|contextmenu|mouse\w{2,5}|pointer\w{2,6}|touch\w{3,6}|key(?:down|up|press)|focus(?:in|out)?|blur|input|change|submit|reset|select|toggle|begin|end|repeat|animation\w{3,9}|transition\w{3,6}|scroll|wheel|drag\w{0,5}|drop|copy|cut|paste|play|pause|ended|resize|unload|beforeunload|hashchange|popstate|message|pageshow)\s*=/i', 'desc' => 'Inline event handler' ),
+		array( 'id' => 'xss-js-href', 'category' => 'xss', 'score' => 6, 'regex' => '/<[^>]{0,60}\b(?:href|src|action|formaction|xlink:href)\s*=\s*[\'"]?\s*(?:javascript|vbscript|data)\s*:/i', 'desc' => 'Script URL in a link or form attribute' ),
 		array( 'id' => 'xss-js-uri', 'category' => 'xss', 'score' => 8, 'regex' => '/javascript\s*:/i', 'desc' => 'javascript: URI' ),
 		array( 'id' => 'xss-tags', 'category' => 'xss', 'score' => 6, 'regex' => '/<\s*(iframe|svg|img|body|object|embed|video|audio|details|marquee)[\s\S]{0,40}?(on\w+|src|data)\s*=/i', 'desc' => 'Dangerous tag with handler/src' ),
 		array( 'id' => 'xss-eval', 'category' => 'xss', 'score' => 7, 'regex' => '/(document\.cookie|window\.location|eval\s*\(|String\.fromCharCode|atob\s*\()/i', 'desc' => 'Suspicious JS sink' ),

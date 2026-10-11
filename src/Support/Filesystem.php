@@ -2,10 +2,10 @@
 /**
  * Filesystem helper built on WP_Filesystem with safe fallbacks.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Support;
+namespace LoyalSecurity\Support;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -199,11 +199,11 @@ final class Filesystem {
 		}
 
 		$base   = basename( $path );
-		$backup = trailingslashit( $dir ) . $base . '.totalsecwp-bak-' . gmdate( 'YmdHis' );
+		$backup = trailingslashit( $dir ) . $base . '.loyalsec-bak-' . gmdate( 'YmdHis' );
 		self::write( $backup, $contents );
 
 		// Keep only the most recent few — deploy/revert cycles otherwise accumulate indefinitely.
-		$existing = glob( trailingslashit( $dir ) . $base . '.totalsecwp-bak-*' );
+		$existing = glob( trailingslashit( $dir ) . $base . '.loyalsec-bak-*' );
 		if ( is_array( $existing ) && count( $existing ) > $keep ) {
 			rsort( $existing ); // Timestamped names sort chronologically; newest first.
 			foreach ( array_slice( $existing, $keep ) as $old ) {
@@ -218,7 +218,7 @@ final class Filesystem {
 	 * itself is unavailable.
 	 */
 	private static function config_backup_dir(): string {
-		$base = \TotalSecurityWP\Modules\Firewall\BanStore::storage_dir();
+		$base = \LoyalSecurity\Modules\Firewall\BanStore::storage_dir();
 		if ( '' === $base ) {
 			return '';
 		}

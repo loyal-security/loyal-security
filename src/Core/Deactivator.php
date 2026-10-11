@@ -2,17 +2,17 @@
 /**
  * Plugin deactivation routine.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Core;
+namespace LoyalSecurity\Core;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Setup\PrependInstaller;
-use TotalSecurityWP\Setup\ServerProbe;
-use TotalSecurityWP\Modules\Hardening\ServerRules;
-use TotalSecurityWP\Modules\Hardening\ConfigHardener;
+use LoyalSecurity\Setup\PrependInstaller;
+use LoyalSecurity\Setup\ServerProbe;
+use LoyalSecurity\Modules\Hardening\ServerRules;
+use LoyalSecurity\Modules\Hardening\ConfigHardener;
 
 /**
  * Runs on deactivation. Conservative by design: clears scheduled events but leaves data,
@@ -29,12 +29,12 @@ class Deactivator {
 
 		// Graceful degradation: never leave the site locked in Under Attack Mode if the
 		// plugin is deactivated mid-attack. Clear the emergency state and its single event.
-		$expire = wp_next_scheduled( 'totalsecwp_under_attack_expire' );
+		$expire = wp_next_scheduled( 'loyalsec_under_attack_expire' );
 		if ( $expire ) {
-			wp_unschedule_event( $expire, 'totalsecwp_under_attack_expire' );
+			wp_unschedule_event( $expire, 'loyalsec_under_attack_expire' );
 		}
-		delete_option( 'totalsecwp_under_attack' );
-		delete_option( 'totalsecwp_under_attack_expiry' );
+		delete_option( 'loyalsec_under_attack' );
+		delete_option( 'loyalsec_under_attack_expiry' );
 
 		// Revert all server-level changes so the site stays functional after deactivation.
 		// Each step is wrapped individually — one failure must not prevent the others.

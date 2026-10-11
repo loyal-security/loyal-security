@@ -2,21 +2,21 @@
 /**
  * Firewall module — Standard-Mode orchestrator + WAF config management.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Waf\BotSignatures;
-use TotalSecurityWP\Waf\Kernel;
-use TotalSecurityWP\Waf\Logger as WafLogger;
-use TotalSecurityWP\Waf\RequestContext;
-use TotalSecurityWP\Waf\SignatureSet;
-use TotalSecurityWP\Waf\VirtualPatch;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Waf\BotSignatures;
+use LoyalSecurity\Waf\Kernel;
+use LoyalSecurity\Waf\Logger as WafLogger;
+use LoyalSecurity\Waf\RequestContext;
+use LoyalSecurity\Waf\SignatureSet;
+use LoyalSecurity\Waf\VirtualPatch;
 
 /**
  * Coordinates all network-defence engines. In Standard Mode it runs the shared WAF kernel
@@ -26,11 +26,28 @@ use TotalSecurityWP\Waf\VirtualPatch;
  */
 class FirewallModule extends AbstractModule {
 
+	/**
+	 * Since 1.5.0, events reconciled from the pre-WordPress firewall's log fire
+	 * `loyalsec_event_logged` like every other event. Add-ons that used to read those rows from
+	 * the table themselves can check this constant and stop, so nothing is handled twice.
+	 */
+	public const PREPEND_EVENTS_FIRE_HOOK = true;
+
 	private ?BanStore $bans = null;
 	private ?IpResolver $ip = null;
 
 	/** Request-scoped cache for is_optimized_active() (null = not yet computed). */
 	private ?bool $optimized_active = null;
+
+	/**
+	 * Whether this request is a REST call carrying HTTP Basic credentials (an application
+	 * password or a WooCommerce API key). WordPress checks those only once the REST API loads,
+	 * after `init`, so a block decided on `init` waits for them (see defer_block()).
+	 */
+	private bool $defer_eligible = false;
+
+	/** A block postponed until the request's credentials are known: [type, context, status]. */
+	private ?array $deferred = null;
 
 	public function id(): string {
 		return 'firewall';
@@ -52,6 +69,15 @@ class FirewallModule extends AbstractModule {
 			'auto_whitelist_admins' => true,
 			'trust_proxy'           => false,
 			'trusted_proxies'       => array(),
+			// Believe Cloudflare's CF-Connecting-IP, but only from Cloudflare's published edge
+			// ranges (Ip::CLOUDFLARE_RANGES). Safe on sites not behind Cloudflare: their visitors
+			// never connect from those ranges, so nothing changes for them.
+			'trust_cloudflare'      => true,
+			// Show "IP Geolocation by DB-IP" on the page a visitor sees when a country rule blocks
+			// them. Off by default: WordPress.org does not allow credit links on the public site
+			// unless the site owner turns them on. DB-IP's licence asks for the link on pages that
+			// use its data, so the setting's help explains that (see data/geo/NOTICE.txt).
+			'geo_credit_on_block_page' => false,
 			'disabled_rules'        => array(),
 			'allow_params'          => array(),
 
@@ -70,13 +96,14 @@ class FirewallModule extends AbstractModule {
 			// combination might only be requested once. The default threshold is deliberately
 			// generous: legitimate faceted-search browsing (a real shopper clicking through a
 			// few filters) stays well under it, while enumeration abuse typically produces many
-			// times this in the same window.
+			// times this in the same window. Only page views count: AJAX, REST, form posts,
+			// signed-in users and tracking-only query strings (utm_*, gclid, fbclid) do not.
 			'query_cardinality_enabled' => true,
-			'query_cardinality_max'     => 60,
+			'query_cardinality_max'     => 120,
 			'query_cardinality_window'  => 600,
 
 			// Brute force.
-			'bruteforce_max'                   => 3,
+			'bruteforce_max'                   => 5,
 			'bruteforce_window'                => 600,
 			'bruteforce_lockout'               => 1800,
 			'bruteforce_escalation_enabled'    => true,
@@ -93,6 +120,10 @@ class FirewallModule extends AbstractModule {
 			// Bots.
 			'block_empty_ua'      => false,
 			'custom_bad_agents'   => array(),
+			// Opt-in: generic HTTP libraries (curl, python-requests, Go) carry payment webhooks
+			// and integrations, and SEO crawlers are tools many owners use on their own site.
+			'block_http_clients'  => false,
+			'block_seo_crawlers'  => false,
 
 			// Verified bots (Googlebot, Bingbot, Facebook's crawler, etc.) — a claimed match is
 			// forward-DNS-verified off the request path (see BotVerifier), then earns this more
@@ -152,8 +183,8 @@ class FirewallModule extends AbstractModule {
 		( new TrustBadge() )->register_hooks();
 
 		// Keep the WAF config file in sync whenever settings change.
-		add_action( 'update_option_' . TOTALSECWP_OPTION_SETTINGS, array( $this, 'write_waf_config' ) );
-		add_action( 'add_option_' . TOTALSECWP_OPTION_SETTINGS, array( $this, 'write_waf_config' ) );
+		add_action( 'update_option_' . LOYALSEC_OPTION_SETTINGS, array( $this, 'write_waf_config' ) );
+		add_action( 'add_option_' . LOYALSEC_OPTION_SETTINGS, array( $this, 'write_waf_config' ) );
 
 		// The exported config also carries an installed-plugins snapshot for the prepend's
 		// virtual-patch engine (get_plugins() isn't available pre-WordPress) — refresh it
@@ -173,10 +204,15 @@ class FirewallModule extends AbstractModule {
 		// (the prepend reads the feed cache file directly at request time), but the config is
 		// still regenerated here to keep the installed-plugins snapshot and settings in lockstep
 		// with each sync.
-		add_action( 'totalsecwp_feed_dataset_updated', array( $this, 'maybe_resync_waf_config' ), 10, 2 );
+		add_action( 'loyalsec_feed_dataset_updated', array( $this, 'maybe_resync_waf_config' ), 10, 2 );
 
 		// Drain pre-WordPress WAF events into the audit table (throttled).
 		add_action( 'init', array( $this, 'reconcile_prepend_log' ), 99 );
+
+		// Mark this site's requests to itself (WP-Cron, Site Health, loopback checks) so the
+		// firewall can tell them from visitors even when they leave and come back through a
+		// CDN or NAT with an address the server cannot see as its own.
+		add_filter( 'http_request_args', array( $this, 'mark_loopback_request' ), 10, 2 );
 
 		// Primary trigger for keeping the deployed Optimized-Mode bundle in sync — see
 		// maybe_resync_deployed_kernel()'s docblock for why this, not the lifecycle hooks above,
@@ -184,7 +220,7 @@ class FirewallModule extends AbstractModule {
 		add_action( 'init', array( $this, 'maybe_resync_deployed_kernel' ) );
 
 		// Rate-file GC piggybacks on the ban GC cron.
-		add_action( \TotalSecurityWP\Core\Cron::GC_BANS, array( $this, 'gc' ) );
+		add_action( \LoyalSecurity\Core\Cron::GC_BANS, array( $this, 'gc' ) );
 
 		// Auto-whitelist admins on login so they can never lock themselves out.
 		add_action( 'wp_login', array( $this, 'maybe_whitelist_admin_ip' ), 10, 2 );
@@ -208,6 +244,15 @@ class FirewallModule extends AbstractModule {
 			add_action( 'init', array( $this, 'inspect_request' ), 1 );
 		}
 
+		// A block on a REST call with Basic credentials waits until WordPress has checked them
+		// (both modes: the prepend hands such blocks over the same way).
+		add_filter( 'rest_authentication_errors', array( $this, 'resolve_deferred_block' ), 200 );
+		add_action( 'wp', array( $this, 'resolve_deferred_block' ), 0 );
+		$this->adopt_prepend_deferral();
+
+		// The signed cookie that lets the pre-WordPress firewall recognise trusted users.
+		( new TrustCookie( $this->settings() ) )->register_hooks();
+
 		// require_auth virtual-patch rules ("block this route unless authenticated") can only
 		// ever be enforced once WordPress knows who's logged in — unlike every other check,
 		// that's not something Optimized Mode's pre-WordPress prepend can ever decide for
@@ -225,7 +270,7 @@ class FirewallModule extends AbstractModule {
 	 * Fail-SAFE: it is not enough for the mode to be 'optimized' and the prepend marker to be
 	 * defined — the prepend itself is fail-open, so if its config points at paths that don't
 	 * exist on this filesystem (e.g. stale Windows paths copied from a dev box) it silently
-	 * passes every request. In that case the prepend defines TOTALSECWP_WAF_PREPEND but inspects
+	 * passes every request. In that case the prepend defines LOYALSEC_WAF_PREPEND but inspects
 	 * nothing; if we also skipped registering the Standard `init` inspector the site would have
 	 * ZERO inspection. So we only treat Optimized as active when the prepend's config resolves
 	 * to a readable signatures file (and an existing src dir) here. Otherwise we report false,
@@ -239,7 +284,7 @@ class FirewallModule extends AbstractModule {
 		}
 
 		$active = false;
-		if ( 'optimized' === get_option( 'totalsecwp_waf_mode', 'standard' ) && defined( 'TOTALSECWP_WAF_PREPEND' ) ) {
+		if ( 'optimized' === get_option( 'loyalsec_waf_mode', 'standard' ) && defined( 'LOYALSEC_WAF_PREPEND' ) ) {
 			$active = $this->prepend_can_inspect();
 		}
 
@@ -297,7 +342,8 @@ class FirewallModule extends AbstractModule {
 			return;
 		}
 
-		$ip = ( new IpResolver( $this->settings() ) )->current();
+		$resolver = new IpResolver( $this->settings() );
+		$ip       = $resolver->current();
 		if ( ! $ip ) {
 			return;
 		}
@@ -312,9 +358,16 @@ class FirewallModule extends AbstractModule {
 		// Auto-whitelist bookkeeping, gated so the common case (a returning admin from the same
 		// IP) does NOT rewrite settings/the prepend config. Persisted only when the set or the
 		// (throttled) timestamps actually change.
+		// Never allowlist a proxy's address (a Cloudflare edge or a configured trusted proxy):
+		// when the real client IP can't be resolved the admin appears as the proxy, and
+		// allowlisting it would let every visitor routed through that proxy skip the firewall.
+		if ( $resolver->is_proxy( $ip ) || \LoyalSecurity\Support\Ip::behind_unknown_proxy( $ip, \LoyalSecurity\Support\RequestVars::ip_headers() ) ) {
+			return;
+		}
+
 		$auto    = (array) $this->setting( 'auto_whitelist_ips', array() );
-		$ttl     = (int) apply_filters( 'totalsecwp_auto_whitelist_ttl', 30 * DAY_IN_SECONDS );
-		$cap     = max( 1, (int) apply_filters( 'totalsecwp_auto_whitelist_max', 25 ) );
+		$ttl     = (int) apply_filters( 'loyalsec_auto_whitelist_ttl', 30 * DAY_IN_SECONDS );
+		$cap     = max( 1, (int) apply_filters( 'loyalsec_auto_whitelist_max', 25 ) );
 		$now     = time();
 		$changed = false;
 
@@ -345,7 +398,7 @@ class FirewallModule extends AbstractModule {
 		}
 
 		if ( $changed ) {
-			// Single write; triggers write_waf_config() once via update_option_totalsecwp_settings.
+			// Single write; triggers write_waf_config() once via update_option_loyalsec_settings.
 			$this->settings()->update_module( 'firewall', array( 'auto_whitelist_ips' => $auto ) );
 		}
 	}
@@ -362,7 +415,7 @@ class FirewallModule extends AbstractModule {
 		$manual = array_map( 'strval', (array) $this->setting( 'ip_whitelist', array() ) );
 
 		$auto   = (array) $this->setting( 'auto_whitelist_ips', array() );
-		$ttl    = (int) apply_filters( 'totalsecwp_auto_whitelist_ttl', 30 * DAY_IN_SECONDS );
+		$ttl    = (int) apply_filters( 'loyalsec_auto_whitelist_ttl', 30 * DAY_IN_SECONDS );
 		$cutoff = time() - $ttl;
 		$active = array();
 		foreach ( $auto as $ip => $ts ) {
@@ -371,13 +424,116 @@ class FirewallModule extends AbstractModule {
 			}
 		}
 
-		return array_values( array_unique( array_merge( $manual, $active ) ) );
+		// Drop proxy addresses (Cloudflare edges, configured trusted proxies), including any
+		// added before this check existed: each one carries many visitors' traffic, so an
+		// allowlisted proxy lets all of them skip the firewall whenever the client IP is unresolved.
+		$resolver = new IpResolver( $this->settings() );
+		$list     = array_filter(
+			array_unique( array_merge( $manual, $active ) ),
+			static fn( $ip ) => ! $resolver->is_proxy( (string) $ip )
+		);
+		return array_values( $list );
+	}
+
+	/** Header carrying the loopback key on this site's requests to itself. */
+	public const LOOPBACK_HEADER = 'X-LoyalSec-Loopback';
+
+	/** Option holding the secret loopback key. */
+	private const LOOPBACK_OPTION = 'loyalsec_loopback_key';
+
+	/**
+	 * `http_request_args`: add the secret loopback key to requests this site makes to its own
+	 * address, and to no other host.
+	 *
+	 * @param array  $args Request arguments.
+	 * @param string $url  Request URL.
+	 * @return array
+	 */
+	public function mark_loopback_request( $args, $url ) {
+		if ( ! is_array( $args ) || ! is_string( $url ) ) {
+			return $args;
+		}
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		if ( ! is_string( $host ) || '' === $host ) {
+			return $args;
+		}
+		$own = array_filter(
+			array(
+				wp_parse_url( home_url(), PHP_URL_HOST ),
+				wp_parse_url( site_url(), PHP_URL_HOST ),
+			)
+		);
+		if ( ! in_array( strtolower( $host ), array_map( 'strtolower', $own ), true ) ) {
+			return $args;
+		}
+		if ( ! isset( $args['headers'] ) || ! is_array( $args['headers'] ) ) {
+			$args['headers'] = array();
+		}
+		$args['headers'][ self::LOOPBACK_HEADER ] = $this->loopback_key();
+		return $args;
+	}
+
+	/**
+	 * The secret that marks this site's requests to itself (created on first use).
+	 */
+	private function loopback_key(): string {
+		$key = (string) get_option( self::LOOPBACK_OPTION, '' );
+		if ( 32 > strlen( $key ) ) {
+			$key = wp_generate_password( 40, false, false );
+			update_option( self::LOOPBACK_OPTION, $key, true );
+		}
+		return $key;
+	}
+
+	/**
+	 * Whether the current request carries this site's loopback key.
+	 */
+	private function is_marked_loopback( RequestContext $req ): bool {
+		$sent = (string) ( $req->headers[ strtolower( self::LOOPBACK_HEADER ) ] ?? '' );
+		return '' !== $sent && hash_equals( $this->loopback_key(), $sent );
+	}
+
+	/**
+	 * Addresses of this server beyond the ones each request reports itself (SERVER_ADDR), for
+	 * setups where loopback requests arrive from another address, such as a public IP behind NAT.
+	 *
+	 * @return string[]
+	 */
+	private function server_ips(): array {
+		$ips = array();
+		foreach ( array( 'SERVER_ADDR', 'LOCAL_ADDR' ) as $key ) {
+			$value = \LoyalSecurity\Support\RequestVars::text( $key );
+			if ( '' !== $value && \LoyalSecurity\Support\Ip::is_valid( $value ) ) {
+				$ips[] = $value;
+			}
+		}
+		/**
+		 * Filters the addresses treated as this server, which skip the firewall's rate and
+		 * query-cardinality limits (bans and content checks still apply).
+		 *
+		 * @since 1.5.0
+		 *
+		 * @param string[] $ips IP addresses.
+		 */
+		$ips = (array) apply_filters( 'loyalsec_server_ips', $ips );
+		return array_values( array_unique( array_filter( array_map( 'strval', $ips ), array( \LoyalSecurity\Support\Ip::class, 'is_valid' ) ) ) );
 	}
 
 	/* -------------------------- Standard-Mode pipeline -------------------------- */
 
+	/**
+	 * Whether this is a command-line run (WP-CLI, a server cron script), not a web request.
+	 * PHP_SAPI alone is not enough: WordPress Playground serves web requests through PHP's CLI
+	 * SAPI, so checking only that left the firewall switched off there. A real command line
+	 * has no HTTP request method.
+	 */
+	private static function is_command_line(): bool {
+		return ( defined( 'WP_CLI' ) && WP_CLI )
+			|| ( 'cli' === PHP_SAPI && '' === \LoyalSecurity\Support\RequestVars::text( 'REQUEST_METHOD' ) );
+	}
+
 	public function inspect_request(): void {
-		if ( 'cli' === PHP_SAPI || wp_doing_cron() ) {
+		if ( self::is_command_line() || wp_doing_cron() ) {
 			return;
 		}
 
@@ -397,7 +553,7 @@ class FirewallModule extends AbstractModule {
 		try {
 			$this->inspect_request_unsafe();
 		} catch ( \Throwable $e ) {
-			\TotalSecurityWP\Support\Debug::log( 'WAF inspection failed, failing open: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
+			\LoyalSecurity\Support\Debug::log( 'WAF inspection failed, failing open: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
 		}
 	}
 
@@ -435,16 +591,27 @@ class FirewallModule extends AbstractModule {
 		// ban/throttle all of them. Skip the IP-keyed checks for an unresolved IP; the
 		// content-based signature + virtual-patch inspection below still runs (it isn't IP-keyed).
 		$ip_unresolved = ( '' === $ip || '0.0.0.0' === $ip );
+		// Behind a proxy that is not in Trusted proxies every visitor shares the proxy's internal
+		// address: that is no more a visitor's address than the sentinel is. (The plugin screens
+		// show a notice asking the owner to add the proxy.)
+		$ip_unresolved = $ip_unresolved || \LoyalSecurity\Support\Ip::behind_unknown_proxy( $ip, \LoyalSecurity\Support\RequestVars::ip_headers() );
 
 		// Strip WordPress magic-quotes: this runs on `init`, after wp_magic_quotes() has
 		// slashed GET/POST/COOKIE and $_SERVER['REQUEST_URI'], so the engine must inspect the
 		// un-escaped client bytes or every quote-based payload (e.g. 1' OR '1'='1) bypasses it.
 		// The Optimized-Mode prepend runs pre-WordPress on raw input and keeps the default false.
-		$req = RequestContext::capture(
-			(bool) $this->setting( 'trust_proxy', false ),
-			(array) $this->setting( 'trusted_proxies', array() ),
-			true
-		);
+		[ $trust, $ranges ] = ( new IpResolver( $this->settings() ) )->trust();
+		$req                = RequestContext::capture( $trust, $ranges, true );
+
+		// Also this server's own address: loopback requests often arrive on it rather than on
+		// 127.0.0.1 (and behind a CDN they come back through it with the server's address).
+		// Only when the visitor is the direct peer, though: behind a trusted proxy on this server
+		// (nginx in front of Apache, Varnish) every visitor arrives from 127.0.0.1, and treating
+		// them all as the server itself switched the volume and bot checks off for everyone.
+		$server_ips  = $this->server_ips();
+		$is_loopback = ( $ip === $remote_addr && ( $is_loopback || $req->from_own_server( $server_ips ) ) )
+			|| in_array( $ip, $server_ips, true )
+			|| $this->is_marked_loopback( $req );
 
 		// 1) Active bans are always enforced — even in audit mode. Bans represent explicit
 		//    admin intent (manual ban or DDoS-shield response), not heuristic detections.
@@ -453,10 +620,15 @@ class FirewallModule extends AbstractModule {
 			$this->block( 'waf.ban.added', array( 'reason' => 'active_ban', 'ip' => $ip ), 403 );
 		}
 
-		// Trusted-admin bypass for the remaining heuristic checks.
-		if ( $this->setting( 'whitelist_admins', true ) && current_user_can( 'manage_options' ) ) {
+		// Trusted-user bypass for the remaining heuristic checks: administrators, and editors
+		// who may post unfiltered HTML anyway (blocking an editor's embed protects nothing).
+		if ( $this->setting( 'whitelist_admins', true ) && self::is_trusted_user() ) {
 			return;
 		}
+
+		// REST calls with Basic credentials (application passwords, WooCommerce API keys) are
+		// authenticated after `init`; a block for those waits until the user is known.
+		$this->defer_eligible = $this->setting( 'whitelist_admins', true ) && $this->is_basic_auth_rest( $req );
 
 		// Steps 2–7 all route through maybe_block(). In protect mode it calls block() and
 		// terminates. In audit (detection_only) mode it logs the hit and returns, so every
@@ -481,7 +653,7 @@ class FirewallModule extends AbstractModule {
 			// 3) Geo.
 			$geo = new GeoBlocker( $this->settings() );
 
-			$reason = $geo->evaluate( $ip, \TotalSecurityWP\Support\RequestVars::geo_headers() );
+			$reason = $geo->evaluate( $ip, \LoyalSecurity\Support\RequestVars::geo_headers() );
 			if ( $reason ) {
 				$this->maybe_block( $audit, EventCatalog::WAF_GEO_BLOCK, array( 'reason' => $reason, 'ip' => $ip ), 403 );
 			}
@@ -525,13 +697,13 @@ class FirewallModule extends AbstractModule {
 			// 5b) Query-cardinality limiter — distinct filter/search combinations, not request
 			// volume (see FileStore::hit_distinct()'s docblock for why this is a separate check
 			// from step 5's plain rate limit above).
-			if ( $this->setting( 'query_cardinality_enabled', true ) ) {
-				$signature = $req->query_signature();
+			if ( $this->setting( 'query_cardinality_enabled', true ) && ! is_user_logged_in() ) {
+				$signature = \LoyalSecurity\Waf\QueryCardinality::signature( $req, $this->rest_path_prefix() );
 				if ( '' !== $signature ) {
-					$qc = ( new \TotalSecurityWP\Waf\FileStore( BanStore::storage_dir() ) )->hit_distinct(
+					$qc = ( new \LoyalSecurity\Waf\FileStore( BanStore::storage_dir() ) )->hit_distinct(
 						$ip,
 						$signature,
-						(int) $this->setting( 'query_cardinality_max', 60 ),
+						(int) $this->setting( 'query_cardinality_max', 120 ),
 						(int) $this->setting( 'query_cardinality_window', 600 )
 					);
 					if ( ! empty( $qc['exceeded'] ) ) {
@@ -577,7 +749,7 @@ class FirewallModule extends AbstractModule {
 			 * @param RequestContext $req      The captured request.
 			 * @param Decision       $decision The WAF decision (score below threshold).
 			 */
-			do_action( 'totalsecwp_waf_near_miss', $req, $decision );
+			do_action( 'loyalsec_waf_near_miss', $req, $decision );
 		}
 	}
 
@@ -594,7 +766,7 @@ class FirewallModule extends AbstractModule {
 	 * deliberate exception to "Optimized Mode does the WAF work pre-boot."
 	 */
 	public function enforce_auth_gate(): void {
-		if ( 'cli' === PHP_SAPI || wp_doing_cron() ) {
+		if ( self::is_command_line() || wp_doing_cron() ) {
 			return;
 		}
 		if ( ! class_exists( RequestContext::class ) || ! class_exists( VirtualPatch::class ) ) {
@@ -603,7 +775,7 @@ class FirewallModule extends AbstractModule {
 		try {
 			$this->enforce_auth_gate_unsafe();
 		} catch ( \Throwable $e ) {
-			\TotalSecurityWP\Support\Debug::log( 'Auth-gate enforcement failed, failing open: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
+			\LoyalSecurity\Support\Debug::log( 'Auth-gate enforcement failed, failing open: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
 		}
 	}
 
@@ -626,11 +798,8 @@ class FirewallModule extends AbstractModule {
 			return; // No auth-gated rules configured — skip building a request context at all.
 		}
 
-		$req  = RequestContext::capture(
-			(bool) $this->setting( 'trust_proxy', false ),
-			(array) $this->setting( 'trusted_proxies', array() ),
-			true
-		);
+		[ $trust, $ranges ] = ( new IpResolver( $this->settings() ) )->trust();
+		$req                = RequestContext::capture( $trust, $ranges, true );
 		$rule = ( new VirtualPatch( $rules, $this->installed_plugins_map() ) )->match_auth_gate( $req );
 		if ( null === $rule ) {
 			return;
@@ -669,14 +838,93 @@ class FirewallModule extends AbstractModule {
 			 * @param string              $type    EventCatalog event type.
 			 * @param array<string,mixed> $context Block context (rule, category, matches…).
 			 */
-			do_action( 'totalsecwp_cloud_reputation_waf', $type, $context );
+			do_action( 'loyalsec_cloud_reputation_waf', $type, $context );
 		}
 
 		if ( $audit ) {
 			$this->logger()->log( $type, array_merge( $context, array( 'audit_only' => true ) ) );
 			return;
 		}
+		if ( $this->defer_eligible && in_array( $type, self::DEFERRABLE, true ) ) {
+			// The first content or bot decision is held until the Basic credentials are checked;
+			// volume limits (rate, DDoS, query) never wait.
+			if ( null === $this->deferred ) {
+				$this->deferred = array( $type, $context, $status );
+			}
+			return;
+		}
 		$this->block( $type, $context, $status );
+	}
+
+	/** Block types that can wait for a REST call's Basic credentials to be checked. */
+	private const DEFERRABLE = array( EventCatalog::WAF_BLOCK, EventCatalog::WAF_VIRTUAL_PATCH, EventCatalog::WAF_BOT_BLOCK );
+
+	/**
+	 * Whether the current user is trusted by the firewall: an administrator, or a user who may
+	 * post unfiltered HTML (editors on a single site).
+	 */
+	public static function is_trusted_user(): bool {
+		return current_user_can( 'manage_options' ) || current_user_can( 'unfiltered_html' );
+	}
+
+	/**
+	 * Whether a request is a REST API call carrying HTTP Basic credentials.
+	 *
+	 * @param RequestContext $req The request.
+	 */
+	private function is_basic_auth_rest( RequestContext $req ): bool {
+		$auth = (string) ( $req->headers['authorization'] ?? '' );
+		if ( 0 !== stripos( $auth, 'basic ' ) && '' === \LoyalSecurity\Support\RequestVars::text( 'PHP_AUTH_USER' ) ) {
+			return false;
+		}
+		return isset( $req->get['rest_route'] ) || false !== strpos( strtolower( $req->path ), strtolower( $this->rest_path_prefix() ) );
+	}
+
+	/**
+	 * The REST API's path prefix on this site, e.g. "/wp-json/".
+	 */
+	private function rest_path_prefix(): string {
+		$path = (string) wp_parse_url( get_rest_url(), PHP_URL_PATH );
+		return '' === $path ? '/wp-json/' : trailingslashit( $path );
+	}
+
+	/**
+	 * Settle a block that waited for a REST call's credentials. Runs on `rest_authentication_errors`
+	 * (after WordPress has checked application passwords; WooCommerce checks its keys earlier) and,
+	 * for a request that never reached the REST API, on `wp`.
+	 *
+	 * @param mixed $result Authentication result, passed through.
+	 * @return mixed
+	 */
+	public function resolve_deferred_block( $result = null ) {
+		if ( null === $this->deferred ) {
+			return $result;
+		}
+		[ $type, $context, $status ] = $this->deferred;
+		$this->deferred              = null;
+		if ( is_user_logged_in() && self::is_trusted_user() && ! is_wp_error( $result ) ) {
+			return $result;
+		}
+		$this->block( $type, $context, $status );
+		return $result;
+	}
+
+	/**
+	 * Take over a block the Optimized-Mode prepend handed to WordPress because the request was
+	 * a REST call with Basic credentials. The prepend records it in a global only it sets.
+	 */
+	private function adopt_prepend_deferral(): void {
+		$handed = $GLOBALS['loyalsec_waf_deferred'] ?? null;
+		if ( ! is_array( $handed ) || ! isset( $handed['type'] ) ) {
+			return;
+		}
+		unset( $GLOBALS['loyalsec_waf_deferred'] );
+		$type = (string) $handed['type'];
+		if ( ! in_array( $type, self::DEFERRABLE, true ) ) {
+			return;
+		}
+		$context        = is_array( $handed['context'] ?? null ) ? $handed['context'] : array();
+		$this->deferred = array( $type, array_merge( $context, array( 'via' => 'prepend' ) ), (int) ( $handed['status'] ?? 403 ) );
 	}
 
 	/* ----------------------- Signature merge helpers ----------------------- */
@@ -686,14 +934,14 @@ class FirewallModule extends AbstractModule {
 	 * Fail-open: if the remote file is missing or corrupt, base rules are used alone.
 	 */
 	private function merged_signature_set(): SignatureSet {
-		$base_file = TOTALSECWP_PATH . 'data/waf-signatures.php';
+		$base_file = LOYALSEC_PATH . 'data/waf-signatures.php';
 		$base_data = is_file( $base_file ) ? include $base_file : array();
 		$base_rules  = isset( $base_data['rules'] ) && is_array( $base_data['rules'] ) ? $base_data['rules'] : array();
 		$base_version = isset( $base_data['version'] ) ? (string) $base_data['version'] : '';
 
 		try {
-			if ( class_exists( \TotalSecurityWP\Modules\ThreatIntel\FeedStore::class ) ) {
-				$remote = ( new \TotalSecurityWP\Modules\ThreatIntel\FeedStore() )->get_rules( 'waf' );
+			if ( class_exists( \LoyalSecurity\Modules\ThreatIntel\FeedStore::class ) ) {
+				$remote = ( new \LoyalSecurity\Modules\ThreatIntel\FeedStore() )->get_rules( 'waf' );
 				if ( is_array( $remote ) && ! empty( $remote ) ) {
 					$base_rules = array_merge( $base_rules, $remote );
 				}
@@ -712,7 +960,7 @@ class FirewallModule extends AbstractModule {
 	 * @return array<int, array<string, mixed>>
 	 */
 	private function bundled_virtual_patch_rules(): array {
-		$base_file = TOTALSECWP_PATH . 'data/virtual-patches.php';
+		$base_file = LOYALSEC_PATH . 'data/virtual-patches.php';
 		$base_data = is_file( $base_file ) ? include $base_file : array();
 		return isset( $base_data['rules'] ) && is_array( $base_data['rules'] ) ? $base_data['rules'] : array();
 	}
@@ -726,8 +974,8 @@ class FirewallModule extends AbstractModule {
 	 */
 	private function feed_virtual_patch_rules(): array {
 		try {
-			if ( class_exists( \TotalSecurityWP\Modules\ThreatIntel\FeedStore::class ) ) {
-				$remote = ( new \TotalSecurityWP\Modules\ThreatIntel\FeedStore() )->get_rules( 'patches' );
+			if ( class_exists( \LoyalSecurity\Modules\ThreatIntel\FeedStore::class ) ) {
+				$remote = ( new \LoyalSecurity\Modules\ThreatIntel\FeedStore() )->get_rules( 'patches' );
 				if ( is_array( $remote ) ) {
 					return $remote;
 				}
@@ -1002,20 +1250,26 @@ class FirewallModule extends AbstractModule {
 		if ( ! headers_sent() ) {
 			status_header( $status );
 			nocache_headers();
-			header( 'X-TotalSecWP-WAF: blocked' );
+			header( 'X-LoyalSec-WAF: blocked' );
 			if ( 429 === $status ) {
 				header( 'Retry-After: 60' );
 			}
 		}
 
-		$ref = isset( $context['rule'] ) ? (string) $context['rule'] : ( isset( $context['reason'] ) ? (string) $context['reason'] : 'policy' );
+		$ref    = isset( $context['rule'] ) ? (string) $context['rule'] : ( isset( $context['reason'] ) ? (string) $context['reason'] : 'policy' );
+		$credit = false;
+		if ( 0 === strpos( $ref, 'geo_' ) ) {
+			// The visitor's country stays in the log; the page shows only the kind of rule.
+			$ref    = (string) strtok( $ref, ':' );
+			$credit = (bool) $this->setting( 'geo_credit_on_block_page', false );
+		}
 		wp_die(
 			sprintf(
 				'<h1>%s</h1><p>%s</p><p><code>ref: %s</code></p>',
 				esc_html__( 'Request blocked', 'loyal-security' ),
 				esc_html__( 'This request was blocked by the Loyal Security firewall.', 'loyal-security' ),
 				esc_html( $ref )
-			),
+			) . ( $credit ? '<p><small><a href="' . esc_url( 'https://db-ip.com' ) . '" rel="noopener">' . esc_html__( 'IP Geolocation by DB-IP', 'loyal-security' ) . '</a></small></p>' : '' ),
 			esc_html__( 'Request blocked', 'loyal-security' ),
 			array( 'response' => absint( $status ) )
 		);
@@ -1028,10 +1282,10 @@ class FirewallModule extends AbstractModule {
 	 * once per minute to avoid contending on the log file.
 	 */
 	public function reconcile_prepend_log(): void {
-		if ( get_transient( 'totalsecwp_waf_reconcile_lock' ) ) {
+		if ( get_transient( 'loyalsec_waf_reconcile_lock' ) ) {
 			return;
 		}
-		set_transient( 'totalsecwp_waf_reconcile_lock', 1, 60 );
+		set_transient( 'loyalsec_waf_reconcile_lock', 1, 60 );
 
 		$dir = BanStore::storage_dir();
 		if ( ! $dir || ! is_dir( $dir ) ) {
@@ -1043,23 +1297,30 @@ class FirewallModule extends AbstractModule {
 		}
 
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_events';
+		$table = $wpdb->prefix . 'loyalsec_events';
 		foreach ( $events as $ev ) {
 			$type = isset( $ev['type'] ) ? (string) $ev['type'] : EventCatalog::WAF_BLOCK;
-			$wpdb->insert( // phpcs:ignore WordPress.DB
-				$table,
-				array(
-					'event_type'  => $type,
-					'severity'    => EventCatalog::default_severity( $type ),
-					'user_id'     => 0,
-					'ip'          => isset( $ev['ip'] ) ? (string) $ev['ip'] : '',
-					'method'      => isset( $ev['method'] ) ? (string) $ev['method'] : '',
-					'request_uri' => isset( $ev['uri'] ) ? (string) $ev['uri'] : '',
-					'user_agent'  => isset( $ev['ua'] ) ? (string) $ev['ua'] : '',
-					'context'     => wp_json_encode( array_merge( $ev['context'] ?? array(), array( 'via' => 'prepend' ) ) ),
-					'created_at'  => isset( $ev['ts'] ) ? (string) $ev['ts'] : gmdate( 'Y-m-d H:i:s' ),
-				)
+			$data = array(
+				'event_type'  => $type,
+				'severity'    => EventCatalog::default_severity( $type ),
+				'user_id'     => 0,
+				'ip'          => isset( $ev['ip'] ) ? (string) $ev['ip'] : '',
+				'method'      => isset( $ev['method'] ) ? (string) $ev['method'] : '',
+				'request_uri' => isset( $ev['uri'] ) ? (string) $ev['uri'] : '',
+				'user_agent'  => isset( $ev['ua'] ) ? (string) $ev['ua'] : '',
+				'context'     => wp_json_encode( array_merge( $ev['context'] ?? array(), array( 'via' => 'prepend' ) ) ),
+				'created_at'  => isset( $ev['ts'] ) ? (string) $ev['ts'] : gmdate( 'Y-m-d H:i:s' ),
 			);
+			$ok = $wpdb->insert( $table, $data ); // phpcs:ignore WordPress.DB
+			if ( ! $ok ) {
+				continue;
+			}
+
+			// The same hook every other event fires through Logger::log(), so alerts, the
+			// dashboard and add-ons see blocks made before WordPress loaded too (see
+			// PREPEND_EVENTS_FIRE_HOOK).
+			/** This action is documented in src/Modules/Audit/Logger.php */
+			do_action( 'loyalsec_event_logged', $type, $data, (int) $wpdb->insert_id );
 		}
 	}
 
@@ -1075,12 +1336,13 @@ class FirewallModule extends AbstractModule {
 	 * @return array<string, mixed>
 	 */
 	public function export_waf_config(): array {
-		$s = $this->settings();
+		$s               = $this->settings();
+		$trust_effective = ( new IpResolver( $s ) )->trust();
 
 		// Paths MUST be derived from this server's runtime constants at write time and
 		// normalized to forward slashes (never carried over from another machine — a stale
 		// Windows path baked into the deployed config silently fails the prepend open).
-		$kernel_dir           = trailingslashit( ( new \TotalSecurityWP\Setup\WafKernelBundler() )->deploy_dir() );
+		$kernel_dir           = trailingslashit( ( new \LoyalSecurity\Setup\WafKernelBundler() )->deploy_dir() );
 		$src_dir              = wp_normalize_path( $kernel_dir . 'src' );
 		$signatures_file      = wp_normalize_path( $kernel_dir . 'data/waf-signatures.php' );
 		$virtual_patches_file = wp_normalize_path( $kernel_dir . 'data/virtual-patches.php' );
@@ -1105,8 +1367,10 @@ class FirewallModule extends AbstractModule {
 			// no home_url()) so 'same_host_exempt' WAF rules can recognise this site's own
 			// same-site redirect URLs without trusting the client-controlled Host header.
 			'site_host'            => $this->site_host(),
-			'trust_proxy'          => (bool) $s->get( 'firewall', 'trust_proxy', false ),
-			'trusted_proxies'      => (array) $s->get( 'firewall', 'trusted_proxies', array() ),
+			// The effective trust (configured proxies plus Cloudflare's ranges when trusted), so
+			// the prepend resolves the same client IP as Standard Mode.
+			'trust_proxy'          => $trust_effective[0],
+			'trusted_proxies'      => $trust_effective[1],
 			// Manual allowlist + still-valid auto-added admin IPs (aged/capped) so the prepend
 			// honours the same effective set as Standard Mode without unbounded growth.
 			'ip_whitelist'         => $this->effective_ip_whitelist(),
@@ -1131,9 +1395,28 @@ class FirewallModule extends AbstractModule {
 			// logic itself, just read the baked result. Mirrors BotBlocker's trusted_signatures()/
 			// custom_blocked_signatures() (Standard Mode's live equivalent of this same merge).
 			'bot_rules'            => $this->export_bot_rules(),
+			'server_ips'           => $this->server_ips(),
+			// This site's requests to itself carry this key (see mark_loopback_request()); the
+			// file holding it is never web-readable.
+			'loopback_key'         => $this->loopback_key(),
+			// Signs the cookie that marks administrators and editors (see TrustCookie), so the
+			// prepend gives them the same pass as Standard Mode. Empty when that pass is off.
+			'trust_key'            => (bool) $s->get( 'firewall', 'whitelist_admins', true ) ? TrustCookie::key() : '',
+			'rest_prefix'          => $this->rest_path_prefix(),
+			// Built-in attack-tool signatures plus the opt-in groups and the admin's own list.
+			'bad_agents'           => array_values( array_filter( array_map(
+				'strtolower',
+				array_merge(
+					BotSignatures::blocked_agents(
+						(bool) $s->get( 'firewall', 'block_http_clients', false ),
+						(bool) $s->get( 'firewall', 'block_seo_crawlers', false )
+					),
+					array_map( 'strval', (array) $s->get( 'firewall', 'custom_bad_agents', array() ) )
+				)
+			) ) ),
 			'query_cardinality'    => array(
 				'enabled' => (bool) $s->get( 'firewall', 'query_cardinality_enabled', true ),
-				'max'     => (int) $s->get( 'firewall', 'query_cardinality_max', 60 ),
+				'max'     => (int) $s->get( 'firewall', 'query_cardinality_max', 120 ),
 				'window'  => (int) $s->get( 'firewall', 'query_cardinality_window', 600 ),
 			),
 			// Virtual patching (Optimized Mode): get_plugins() is WordPress-only, so the
@@ -1249,7 +1532,7 @@ class FirewallModule extends AbstractModule {
 	}
 
 	/**
-	 * Fired on `totalsecwp_feed_dataset_updated` after every ThreatIntel sync. Only 'waf' and
+	 * Fired on `loyalsec_feed_dataset_updated` after every ThreatIntel sync. Only 'waf' and
 	 * 'patches' datasets are relevant to the prepend's config snapshot — 'malware' and 'cve'
 	 * are consumed elsewhere and don't need a WAF config rewrite.
 	 *
@@ -1265,18 +1548,18 @@ class FirewallModule extends AbstractModule {
 	}
 
 	/** Option flag raised when Optimized Mode's config could not be written (stale/drifted). */
-	public const CONFIG_STALE_OPTION = 'totalsecwp_waf_config_stale';
+	public const CONFIG_STALE_OPTION = 'loyalsec_waf_config_stale';
 
-	/** Which TOTALSECWP_VERSION the deployed Optimized-Mode bundle was last synced from. */
-	private const WAF_KERNEL_VERSION_OPTION = 'totalsecwp_waf_kernel_version';
+	/** Which LOYALSEC_VERSION the deployed Optimized-Mode bundle was last synced from. */
+	private const WAF_KERNEL_VERSION_OPTION = 'loyalsec_waf_kernel_version';
 
 	/**
 	 * Absolute path to the deployed `waf-config.php` — inside the relocated bundle
-	 * ({@see \TotalSecurityWP\Setup\WafKernelBundler::deploy_dir()}), never inside the plugin
+	 * ({@see \LoyalSecurity\Setup\WafKernelBundler::deploy_dir()}), never inside the plugin
 	 * directory (see that class's docblock for why).
 	 */
 	private function waf_config_path(): string {
-		return trailingslashit( ( new \TotalSecurityWP\Setup\WafKernelBundler() )->deploy_dir() ) . 'waf-config.php';
+		return trailingslashit( ( new \LoyalSecurity\Setup\WafKernelBundler() )->deploy_dir() ) . 'waf-config.php';
 	}
 
 	/**
@@ -1317,9 +1600,9 @@ class FirewallModule extends AbstractModule {
 		// Write needed but couldn't happen. Only a problem when Optimized Mode is the intended
 		// enforcement path — in Standard Mode this file is unused, so a non-writable prepend dir
 		// is harmless and must not nag the operator. (Checked against the stored preference, not
-		// is_optimized_active(): TOTALSECWP_WAF_PREPEND is only defined on requests the prepend
+		// is_optimized_active(): LOYALSEC_WAF_PREPEND is only defined on requests the prepend
 		// actually ran, which a settings-save admin request is not.)
-		if ( 'optimized' === get_option( 'totalsecwp_waf_mode', 'standard' ) ) {
+		if ( 'optimized' === get_option( 'loyalsec_waf_mode', 'standard' ) ) {
 			update_option(
 				self::CONFIG_STALE_OPTION,
 				array(
@@ -1334,7 +1617,7 @@ class FirewallModule extends AbstractModule {
 
 	/**
 	 * Keep the deployed Optimized-Mode bundle (uploads/loyal-security/waf-kernel/ — see
-	 * {@see \TotalSecurityWP\Setup\WafKernelBundler}) in sync with this plugin's own WAF kernel
+	 * {@see \LoyalSecurity\Setup\WafKernelBundler}) in sync with this plugin's own WAF kernel
 	 * source. Registered on `init` (cheap on the common path: one option string compare) as the
 	 * PRIMARY trigger, plus the activate/deactivate/upgrade lifecycle hooks as a faster-reacting
 	 * secondary one. Filesystem/redeploy work only happens on an actual version mismatch, and
@@ -1344,19 +1627,19 @@ class FirewallModule extends AbstractModule {
 	 * WordPress's own dashboard "Update now" flow — it never fires when plugin files are updated
 	 * by direct copy (FTP, git pull, etc.), which is how this project is actually deployed. Without
 	 * an `init`-based check, an already-Optimized site that gets its plugin files replaced this
-	 * way would keep its `auto_prepend_file` directive pointed at whatever `prepend/totalsecwp-waf.php`
+	 * way would keep its `auto_prepend_file` directive pointed at whatever `prepend/loyalsec-waf.php`
 	 * used to be — now deleted — which is a hard PHP fatal on every single request, before this
 	 * plugin's own fail-open handling can even run.
 	 */
 	public function maybe_resync_deployed_kernel(): void {
-		if ( 'optimized' !== get_option( 'totalsecwp_waf_mode', 'standard' ) ) {
+		if ( 'optimized' !== get_option( 'loyalsec_waf_mode', 'standard' ) ) {
 			return;
 		}
-		if ( get_option( self::WAF_KERNEL_VERSION_OPTION, '' ) === TOTALSECWP_VERSION ) {
+		if ( get_option( self::WAF_KERNEL_VERSION_OPTION, '' ) === LOYALSEC_VERSION ) {
 			return;
 		}
 
-		$bundler = new \TotalSecurityWP\Setup\WafKernelBundler();
+		$bundler = new \LoyalSecurity\Setup\WafKernelBundler();
 		if ( ! $bundler->sync() ) {
 			return; // Leave the version option unset so this retries next request.
 		}
@@ -1366,8 +1649,8 @@ class FirewallModule extends AbstractModule {
 		// strips and re-adds its own marked block) and the only way to guarantee an install whose
 		// directive still points at an old/removed in-plugin path gets migrated, with the existing
 		// self-test + auto-rollback as a safety net against a bad redeploy.
-		( new \TotalSecurityWP\Setup\PrependInstaller( new \TotalSecurityWP\Setup\ServerProbe() ) )->deploy();
+		( new \LoyalSecurity\Setup\PrependInstaller( new \LoyalSecurity\Setup\ServerProbe() ) )->deploy();
 
-		update_option( self::WAF_KERNEL_VERSION_OPTION, TOTALSECWP_VERSION, false );
+		update_option( self::WAF_KERNEL_VERSION_OPTION, LOYALSEC_VERSION, false );
 	}
 }

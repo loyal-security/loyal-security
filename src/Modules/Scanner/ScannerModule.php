@@ -2,19 +2,19 @@
 /**
  * Malware scanner module — orchestrates batched, resumable scans.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Scanner;
+namespace LoyalSecurity\Modules\Scanner;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Core\Cron;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Firewall\BanStore;
-use TotalSecurityWP\Modules\Firewall\PatchSuggester;
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Core\Cron;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Firewall\BanStore;
+use LoyalSecurity\Modules\Firewall\PatchSuggester;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * Drives scans in small batches so they fit within request/cron time limits and never
@@ -43,7 +43,7 @@ class ScannerModule extends AbstractModule {
 	}
 
 	/** Single-event hook that drives an in-progress scan to completion in the background. */
-	public const CONTINUE_HOOK = 'totalsecwp_scan_continue';
+	public const CONTINUE_HOOK = 'loyalsec_scan_continue';
 
 	public function register_hooks(): void {
 		add_action( Cron::SCAN, array( $this, 'run_scheduled' ) );
@@ -51,6 +51,10 @@ class ScannerModule extends AbstractModule {
 
 		// Weekly automatic full scan ("Scheduled Scan" setting, on by default).
 		add_action( 'init', array( $this, 'ensure_free_weekly_scan' ) );
+		// An administrator changing the site address in WordPress makes it the expected one,
+		// so the database scan only reports changes made some other way.
+		add_action( 'update_option_home', array( $this, 'site_address_changed' ) );
+		add_action( 'update_option_siteurl', array( $this, 'site_address_changed' ) );
 	}
 
 	/**
@@ -107,7 +111,7 @@ class ScannerModule extends AbstractModule {
 
 	private function findings_table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_scan_findings';
+		return $wpdb->prefix . 'loyalsec_scan_findings';
 	}
 
 	/**
@@ -192,7 +196,7 @@ class ScannerModule extends AbstractModule {
 		// get/set_transient. Non-blocking: the loser just reports current progress and keeps
 		// polling while the holder advances the cursor. A stale lock (crashed worker) is stolen
 		// after 120s so a scan can never wedge permanently.
-		$lock = 'totalsecwp_scanlock_' . $scan_id;
+		$lock = 'loyalsec_scanlock_' . $scan_id;
 		if ( ! add_option( $lock, (string) time(), '', 'no' ) ) {
 			$held_since = (int) get_option( $lock );
 			if ( $held_since && time() - $held_since < 120 ) {
@@ -237,12 +241,14 @@ class ScannerModule extends AbstractModule {
 			if ( $done ) {
 				// Optional database scan as the final step.
 				if ( $this->setting( 'scan_database', true ) ) {
-					$db_findings    = ( new DatabaseScanner() )->scan();
+					[ $db_rules, $db_version ] = $this->signature_rules();
+					$db_findings    = ( new DatabaseScanner( $db_rules, $db_version ) )->scan();
 					$total_findings += $this->store_findings( $scan_id, $db_findings );
 					$state->progress( $scan_id, $scanned, $total_findings );
 				}
 				$state->finish( $scan_id, 'completed' );
 				Filesystem::delete( $this->list_file( $scan_id ) );
+				$this->resolve_missing_file_findings();
 				$this->logger()->log( EventCatalog::SCAN_COMPLETED, array( 'scan_id' => $scan_id, 'findings' => $total_findings ) );
 			}
 
@@ -262,15 +268,20 @@ class ScannerModule extends AbstractModule {
 	 * Build a HeuristicScanner with the base malware signatures merged with any cached
 	 * remote feed rules. Fail-open: remote merge errors are silently ignored.
 	 */
-	private function make_scanner(): HeuristicScanner {
-		$base_file   = TOTALSECWP_PATH . 'data/malware-signatures.php';
-		$base_data   = is_file( $base_file ) ? include $base_file : array();
-		$base_rules  = isset( $base_data['rules'] ) && is_array( $base_data['rules'] ) ? $base_data['rules'] : array();
+	/**
+	 * Malware signature rules: the bundled set plus the signed feed's.
+	 *
+	 * @return array{0: array<int, array<string, mixed>>, 1: string} Rules and the bundled version.
+	 */
+	private function signature_rules(): array {
+		$base_file    = LOYALSEC_PATH . 'data/malware-signatures.php';
+		$base_data    = is_file( $base_file ) ? include $base_file : array();
+		$base_rules   = isset( $base_data['rules'] ) && is_array( $base_data['rules'] ) ? $base_data['rules'] : array();
 		$base_version = isset( $base_data['version'] ) ? (string) $base_data['version'] : '';
 
 		try {
-			if ( class_exists( \TotalSecurityWP\Modules\ThreatIntel\FeedStore::class ) ) {
-				$remote = ( new \TotalSecurityWP\Modules\ThreatIntel\FeedStore() )->get_rules( 'malware' );
+			if ( class_exists( \LoyalSecurity\Modules\ThreatIntel\FeedStore::class ) ) {
+				$remote = ( new \LoyalSecurity\Modules\ThreatIntel\FeedStore() )->get_rules( 'malware' );
 				if ( is_array( $remote ) && ! empty( $remote ) ) {
 					$base_rules = array_merge( $base_rules, $remote );
 				}
@@ -278,6 +289,11 @@ class ScannerModule extends AbstractModule {
 		} catch ( \Throwable $e ) {
 			// Fail open.
 		}
+		return array( $base_rules, $base_version );
+	}
+
+	private function make_scanner(): HeuristicScanner {
+		[ $base_rules, $base_version ] = $this->signature_rules();
 
 		// Trust any file whose content provably matches an official WordPress.org plugin
 		// release (same trust model already applied to core files in
@@ -287,12 +303,12 @@ class ScannerModule extends AbstractModule {
 		// a checksum-API hiccup just means this scan runs without the trust allowlist.
 		$allow_hashes = array();
 		try {
-			$allow_hashes = ( new \TotalSecurityWP\Modules\Integrity\PluginChecksums() )->official_hash_set();
+			$allow_hashes = ( new \LoyalSecurity\Modules\Integrity\PluginChecksums() )->official_hash_set();
 		} catch ( \Throwable $e ) {
 			// Fail open.
 		}
 
-		return new HeuristicScanner( new SignatureDb( $base_rules, $base_version ), null, $allow_hashes );
+		return new HeuristicScanner( new SignatureDb( $base_rules, $base_version ), null, $allow_hashes, null, TrustedFiles::map() );
 	}
 
 	/**
@@ -388,16 +404,16 @@ class ScannerModule extends AbstractModule {
 			 *
 			 * @param Finding $f The persisted finding (its `id` is populated).
 			 */
-			do_action( 'totalsecwp_scan_finding', $f );
+			do_action( 'loyalsec_scan_finding', $f );
 
 			/**
-			 * Fires alongside `totalsecwp_scan_finding` for each newly recorded finding.
+			 * Fires alongside `loyalsec_scan_finding` for each newly recorded finding.
 			 *
 			 * @since 1.2.0
 			 *
 			 * @param Finding $f The persisted finding.
 			 */
-			do_action( 'totalsecwp_cloud_reputation_scanner', $f );
+			do_action( 'loyalsec_cloud_reputation_scanner', $f );
 			$n++;
 		}
 		return $n;
@@ -522,11 +538,46 @@ class ScannerModule extends AbstractModule {
 	}
 
 	/**
+	 * `update_option_home` / `update_option_siteurl`: remember the new address when an
+	 * administrator changed it from wp-admin (Settings → General).
+	 */
+	public function site_address_changed(): void {
+		if ( is_admin() && current_user_can( 'manage_options' ) && get_option( DatabaseScanner::SITE_ADDRESS_OPTION ) ) {
+			DatabaseScanner::remember_site_address();
+		}
+	}
+
+	/**
+	 * Close open findings whose file no longer exists. A deleted file is no longer a threat, but
+	 * a rescan never revisits it, so such findings stayed open until resolved by hand. Runs at
+	 * the end of every completed scan. Database findings have no file and are left alone.
+	 *
+	 * @return int Findings resolved.
+	 */
+	public function resolve_missing_file_findings(): int {
+		$resolved = 0;
+		foreach ( $this->findings( 'open', 5000 ) as $row ) {
+			if ( ! empty( $row['file_missing'] ) && $this->set_finding_status( (int) $row['id'], 'resolved' ) ) {
+				$resolved++;
+			}
+		}
+		return $resolved;
+	}
+
+	/**
 	 * Update a finding's status (open|ignored|resolved|quarantined).
 	 */
 	public function set_finding_status( int $id, string $status ): bool {
 		global $wpdb;
-		return (bool) $wpdb->update( $this->findings_table(), array( 'status' => $status ), array( 'id' => $id ) ); // phpcs:ignore WordPress.DB
+		$ok = (bool) $wpdb->update( $this->findings_table(), array( 'status' => $status ), array( 'id' => $id ) ); // phpcs:ignore WordPress.DB
+		// Closing a "site address changed" finding confirms the new address as expected.
+		if ( $ok && 'open' !== $status ) {
+			$row = $this->get_finding( $id );
+			if ( $row && 'db-site-address' === ( $row['rule'] ?? '' ) ) {
+				DatabaseScanner::remember_site_address();
+			}
+		}
+		return $ok;
 	}
 
 	/**
@@ -576,7 +627,7 @@ class ScannerModule extends AbstractModule {
 
 		$allow_hashes = array();
 		try {
-			$allow_hashes = ( new \TotalSecurityWP\Modules\Integrity\PluginChecksums() )->official_hash_set();
+			$allow_hashes = ( new \LoyalSecurity\Modules\Integrity\PluginChecksums() )->official_hash_set();
 		} catch ( \Throwable $e ) {
 			// Fail open — refresh still runs, just without the checksum-trust shortcut.
 		}
@@ -670,12 +721,7 @@ class ScannerModule extends AbstractModule {
 	 * check.
 	 */
 	private function is_db_finding_path( string $path ): bool {
-		foreach ( array( 'post:', 'option:', 'user:', 'theme:', 'comment:', 'usermeta:', 'mu:', 'dropin:', 'plugin:', 'core:' ) as $prefix ) {
-			if ( str_starts_with( $path, $prefix ) ) {
-				return true;
-			}
-		}
-		return false;
+		return DatabaseScanner::is_location( $path );
 	}
 
 	/**
@@ -723,7 +769,7 @@ class ScannerModule extends AbstractModule {
 		 *
 		 * @param bool $run Default true.
 		 */
-		if ( ! apply_filters( 'totalsecwp_run_weekly_scan', true ) ) {
+		if ( ! apply_filters( 'loyalsec_run_weekly_scan', true ) ) {
 			return;
 		}
 		if ( ! $this->setting( 'scheduled_scan', true ) ) {

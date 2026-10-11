@@ -2,15 +2,15 @@
 /**
  * Setup wizard — safely deploys the standalone WAF and finalises onboarding.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Setup;
+namespace LoyalSecurity\Setup;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Modules\Firewall\FirewallModule;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Modules\Firewall\FirewallModule;
 
 /**
  * Orchestrates the onboarding flow: server detection, WAF config generation, prepend
@@ -36,10 +36,10 @@ class SetupWizard {
 		$kernel_dir = trailingslashit( ( new WafKernelBundler() )->deploy_dir() );
 		return array(
 			'server'          => $info,
-			'mode'            => get_option( 'totalsecwp_waf_mode', 'standard' ),
-			'prepend_exists'  => is_file( $kernel_dir . 'totalsecwp-waf.php' ),
+			'mode'            => get_option( 'loyalsec_waf_mode', 'standard' ),
+			'prepend_exists'  => is_file( $kernel_dir . 'loyalsec-waf.php' ),
 			'config_exists'   => is_file( $kernel_dir . 'waf-config.php' ),
-			'setup_complete'  => (bool) get_option( 'totalsecwp_setup_complete', false ),
+			'setup_complete'  => (bool) get_option( 'loyalsec_setup_complete', false ),
 		);
 	}
 
@@ -90,6 +90,6 @@ class SetupWizard {
 	 * Mark onboarding complete.
 	 */
 	public function complete(): void {
-		update_option( 'totalsecwp_setup_complete', true );
+		update_option( 'loyalsec_setup_complete', true );
 	}
 }

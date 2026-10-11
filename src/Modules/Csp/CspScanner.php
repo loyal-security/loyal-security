@@ -2,10 +2,10 @@
 /**
  * Frontend resource scanner for CSP policy discovery.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Csp;
+namespace LoyalSecurity\Modules\Csp;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,13 +21,13 @@ defined( 'ABSPATH' ) || exit;
  */
 class CspScanner {
 
-	private const TRANSIENT_KEY     = 'totalsecwp_csp_scan';
+	private const TRANSIENT_KEY     = 'loyalsec_csp_scan';
 	private const TRANSIENT_TTL     = 3600;
 	private const MAX_CSS_FILES     = 8;   // linked CSS files to follow per page
 	private const MAX_EXTRA_PAGES   = 3;   // additional pages to scan beyond homepage
 
 	/** Separate transient for the codebase (PHP/JS file) scan. */
-	private const CODEBASE_TRANSIENT_KEY = 'totalsecwp_csp_codebase_scan';
+	private const CODEBASE_TRANSIENT_KEY = 'loyalsec_csp_codebase_scan';
 	private const CODEBASE_TRANSIENT_TTL = 3600;
 
 	/** Max files to scan in a single codebase scan run (safety cap). */
@@ -51,7 +51,7 @@ class CspScanner {
 	 */
 	public static function domain_map(): array {
 		if ( null === self::$domain_map_cache ) {
-			$json    = file_get_contents( TOTALSECWP_PATH . 'assets/data/csp-domain-map.json' );
+			$json    = file_get_contents( LOYALSEC_PATH . 'assets/data/csp-domain-map.json' );
 			$decoded = is_string( $json ) ? json_decode( $json, true ) : null;
 			self::$domain_map_cache = is_array( $decoded ) ? $decoded : array();
 		}
@@ -149,7 +149,7 @@ class CspScanner {
 			if ( $this->scan_file_count >= self::MAX_SCAN_FILES ) {
 				break;
 			}
-			$plugin_dir = \TotalSecurityWP\Support\Paths::plugins() . '/' . dirname( (string) $plugin_file );
+			$plugin_dir = \LoyalSecurity\Support\Paths::plugins() . '/' . dirname( (string) $plugin_file );
 			if ( is_dir( $plugin_dir ) ) {
 				$domains = array_merge( $domains, $this->walk_dir( $plugin_dir, $skip_dirs ) );
 			}
@@ -587,8 +587,8 @@ class CspScanner {
 
 		$response = wp_remote_get( $url, array(
 			'timeout'    => 15,
-			'sslverify'  => \TotalSecurityWP\Support\Http::local_sslverify(),
-			'user-agent' => 'LoyalSecurity-CSP-Scanner/' . TOTALSECWP_VERSION,
+			'sslverify'  => \LoyalSecurity\Support\Http::local_sslverify(),
+			'user-agent' => 'LoyalSecurity-CSP-Scanner/' . LOYALSEC_VERSION,
 			'headers'    => array(
 				'X-LoyalSecurity-Scanner' => $token,
 			),
@@ -613,8 +613,8 @@ class CspScanner {
 		$is_local = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) ) === strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
 		$response = wp_remote_get( $url, array(
 			'timeout'    => 8,
-			'sslverify'  => $is_local ? \TotalSecurityWP\Support\Http::local_sslverify() : true,
-			'user-agent' => 'LoyalSecurity-CSP-Scanner/' . TOTALSECWP_VERSION,
+			'sslverify'  => $is_local ? \LoyalSecurity\Support\Http::local_sslverify() : true,
+			'user-agent' => 'LoyalSecurity-CSP-Scanner/' . LOYALSEC_VERSION,
 		) );
 
 		if ( is_wp_error( $response ) ) {

@@ -2,20 +2,20 @@
 /**
  * Security status / score endpoint.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Core\Settings;
-use TotalSecurityWP\Core\HealthScore;
-use TotalSecurityWP\Core\OnboardingChecklist;
-use TotalSecurityWP\Core\SafeBrowsing;
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Plugin;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Core\Settings;
+use LoyalSecurity\Core\HealthScore;
+use LoyalSecurity\Core\OnboardingChecklist;
+use LoyalSecurity\Core\SafeBrowsing;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Plugin;
 use WP_REST_Request;
 
 /**
@@ -159,9 +159,7 @@ class StatusController extends AbstractController {
 	}
 
 	public function get_status( WP_REST_Request $request ) {
-		/** @var Settings $settings */
-		$settings = $this->container->make( 'settings' );
-		$plugin   = Plugin::instance();
+		$plugin = Plugin::instance();
 
 		$modules = array();
 		foreach ( $plugin->modules() as $id => $module ) {
@@ -173,16 +171,16 @@ class StatusController extends AbstractController {
 		}
 
 		$counters = $this->counters();
-		$score    = $this->score( $modules, $counters, $settings );
+		$score    = $this->score();
 
 		return $this->ok(
 			array(
-				'version'         => TOTALSECWP_VERSION,
+				'version'         => LOYALSEC_VERSION,
 				'score'           => $score['score'],
 				'grade'           => $score['grade'],
-				'score_trend'     => $this->score_trend( $score['score'] ),
+				'score_trend'     => $score['trend'],
 				'recommendations' => $score['recommendations'],
-				'setup_complete'  => (bool) get_option( 'totalsecwp_setup_complete', false ),
+				'setup_complete'  => (bool) get_option( 'loyalsec_setup_complete', false ),
 				'modules'         => $modules,
 				'counters'        => $counters,
 				'recent_events'   => $this->recent_critical_events(),
@@ -197,9 +195,9 @@ class StatusController extends AbstractController {
 	 */
 	private function counters(): array {
 		global $wpdb;
-		$p = $wpdb->prefix . 'totalsecwp_';
+		$p = $wpdb->prefix . 'loyalsec_';
 
-		$active_bans = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'totalsecwp_'), not user input.
+		$active_bans = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'loyalsec_'), not user input.
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM %i WHERE type = %s OR expires_at IS NULL OR expires_at > %s", $p . 'bans',
 				'permanent',
@@ -207,10 +205,10 @@ class StatusController extends AbstractController {
 			)
 		);
 
-		$open_findings = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE status = 'open'", $p . 'scan_findings' ) ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'totalsecwp_'), not user input; no other value to bind.
-		$quarantined   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE status = 'quarantined'", $p . 'quarantine' ) ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'totalsecwp_'), not user input; no other value to bind.
+		$open_findings = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE status = 'open'", $p . 'scan_findings' ) ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'loyalsec_'), not user input; no other value to bind.
+		$quarantined   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE status = 'quarantined'", $p . 'quarantine' ) ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'loyalsec_'), not user input; no other value to bind.
 
-		$blocks_24h = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'totalsecwp_'), not user input.
+		$blocks_24h = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'loyalsec_'), not user input.
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM %i WHERE event_type LIKE %s AND created_at > %s", $p . 'events',
 				'waf.%',
@@ -218,7 +216,7 @@ class StatusController extends AbstractController {
 			)
 		);
 
-		$failed_logins_24h = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'totalsecwp_'), not user input.
+		$failed_logins_24h = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- $p is a fixed table-prefix shorthand ($wpdb->prefix . 'loyalsec_'), not user input.
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM %i WHERE success = 0 AND created_at > %s", $p . 'login_attempts',
 				gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS )
@@ -228,9 +226,9 @@ class StatusController extends AbstractController {
 		// Installed plugins currently shielded by an early virtual patch (patch-gap protection).
 		// Guarded so the dashboard status never fails if ThreatIntel is unavailable.
 		$patch_gap = 0;
-		if ( class_exists( \TotalSecurityWP\Modules\ThreatIntel\PatchGap::class ) ) {
+		if ( class_exists( \LoyalSecurity\Modules\ThreatIntel\PatchGap::class ) ) {
 			try {
-				$patch_gap = (int) ( ( new \TotalSecurityWP\Modules\ThreatIntel\PatchGap() )->summary()['count'] ?? 0 );
+				$patch_gap = (int) ( ( new \LoyalSecurity\Modules\ThreatIntel\PatchGap() )->summary()['count'] ?? 0 );
 			} catch ( \Throwable $e ) {
 				$patch_gap = 0;
 			}
@@ -247,135 +245,40 @@ class StatusController extends AbstractController {
 	}
 
 	/**
-	 * Compute a 0–100 security score and human recommendations.
+	 * The shared health score ({@see HealthScore}) plus a recommendation for each failing check.
 	 *
-	 * @param array<int, array> $modules  Module status list.
-	 * @param array<string,int> $counters Counters.
-	 * @param Settings          $settings Settings repo.
-	 * @return array{score:int,grade:string,recommendations:array<int,array{text:string,action:string,route:string}>}
+	 * @return array{score:int,grade:string,trend:?int,recommendations:array<int,array{text:string,action:string,route:string}>}
 	 */
-	private function score( array $modules, array $counters, Settings $settings ): array {
-		$score           = 100;
+	private function score(): array {
+		$health  = ( new HealthScore() )->compute();
+		$actions = array(
+			'settings'   => __( 'Open settings', 'loyal-security' ),
+			'scanner'    => __( 'Review findings', 'loyal-security' ),
+			'quarantine' => __( 'Open quarantine', 'loyal-security' ),
+			'wizard'     => __( 'Run setup wizard', 'loyal-security' ),
+			'2fa'        => __( 'Enforce 2FA', 'loyal-security' ),
+		);
+
 		$recommendations = array();
-
-		foreach ( $modules as $m ) {
-			if ( ! $m['enabled'] ) {
-				$score -= 10;
-				$recommendations[] = $this->rec(
-					sprintf(
-						/* translators: module title */
-						__( 'The %s module is disabled — enable it for full protection.', 'loyal-security' ),
-						$m['title']
-					),
-					__( 'Open settings', 'loyal-security' ),
-					'settings',
-					$m['id'] . '.enabled'
-				);
+		foreach ( $health['checks'] as $check ) {
+			if ( ! empty( $check['pass'] ) || empty( $check['route'] ) ) {
+				continue;
 			}
-		}
-
-		if ( $counters['open_findings'] > 0 ) {
-			$score            -= min( 30, $counters['open_findings'] * 5 );
+			$route             = (string) $check['route'];
 			$recommendations[] = $this->rec(
-				__( 'Unresolved malware findings detected. Review and remediate them.', 'loyal-security' ),
-				__( 'Review findings', 'loyal-security' ),
-				'scanner'
+				(string) $check['label'],
+				$actions[ $route ] ?? __( 'Open', 'loyal-security' ),
+				$route,
+				(string) ( $check['highlight'] ?? '' )
 			);
-		}
-
-		if ( $counters['quarantined'] > 0 ) {
-			$recommendations[] = $this->rec(
-				/* translators: %d quarantined file count */
-				sprintf( _n( '%d quarantined file is awaiting review.', '%d quarantined files are awaiting review.', $counters['quarantined'], 'loyal-security' ), $counters['quarantined'] ),
-				__( 'Open quarantine', 'loyal-security' ),
-				'quarantine'
-			);
-		}
-
-		if ( ! get_option( 'totalsecwp_setup_complete', false ) ) {
-			$score            -= 10;
-			$recommendations[] = $this->rec(
-				__( 'Complete the setup wizard to deploy the optimized firewall.', 'loyal-security' ),
-				__( 'Run setup wizard', 'loyal-security' ),
-				'wizard'
-			);
-		}
-
-		if ( ! (bool) $settings->get( 'auth', 'force_2fa', false ) ) {
-			$score            -= 8;
-			// This scores the *enforcement* toggle, which requires every admin/editor to
-			// enroll — not whether the current user personally has. It's surfaced directly on
-			// the 2FA panel (ForceTwoFactorCard in TwoFactorSetup.js), not just buried in the
-			// generic Settings page, precisely so this recommendation lands somewhere with the
-			// actual control on it.
-			$recommendations[] = $this->rec(
-				__( 'Enforce two-factor authentication for administrators.', 'loyal-security' ),
-				__( 'Enforce 2FA', 'loyal-security' ),
-				'2fa'
-			);
-		}
-
-		$score = max( 0, min( 100, $score ) );
-
-		$grade = 'A';
-		if ( $score < 50 ) {
-			$grade = 'F';
-		} elseif ( $score < 65 ) {
-			$grade = 'D';
-		} elseif ( $score < 80 ) {
-			$grade = 'C';
-		} elseif ( $score < 90 ) {
-			$grade = 'B';
 		}
 
 		return array(
-			'score'           => $score,
-			'grade'           => $grade,
-			'recommendations' => array_values( $recommendations ),
+			'score'           => $health['score'],
+			'grade'           => $health['grade'],
+			'trend'           => $health['trend'],
+			'recommendations' => $recommendations,
 		);
-	}
-
-	/** Rolling daily snapshot of the dashboard's own score, used only for the trend arrow. */
-	private const SCORE_HISTORY_OPTION = 'totalsecwp_dashboard_score_history';
-
-	private const SCORE_HISTORY_MAX_DAYS = 35;
-
-	/**
-	 * Change vs. the closest daily snapshot at least 7 days old, or null when there isn't one
-	 * yet (a new install, or one under a week old). Snapshots itself at most once per calendar
-	 * day (UTC) as a side effect of being called — same lazy, self-healing pattern the plugin
-	 * already uses elsewhere (e.g. the WAF kernel resync check) rather than a dedicated cron.
-	 */
-	private function score_trend( int $current ): ?int {
-		$history = get_option( self::SCORE_HISTORY_OPTION, array() );
-		if ( ! is_array( $history ) ) {
-			$history = array();
-		}
-
-		$today = gmdate( 'Y-m-d' );
-		$last  = end( $history );
-		if ( ! is_array( $last ) || $today !== ( $last['date'] ?? '' ) ) {
-			$history[] = array( 'date' => $today, 'score' => $current );
-			if ( count( $history ) > self::SCORE_HISTORY_MAX_DAYS ) {
-				$history = array_slice( $history, -self::SCORE_HISTORY_MAX_DAYS );
-			}
-			update_option( self::SCORE_HISTORY_OPTION, $history, false );
-		}
-
-		$cutoff   = time() - ( 7 * DAY_IN_SECONDS );
-		$baseline = null;
-		foreach ( $history as $entry ) {
-			if ( ! is_array( $entry ) || ! isset( $entry['date'], $entry['score'] ) ) {
-				continue;
-			}
-			$ts = strtotime( (string) $entry['date'] . ' 00:00:00 UTC' );
-			// Walk oldest→newest, keep advancing while still ≥7 days old, so we land on the
-			// entry CLOSEST to (but not inside) the 7-day window.
-			if ( $ts && $ts <= $cutoff ) {
-				$baseline = (int) $entry['score'];
-			}
-		}
-		return null === $baseline ? null : ( $current - $baseline );
 	}
 
 	/**
@@ -402,7 +305,7 @@ class StatusController extends AbstractController {
 	 */
 	private function recent_critical_events(): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'totalsecwp_events';
+		$table = $wpdb->prefix . 'loyalsec_events';
 		$rows  = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name built from $wpdb->prefix, not user input.
 			$wpdb->prepare(
 				"SELECT id, event_type, severity, ip, method, request_uri, user_agent, context, created_at FROM %i WHERE severity >= %d ORDER BY id DESC LIMIT 10", $table,

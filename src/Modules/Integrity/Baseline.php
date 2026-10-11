@@ -2,14 +2,14 @@
 /**
  * Custom file-integrity baseline (snapshot + diff).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Integrity;
+namespace LoyalSecurity\Modules\Integrity;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Scanner\FileWalker;
+use LoyalSecurity\Modules\Scanner\FileWalker;
 
 /**
  * For files without an official checksum source (themes, premium plugins, mu-plugins), the
@@ -25,11 +25,23 @@ class Baseline {
 	 * planted afterwards (a classic backdoor persistence trick) would never be flagged as
 	 * "added". The marker is excluded from the diff itself.
 	 */
-	private const MARKER = "\0totalsecwp-baseline-marker";
+	private const MARKER = "\0loyalsec-baseline-marker";
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_integrity_baseline';
+		return $wpdb->prefix . 'loyalsec_integrity_baseline';
+	}
+
+	/**
+	 * Whether a baseline was ever taken for a source.
+	 *
+	 * @param string $source Source key.
+	 */
+	public function has( string $source ): bool {
+		global $wpdb;
+		return (bool) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- live baseline state.
+			$wpdb->prepare( 'SELECT 1 FROM %i WHERE source = %s LIMIT 1', $this->table(), $source )
+		);
 	}
 
 	/**
@@ -43,7 +55,7 @@ class Baseline {
 		global $wpdb;
 		$wpdb->delete( $this->table(), array( 'source' => $source ) ); // phpcs:ignore WordPress.DB
 
-		$walker = new FileWalker( array( 'php', 'js', 'css', 'phtml', 'inc' ) );
+		$walker = new FileWalker( array( 'php', 'js', 'css', 'phtml', 'inc' ), false );
 		$n      = 0;
 		foreach ( $walker->walk( $root ) as $path ) {
 			$hash = hash_file( 'sha256', $path );
@@ -65,7 +77,7 @@ class Baseline {
 			// (see the varchar(20)-vs-'theme:<slug>' incident this comment was added for).
 			if ( false === $inserted ) {
 				if ( function_exists( 'error_log' ) ) {
-					\TotalSecurityWP\Support\Debug::log( 'integrity baseline insert failed for source "' . $source . '": ' . $wpdb->last_error );
+					\LoyalSecurity\Support\Debug::log( 'integrity baseline insert failed for source "' . $source . '": ' . $wpdb->last_error );
 				}
 				continue;
 			}
@@ -98,7 +110,7 @@ class Baseline {
 
 		$modified = array();
 		$added    = array();
-		$walker   = new FileWalker( array( 'php', 'js', 'css', 'phtml', 'inc' ) );
+		$walker   = new FileWalker( array( 'php', 'js', 'css', 'phtml', 'inc' ), false );
 		$current  = array();
 
 		foreach ( $walker->walk( $root ) as $path ) {
@@ -152,7 +164,7 @@ class Baseline {
 			)
 		);
 		if ( false === $sentinel_ok && function_exists( 'error_log' ) ) {
-			\TotalSecurityWP\Support\Debug::log( 'integrity baseline sentinel insert failed for source "' . $source . '": ' . $wpdb->last_error );
+			\LoyalSecurity\Support\Debug::log( 'integrity baseline sentinel insert failed for source "' . $source . '": ' . $wpdb->last_error );
 		}
 
 		$base = rtrim( $base, '/\\' );
@@ -179,7 +191,7 @@ class Baseline {
 			);
 			if ( false === $inserted ) {
 				if ( function_exists( 'error_log' ) ) {
-					\TotalSecurityWP\Support\Debug::log( 'integrity baseline insert failed for source "' . $source . '": ' . $wpdb->last_error );
+					\LoyalSecurity\Support\Debug::log( 'integrity baseline insert failed for source "' . $source . '": ' . $wpdb->last_error );
 				}
 				continue;
 			}

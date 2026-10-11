@@ -2,10 +2,10 @@
 /**
  * Two-factor management entry point on the user's own Profile screen.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -13,14 +13,14 @@ defined( 'ABSPATH' ) || exit;
  * Renders a small status + "Manage two-factor authentication" section on profile.php — the one
  * wp-admin screen every user, regardless of role or capability, can always reach for their own
  * account. This exists because everywhere else 2FA can be managed (the plugin's own admin page,
- * TwoFactorEnrollPrompt's reminder popup) either requires manage_total_security_wp or only shows
+ * TwoFactorEnrollPrompt's reminder popup) either requires manage_loyal_security or only shows
  * up for someone who hasn't enrolled yet — once an Editor (say) has enrolled, there was
  * previously no page they could ever reach again to turn it back off.
  *
  * Only renders/acts on the profile being viewed if it's the current user's own — even an
  * administrator editing someone else's profile sees nothing from this section for that other
  * user's 2FA. The button's click listener is attached by 2fa-enroll-prompt.js (by its
- * `data-totalsecwp-2fa-open` attribute); this class only renders the trigger and its enqueue is owned by
+ * `data-loyalsec-2fa-open` attribute); this class only renders the trigger and its enqueue is owned by
  * TwoFactorEnrollPrompt, which is what actually loads that script on profile.php.
  */
 class TwoFactorProfileSection {
@@ -49,12 +49,12 @@ class TwoFactorProfileSection {
 				<td>
 					<p>
 						<?php if ( $enabled ) : ?>
-							<strong class="totalsecwp-2fa-enabled"><?php esc_html_e( 'Enabled', 'loyal-security' ); ?></strong>
+							<strong class="loyalsec-2fa-enabled"><?php esc_html_e( 'Enabled', 'loyal-security' ); ?></strong>
 						<?php else : ?>
 							<strong><?php esc_html_e( 'Not enabled', 'loyal-security' ); ?></strong>
 						<?php endif; ?>
 					</p>
-					<button type="button" class="button" data-totalsecwp-2fa-open="1">
+					<button type="button" class="button" data-loyalsec-2fa-open="1">
 						<?php echo $enabled
 							? esc_html__( 'Manage two-factor authentication', 'loyal-security' )
 							: esc_html__( 'Set up two-factor authentication', 'loyal-security' ); ?>

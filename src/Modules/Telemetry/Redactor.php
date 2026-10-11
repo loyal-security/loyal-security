@@ -2,10 +2,10 @@
 /**
  * Telemetry redactor — strips site identity and personal data before anything leaves the box.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Telemetry;
+namespace LoyalSecurity\Modules\Telemetry;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -188,7 +188,7 @@ class Redactor {
 	 * Strip the absolute filesystem prefix from a path so it is relative to the WP root.
 	 */
 	public function relativize_path( string $path ): string {
-		$root = untrailingslashit( \TotalSecurityWP\Support\Paths::root() );
+		$root = untrailingslashit( \LoyalSecurity\Support\Paths::root() );
 		if ( '' !== $root && 0 === strpos( $path, $root ) ) {
 			return ltrim( substr( $path, strlen( $root ) ), '/\\' );
 		}

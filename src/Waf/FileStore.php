@@ -6,12 +6,12 @@
  * ban and rate state are kept in small files under the plugin's private storage dir. The
  * in-plugin BanStore (DB) syncs the authoritative ban list into `bans.json` here.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Waf;
+namespace LoyalSecurity\Waf;
 
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Support\Ip;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -24,6 +24,9 @@ class FileStore {
 
 	/** @var string[]|null Cached CIDR ban ranges. */
 	private ?array $ban_ranges = null;
+
+	/** @var array|null Sorted index of the ranges ({@see Ip::build_range_index()}), when the file has one. */
+	private ?array $ban_index = null;
 
 	/**
 	 * @param string $dir Storage directory (created if missing).
@@ -48,6 +51,7 @@ class FileStore {
 		}
 		$this->bans       = array();
 		$this->ban_ranges = array();
+		$this->ban_index  = null;
 		$file             = $this->dir . '/bans.json';
 		if ( ! is_file( $file ) ) {
 			return;
@@ -61,6 +65,9 @@ class FileStore {
 		}
 		if ( isset( $data['ranges'] ) && is_array( $data['ranges'] ) ) {
 			$this->ban_ranges = $data['ranges'];
+		}
+		if ( isset( $data['index']['v4'], $data['index']['v6'] ) && is_array( $data['index']['v4'] ) && is_array( $data['index']['v6'] ) ) {
+			$this->ban_index = $data['index'];
 		}
 	}
 
@@ -77,10 +84,22 @@ class FileStore {
 				return true;
 			}
 		}
-		if ( $this->ban_ranges && Ip::in_ranges( $ip, $this->ban_ranges ) ) {
-			return true;
+		return $this->in_banned_range( $ip );
+	}
+
+	/**
+	 * Is the IP inside a banned CIDR range? Binary search over the index written with the ban
+	 * file; a file written by an older version (no index) falls back to checking each range.
+	 */
+	public function in_banned_range( string $ip ): bool {
+		$this->load_bans();
+		if ( ! $this->ban_ranges ) {
+			return false;
 		}
-		return false;
+		if ( null !== $this->ban_index ) {
+			return Ip::in_range_index( $ip, $this->ban_index );
+		}
+		return Ip::in_ranges( $ip, $this->ban_ranges );
 	}
 
 	/**
@@ -92,9 +111,10 @@ class FileStore {
 	public function write_bans( array $ips, array $ranges = array() ): bool {
 		$this->bans       = $ips;
 		$this->ban_ranges = $ranges;
+		$this->ban_index  = Ip::build_range_index( $ranges );
 		return false !== file_put_contents( // phpcs:ignore WordPress.WP.AlternativeFunctions
 			$this->dir . '/bans.json',
-			json_encode( array( 'ips' => $ips, 'ranges' => $ranges ) ),
+			json_encode( array( 'ips' => $ips, 'ranges' => $ranges, 'index' => $this->ban_index ) ),
 			LOCK_EX
 		);
 	}
@@ -278,7 +298,7 @@ class FileStore {
 	 * @param string        $ip        Claimant IP.
 	 * @param string        $signature UA signature that matched (for logging/display only).
 	 * @param array<string> $suffixes  Trusted PTR-hostname suffixes to verify against — resolved
-	 *                                 by the caller (builtin {@see \TotalSecurityWP\Waf\BotSignatures::TRUSTED_SUFFIXES}
+	 *                                 by the caller (builtin {@see \LoyalSecurity\Waf\BotSignatures::TRUSTED_SUFFIXES}
 	 *                                 or an admin-provided custom suffix), snapshotted here rather
 	 *                                 than re-resolved by the verification cron, so a rule edited
 	 *                                 or deleted between queuing and verification can't change

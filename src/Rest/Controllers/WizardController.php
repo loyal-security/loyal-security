@@ -2,18 +2,18 @@
 /**
  * Setup wizard REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Setup\SetupWizard;
-use TotalSecurityWP\Modules\Firewall\IpResolver;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Setup\SetupWizard;
+use LoyalSecurity\Modules\Firewall\IpResolver;
+use LoyalSecurity\Modules\Firewall\BanStore;
 use WP_REST_Request;
 
 /**
@@ -48,7 +48,12 @@ class WizardController extends AbstractController {
 
 	public function status( WP_REST_Request $request ) {
 		$data           = ( new SetupWizard() )->status();
-		$data['my_ip']  = $this->resolve_ip();
+		$my_ip          = $this->resolve_ip();
+		// Behind a proxy whose visitor address isn't trusted yet, the address seen is the proxy's.
+		// Offering it as "your IP" would allowlist every visitor routed through that proxy.
+		$data['my_ip_is_proxy'] = BanStore::is_proxy_address( $my_ip )
+			|| \LoyalSecurity\Support\Ip::behind_unknown_proxy( $my_ip, \LoyalSecurity\Support\RequestVars::ip_headers() );
+		$data['my_ip']          = $data['my_ip_is_proxy'] ? '' : $my_ip;
 		$firewall       = Plugin::instance()->module( 'firewall' );
 		$data['ip_whitelist'] = $firewall ? (array) $this->container->make( 'settings' )->get( 'firewall', 'ip_whitelist', array() ) : array();
 		return $this->ok( $data );
@@ -59,6 +64,9 @@ class WizardController extends AbstractController {
 
 		if ( ! filter_var( $ip, FILTER_VALIDATE_IP ) ) {
 			return $this->fail( 'Invalid IP address.' );
+		}
+		if ( BanStore::is_proxy_address( $ip ) ) {
+			return $this->fail( __( 'That address belongs to a proxy or CDN in front of your site (such as Cloudflare), so allowing it would let every visitor through. Turn on "Trust Cloudflare" or add the proxy under Trusted proxies so your own address is seen.', 'loyal-security' ) );
 		}
 
 		$firewall = Plugin::instance()->module( 'firewall' );
@@ -76,12 +84,7 @@ class WizardController extends AbstractController {
 	}
 
 	private function resolve_ip(): string {
-		$firewall = Plugin::instance()->module( 'firewall' );
-		if ( $firewall ) {
-			$resolver = new IpResolver( $this->container->make( 'settings' ) );
-			return $resolver->current();
-		}
-		return Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() );
+		return ( new IpResolver( $this->container->make( 'settings' ) ) )->current();
 	}
 
 	public function deploy( WP_REST_Request $request ) {

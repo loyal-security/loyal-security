@@ -2,37 +2,37 @@
 /**
  * Source template for the standalone WAF prepend bootstrapper.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Setup;
+namespace LoyalSecurity\Setup;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Holds the source of `totalsecwp-waf.php` — the standalone, zero-WordPress-dependency script
+ * Holds the source of `loyalsec-waf.php` — the standalone, zero-WordPress-dependency script
  * deployed as PHP's `auto_prepend_file` for Optimized Mode — as a plain string, so it never
  * exists as a checked-in file inside the distributed plugin. Like the rest of the WAF kernel it
  * depends on (see {@see WafKernelBundler}), this file genuinely can and must execute with
  * `ABSPATH` undefined; WordPress.org's Plugin Check has no guard syntax that accepts that, so
  * the fix is the same one used for the standalone recovery endpoint
- * ({@see \TotalSecurityWP\Modules\Backup\RecoveryScriptTemplate}): don't ship it as source at all,
+ * ({@see \LoyalSecurity\Modules\Backup\RecoveryScriptTemplate}): don't ship it as source at all,
  * generate it at deploy time instead.
  *
  * {@see WafKernelBundler::sync()} writes the rendered output of {@see render()}, alongside
  * relocated copies of the `src/Waf/*`, `src/Support/Ip.php`, and `data/*.php` files it depends
  * on, to `uploads/loyal-security/waf-kernel/` — outside the plugin directory entirely, so
  * Plugin Check's scan (which only covers the plugin's own folder) never sees any of it.
- * {@see \TotalSecurityWP\Setup\PrependInstaller} then points `auto_prepend_file` at the deployed
+ * {@see \LoyalSecurity\Setup\PrependInstaller} then points `auto_prepend_file` at the deployed
  * copy, never at anything inside the plugin.
  *
  * The rendered script is functionally identical to the original checked-in
- * `prepend/totalsecwp-waf.php`, with one addition: the PSR-4 autoloader it registers for the
- * `TotalSecurityWP\` namespace is explicitly unregistered in a `finally` block once request
+ * `prepend/loyalsec-waf.php`, with one addition: the PSR-4 autoloader it registers for the
+ * `LoyalSecurity\` namespace is explicitly unregistered in a `finally` block once request
  * inspection completes. Without this, the registration would outlive this file's execution for
  * the rest of the request — and since WordPress boots afterward in the same request (the normal
  * case), PHP tries registered autoloaders in registration order: this one, still pointing at the
- * deployed `uploads/` copy, would be asked before `autoload.php`'s own `TotalSecurityWP\`
+ * deployed `uploads/` copy, would be asked before `autoload.php`'s own `LoyalSecurity\`
  * autoloader for any class the prepend didn't already need this request. That's reachable in
  * practice — `FirewallModule::enforce_auth_gate()` runs unconditionally in both modes and
  * instantiates `VirtualPatch` on `init` regardless of whether the prepend itself found an
@@ -46,7 +46,7 @@ class PrependBootstrapTemplate {
 	 * Render the standalone WAF prepend bootstrapper source.
 	 */
 	public static function render(): string {
-		return <<<'TOTALSECWP_PREPEND_BOOTSTRAP'
+		return <<<'LOYALSEC_PREPEND_BOOTSTRAP'
 <?php
 /**
  * Loyal Security — Standalone WAF Bootstrapper (Optimized Mode).
@@ -62,16 +62,16 @@ class PrependBootstrapTemplate {
  *   3. Self-locating. Reads its companion `waf-config.php` (written by the Setup Wizard)
  *      for all absolute paths and tunables — it does not assume WordPress constants.
  *
- * This file is generated at runtime by TotalSecurityWP\Setup\PrependBootstrapTemplate — it is
+ * This file is generated at runtime by LoyalSecurity\Setup\PrependBootstrapTemplate — it is
  * never a checked-in part of the distributed plugin. Do not hand-edit the copy on disk; edit
  * the template and redeploy Optimized Mode (Setup Wizard) instead.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
 // Marker so the shared WAF classes (which normally require ABSPATH) may load here.
-if ( ! defined( 'TOTALSECWP_WAF_PREPEND' ) ) {
-	define( 'TOTALSECWP_WAF_PREPEND', true );
+if ( ! defined( 'LOYALSEC_WAF_PREPEND' ) ) {
+	define( 'LOYALSEC_WAF_PREPEND', true );
 }
 
 /**
@@ -92,10 +92,10 @@ if ( ! defined( 'TOTALSECWP_WAF_PREPEND' ) ) {
  * @param array  $context Context.
  * @param int    $status  HTTP status code.
  */
-if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
-	function totalsecwp_waf_block( $req, $storage, $type, $context, $status ) {
+if ( ! function_exists( 'loyalsec_waf_block' ) ) {
+	function loyalsec_waf_block( $req, $storage, $type, $context, $status ) {
 		try {
-			( new \TotalSecurityWP\Waf\Logger( $storage ) )->record( $type, $req, $context );
+			( new \LoyalSecurity\Waf\Logger( $storage ) )->record( $type, $req, $context );
 		} catch ( \Throwable $e ) {
 			// Logging must never prevent the block.
 		}
@@ -104,7 +104,7 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 			$code = ( 429 === (int) $status ) ? 429 : 403;
 			header( 'HTTP/1.1 ' . $code . ( 429 === $code ? ' Too Many Requests' : ' Forbidden' ) );
 			header( 'Content-Type: text/html; charset=utf-8' );
-			header( 'X-TotalSecWP-WAF: blocked' );
+			header( 'X-LoyalSec-WAF: blocked' );
 			if ( 429 === $code ) {
 				header( 'Retry-After: 60' );
 			}
@@ -136,7 +136,7 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 	// content type, so a payload positioned past the 1000th form field is still scored. Read
 	// into a plain local (the WAF classes are not autoloaded yet) and hand it to RequestContext
 	// once available. Fail-safe: a failed read yields false and RequestContext falls back.
-	$totalsecwp_raw_body = @file_get_contents( 'php://input' ); // phpcs:ignore WordPress.WP.AlternativeFunctions, WordPress.PHP.NoSilencedErrors
+	$loyalsec_raw_body = @file_get_contents( 'php://input' ); // phpcs:ignore WordPress.WP.AlternativeFunctions, WordPress.PHP.NoSilencedErrors
 
 	$config_file = __DIR__ . '/waf-config.php';
 	if ( ! is_file( $config_file ) ) {
@@ -161,17 +161,17 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 		return;
 	}
 
-	// Minimal PSR-4 autoloader for the TotalSecurityWP\ namespace (Waf + Support classes).
+	// Minimal PSR-4 autoloader for the LoyalSecurity\ namespace (Waf + Support classes).
 	// Stored in a variable (not registered anonymously) so it can be explicitly unregistered
 	// below — without this, the registration would outlive this file's execution for the rest
 	// of the request, and if WordPress boots afterward in the same request (the normal case),
 	// PHP tries registered autoloaders in registration order: this one — pointing at the
-	// deployed uploads/ copy — would be asked before autoload.php's own TotalSecurityWP\
+	// deployed uploads/ copy — would be asked before autoload.php's own LoyalSecurity\
 	// autoloader for any class the prepend didn't already need this request (e.g. VirtualPatch,
 	// which FirewallModule::enforce_auth_gate() instantiates on `init` in BOTH modes regardless
 	// of whether the prepend itself found an eligible virtual-patch rule this request).
-	$totalsecwp_loader = static function ( $class ) use ( $src_dir ) {
-		$prefix = 'TotalSecurityWP\\';
+	$loyalsec_loader = static function ( $class ) use ( $src_dir ) {
+		$prefix = 'LoyalSecurity\\';
 		if ( 0 !== strncmp( $class, $prefix, strlen( $prefix ) ) ) {
 			return;
 		}
@@ -181,7 +181,7 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 			require $path;
 		}
 	};
-	spl_autoload_register( $totalsecwp_loader );
+	spl_autoload_register( $loyalsec_loader );
 
 	try {
 		$trust_proxy     = ! empty( $config['trust_proxy'] );
@@ -189,22 +189,25 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 
 		// Hand the early-buffered raw body to RequestContext so capture() sees the full payload
 		// even for urlencoded/multipart POSTs (where php://input is now empty post-parse).
-		\TotalSecurityWP\Waf\RequestContext::prime_raw_body( is_string( $totalsecwp_raw_body ) ? $totalsecwp_raw_body : null );
+		\LoyalSecurity\Waf\RequestContext::prime_raw_body( is_string( $loyalsec_raw_body ) ? $loyalsec_raw_body : null );
 
-		$req = \TotalSecurityWP\Waf\RequestContext::capture( $trust_proxy, $trusted_proxies );
+		$req = \LoyalSecurity\Waf\RequestContext::capture( $trust_proxy, $trusted_proxies );
 
 		// Self-test sentinel: lets the Setup Wizard verify the prepend executed.
-		if ( isset( $req->headers['x-totalsecwp-selftest'] ) ) {
-			header( 'X-TotalSecWP-WAF: active' );
+		if ( isset( $req->headers['x-loyalsec-selftest'] ) ) {
+			header( 'X-LoyalSec-WAF: active' );
 			// Allow the request to continue; do not block the self-test probe.
 		}
 
-		$store = new \TotalSecurityWP\Waf\FileStore( $storage );
+		$store = new \LoyalSecurity\Waf\FileStore( $storage );
 
 		// An unresolved client IP falls back to the shared 0.0.0.0 sentinel; IP-keyed checks
 		// (ban, rate-limit) skip it so every unresolved request isn't pooled into one bucket.
 		// Content inspection (virtual patches, signatures) below is not IP-keyed and still runs.
 		$ip_unresolved = ( '' === $req->ip || '0.0.0.0' === $req->ip );
+		// Behind a proxy that is not in Trusted proxies every visitor shares its internal address;
+		// treat that like an unresolved address so one visitor's ban or limit is not everyone's.
+		$ip_unresolved = $ip_unresolved || \LoyalSecurity\Support\Ip::behind_unknown_proxy( $req->ip, $_SERVER );
 
 		// Effective IP allowlist (manual list + still-valid auto-added admin IPs), baked into
 		// waf-config.php at write time. Standard Mode bypasses ALL checks for these IPs,
@@ -217,20 +220,43 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 
 		// 1) Ban check — fastest rejection path.
 		if ( ! $ip_unresolved && $store->is_banned( $req->ip ) ) {
-			totalsecwp_waf_block( $req, $storage, 'waf.ban.added', array( 'reason' => 'active_ban' ), (int) ( $config['block_status'] ?? 403 ) );
+			loyalsec_waf_block( $req, $storage, 'waf.ban.added', array( 'reason' => 'active_ban' ), (int) ( $config['block_status'] ?? 403 ) );
 			return;
 		}
 
+		// 1a) Trusted users. Administrators and editors signed in through WordPress carry a
+		// cookie signed with this site's key (see TrustToken); Standard Mode gives them the same
+		// pass right after the ban check.
+		$loyalsec_trust_key = (string) ( $config['trust_key'] ?? '' );
+		if ( '' !== $loyalsec_trust_key && isset( $req->cookie[ \LoyalSecurity\Waf\TrustToken::COOKIE ] )
+			&& \LoyalSecurity\Waf\TrustToken::verify( (string) $req->cookie[ \LoyalSecurity\Waf\TrustToken::COOKIE ], $loyalsec_trust_key, time() ) > 0 ) {
+			return;
+		}
+
+		// REST calls with Basic credentials (application passwords, WooCommerce API keys) are
+		// only checked once WordPress loads. A content or bot block for one is handed to
+		// WordPress, which enforces it before the REST API runs unless the credentials belong
+		// to a trusted user. Volume limits are never handed over.
+		$loyalsec_rest_prefix = strtolower( (string) ( $config['rest_prefix'] ?? '/wp-json/' ) );
+		$loyalsec_defer       = '' !== $loyalsec_trust_key
+			&& ( 0 === stripos( (string) ( $req->headers['authorization'] ?? '' ), 'basic ' ) || isset( $_SERVER['PHP_AUTH_USER'] ) )
+			&& ( isset( $req->get['rest_route'] ) || ( '' !== $loyalsec_rest_prefix && false !== strpos( strtolower( $req->path ), $loyalsec_rest_prefix ) ) );
+		$loyalsec_handover    = static function ( $type, $context, $status ) {
+			$GLOBALS['loyalsec_waf_deferred'] = array( 'type' => $type, 'context' => $context, 'status' => $status );
+		};
+
 		// 1b) Custom-blocked bot signatures — an admin-added block always wins, even over a
 		// builtin-trusted signature. Mirrors BotBlocker::evaluate()'s priority order exactly.
-		// Builtin BAD_AGENTS/custom_bad_agents blocking is Standard-Mode-only (a pre-existing
-		// gap, not introduced here) — only the admin-managed custom-block list is enforced here.
 		if ( ! $ip_unresolved && ! empty( $config['bot_rules']['blocked'] ) ) {
 			$ua = strtolower( trim( (string) $req->user_agent ) );
-			foreach ( (array) $config['bot_rules']['blocked'] as $totalsecwp_blocked_sig ) {
-				$totalsecwp_blocked_sig = (string) $totalsecwp_blocked_sig;
-				if ( '' !== $totalsecwp_blocked_sig && false !== strpos( $ua, $totalsecwp_blocked_sig ) ) {
-					totalsecwp_waf_block( $req, $storage, 'waf.bot.block', array( 'reason' => 'bad_user_agent:custom:' . $totalsecwp_blocked_sig ), (int) ( $config['block_status'] ?? 403 ) );
+			foreach ( (array) $config['bot_rules']['blocked'] as $loyalsec_blocked_sig ) {
+				$loyalsec_blocked_sig = (string) $loyalsec_blocked_sig;
+				if ( '' !== $loyalsec_blocked_sig && false !== strpos( $ua, $loyalsec_blocked_sig ) ) {
+					if ( $loyalsec_defer ) {
+						$loyalsec_handover( 'waf.bot.block', array( 'reason' => 'bad_user_agent:custom:' . $loyalsec_blocked_sig ), (int) ( $config['block_status'] ?? 403 ) );
+						return;
+					}
+					loyalsec_waf_block( $req, $storage, 'waf.bot.block', array( 'reason' => 'bad_user_agent:custom:' . $loyalsec_blocked_sig ), (int) ( $config['block_status'] ?? 403 ) );
 					return;
 				}
 			}
@@ -241,18 +267,18 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 		// registered unconditionally regardless of WAF mode. A cache miss below just means
 		// "not verified yet" — it gets queued (a cheap, synchronous file write) and this
 		// request falls through to the everyday rate-limit tier, exactly like any other visitor.
-		// $totalsecwp_bot_rate holds the matched signature's own requests/window — already
+		// $loyalsec_bot_rate holds the matched signature's own requests/window — already
 		// resolved server-side from any per-signature bot_rate_overrides entry, see
 		// FirewallModule::export_bot_rules() — once verified; null means "use the everyday tier".
-		$totalsecwp_bot_rate = null;
+		$loyalsec_bot_rate = null;
 		if ( ! $ip_unresolved && ! empty( $config['bot_verify']['enabled'] ) && ! empty( $config['bot_rules']['trusted'] ) ) {
 			$ua = strtolower( trim( (string) $req->user_agent ) );
-			foreach ( (array) $config['bot_rules']['trusted'] as $totalsecwp_trusted ) {
-				$sig = (string) ( $totalsecwp_trusted['signature'] ?? '' );
+			foreach ( (array) $config['bot_rules']['trusted'] as $loyalsec_trusted ) {
+				$sig = (string) ( $loyalsec_trusted['signature'] ?? '' );
 				if ( '' === $sig || false === strpos( $ua, $sig ) ) {
 					continue;
 				}
-				$suffixes = (array) ( $totalsecwp_trusted['suffixes'] ?? array() );
+				$suffixes = (array) ( $loyalsec_trusted['suffixes'] ?? array() );
 				if ( $suffixes ) {
 					// 86400 = one day in seconds (not WordPress's DAY_IN_SECONDS -- undefined pre-WP).
 					$ttl     = 86400 * (int) ( $config['bot_verify']['ttl_days'] ?? 30 );
@@ -260,9 +286,9 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 					if ( null === $verdict ) {
 						$store->queue_bot_verification( $req->ip, $sig, $suffixes );
 					} elseif ( $verdict ) {
-						$totalsecwp_bot_rate = array(
-							'requests' => (int) ( $totalsecwp_trusted['requests'] ?? ( $config['bot_verify']['requests'] ?? 600 ) ),
-							'window'   => (int) ( $totalsecwp_trusted['window'] ?? ( $config['bot_verify']['window'] ?? 60 ) ),
+						$loyalsec_bot_rate = array(
+							'requests' => (int) ( $loyalsec_trusted['requests'] ?? ( $config['bot_verify']['requests'] ?? 600 ) ),
+							'window'   => (int) ( $loyalsec_trusted['window'] ?? ( $config['bot_verify']['window'] ?? 60 ) ),
 						);
 					}
 				}
@@ -270,11 +296,57 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 			}
 		}
 
+		// Requests from this server itself (WP-Cron, Site Health, loopback checks) skip the volume
+		// limits below; bans above and the content checks after them still apply.
+		// Only when the visitor is the direct peer: behind a trusted proxy on this server every
+		// visitor arrives from 127.0.0.1 and must not count as the server itself.
+		$loyalsec_server_ips = isset( $config['server_ips'] ) ? array_map( 'strval', (array) $config['server_ips'] ) : array();
+		$loyalsec_own_server = ( $req->ip === (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) && $req->from_own_server( $loyalsec_server_ips ) )
+			|| in_array( $req->ip, $loyalsec_server_ips, true );
+		// Or the request carries this site's loopback key (added to its requests to itself), which
+		// recognises them even when they come back through a CDN or NAT with another address.
+		if ( ! $loyalsec_own_server && ! empty( $config['loopback_key'] ) && isset( $req->headers['x-loyalsec-loopback'] ) ) {
+			$loyalsec_own_server = hash_equals( (string) $config['loopback_key'], (string) $req->headers['x-loyalsec-loopback'] );
+		}
+
+		// 1d) Bad user agents: attack tools always, plus the groups the owner opted into and
+		// their own list. A trusted crawler signature wins, as in BotBlocker::evaluate().
+		if ( ! $ip_unresolved && ! $loyalsec_own_server && ! empty( $config['bad_agents'] ) ) {
+			$ua = strtolower( trim( (string) $req->user_agent ) );
+			$loyalsec_good_ua = false;
+			foreach ( (array) ( $config['bot_rules']['trusted'] ?? array() ) as $loyalsec_trusted ) {
+				$sig = (string) ( $loyalsec_trusted['signature'] ?? '' );
+				if ( '' !== $sig && false !== strpos( $ua, $sig ) ) {
+					$loyalsec_good_ua = true;
+					break;
+				}
+			}
+			if ( '' !== $ua && ! $loyalsec_good_ua ) {
+				foreach ( (array) $config['bad_agents'] as $loyalsec_bad ) {
+					$loyalsec_bad = (string) $loyalsec_bad;
+					if ( '' === $loyalsec_bad || false === strpos( $ua, $loyalsec_bad ) ) {
+						continue;
+					}
+					$loyalsec_bot_ctx = array( 'reason' => 'bad_user_agent:' . $loyalsec_bad, 'user_agent' => substr( (string) $req->user_agent, 0, 200 ) );
+					if ( ! empty( $config['detection_only'] ) ) {
+						( new \LoyalSecurity\Waf\Logger( $storage ) )->record( 'waf.bot.block', $req, array_merge( $loyalsec_bot_ctx, array( 'audit_only' => true ) ) );
+						break;
+					}
+					if ( $loyalsec_defer ) {
+						$loyalsec_handover( 'waf.bot.block', $loyalsec_bot_ctx, (int) ( $config['block_status'] ?? 403 ) );
+						return;
+					}
+					loyalsec_waf_block( $req, $storage, 'waf.bot.block', $loyalsec_bot_ctx, (int) ( $config['block_status'] ?? 403 ) );
+					return;
+				}
+			}
+		}
+
 		// 2) Rate limiting.
-		if ( ! $ip_unresolved && ! empty( $config['rate_limit']['enabled'] ) ) {
-			if ( null !== $totalsecwp_bot_rate ) {
-				$limit  = (int) $totalsecwp_bot_rate['requests'];
-				$window = (int) $totalsecwp_bot_rate['window'];
+		if ( ! $ip_unresolved && ! $loyalsec_own_server && ! empty( $config['rate_limit']['enabled'] ) ) {
+			if ( null !== $loyalsec_bot_rate ) {
+				$limit  = (int) $loyalsec_bot_rate['requests'];
+				$window = (int) $loyalsec_bot_rate['window'];
 			} else {
 				$limit  = (int) ( $config['rate_limit']['limit'] ?? 240 );
 				$window = (int) ( $config['rate_limit']['window'] ?? 60 );
@@ -282,9 +354,9 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 			$rate   = $store->hit_rate( $req->ip, $limit, $window );
 			if ( ! empty( $rate['exceeded'] ) ) {
 				if ( ! empty( $config['detection_only'] ) ) {
-					( new \TotalSecurityWP\Waf\Logger( $storage ) )->record( 'waf.ratelimit', $req, array( 'count' => $rate['count'], 'limit' => $limit, 'audit_only' => true ) );
+					( new \LoyalSecurity\Waf\Logger( $storage ) )->record( 'waf.ratelimit', $req, array( 'count' => $rate['count'], 'limit' => $limit, 'audit_only' => true ) );
 				} else {
-					totalsecwp_waf_block( $req, $storage, 'waf.ratelimit', array( 'count' => $rate['count'], 'limit' => $limit ), 429 );
+					loyalsec_waf_block( $req, $storage, 'waf.ratelimit', array( 'count' => $rate['count'], 'limit' => $limit ), 429 );
 					return;
 				}
 			}
@@ -294,20 +366,21 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 		// request volume (see FileStore::hit_distinct()'s docblock: a bot walking every filter
 		// combination on a faceted-search page can look like ordinary low-volume traffic to the
 		// plain rate limiter above, since any single combination might be requested only once).
-		if ( ! $ip_unresolved && ! empty( $config['query_cardinality']['enabled'] ) ) {
-			$qc_signature = $req->query_signature();
+		if ( ! $ip_unresolved && ! $loyalsec_own_server && ! $req->is_cron_request() && ! empty( $config['query_cardinality']['enabled'] ) ) {
+			// Page views only: see QueryCardinality for what is and is not counted.
+			$qc_signature = \LoyalSecurity\Waf\QueryCardinality::signature( $req, $loyalsec_rest_prefix );
 			if ( '' !== $qc_signature ) {
 				$qc = $store->hit_distinct(
 					$req->ip,
 					$qc_signature,
-					(int) ( $config['query_cardinality']['max'] ?? 60 ),
+					(int) ( $config['query_cardinality']['max'] ?? 120 ),
 					(int) ( $config['query_cardinality']['window'] ?? 600 )
 				);
 				if ( ! empty( $qc['exceeded'] ) ) {
 					if ( ! empty( $config['detection_only'] ) ) {
-						( new \TotalSecurityWP\Waf\Logger( $storage ) )->record( 'waf.query_cardinality', $req, array( 'count' => $qc['count'], 'audit_only' => true ) );
+						( new \LoyalSecurity\Waf\Logger( $storage ) )->record( 'waf.query_cardinality', $req, array( 'count' => $qc['count'], 'audit_only' => true ) );
 					} else {
-						totalsecwp_waf_block( $req, $storage, 'waf.query_cardinality', array( 'count' => $qc['count'] ), 429 );
+						loyalsec_waf_block( $req, $storage, 'waf.query_cardinality', array( 'count' => $qc['count'] ), 429 );
 						return;
 					}
 				}
@@ -364,13 +437,17 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 					}
 
 					$installed_plugins = isset( $config['installed_plugins'] ) && is_array( $config['installed_plugins'] ) ? $config['installed_plugins'] : array();
-					$vp_rule = ( new \TotalSecurityWP\Waf\VirtualPatch( $vp_rules, $installed_plugins ) )->evaluate( $req );
+					$vp_rule = ( new \LoyalSecurity\Waf\VirtualPatch( $vp_rules, $installed_plugins ) )->evaluate( $req );
 					if ( null !== $vp_rule ) {
 						if ( empty( $config['detection_only'] ) ) {
-							totalsecwp_waf_block( $req, $storage, 'waf.vpatch', array( 'rule' => $vp_rule ), (int) ( $config['block_status'] ?? 403 ) );
+							if ( $loyalsec_defer ) {
+								$loyalsec_handover( 'waf.vpatch', array( 'rule' => $vp_rule ), (int) ( $config['block_status'] ?? 403 ) );
+								return;
+							}
+							loyalsec_waf_block( $req, $storage, 'waf.vpatch', array( 'rule' => $vp_rule ), (int) ( $config['block_status'] ?? 403 ) );
 							return;
 						}
-						( new \TotalSecurityWP\Waf\Logger( $storage ) )->record( 'waf.vpatch', $req, array( 'rule' => $vp_rule, 'audit_only' => true ) );
+						( new \LoyalSecurity\Waf\Logger( $storage ) )->record( 'waf.vpatch', $req, array( 'rule' => $vp_rule, 'audit_only' => true ) );
 					}
 				} catch ( \Throwable $e ) {
 					// Fail open — virtual patching is best-effort in the prepend.
@@ -403,20 +480,24 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 			// Remote merge failed — base rules only.
 		}
 
-		$kernel   = new \TotalSecurityWP\Waf\Kernel(
-			new \TotalSecurityWP\Waf\SignatureSet( $base_rules, $base_version ),
+		$kernel   = new \LoyalSecurity\Waf\Kernel(
+			new \LoyalSecurity\Waf\SignatureSet( $base_rules, $base_version ),
 			$waf_cfg
 		);
 		$decision = $kernel->inspect( $req );
 
 		if ( $decision->blocked && empty( $config['detection_only'] ) ) {
-			totalsecwp_waf_block( $req, $storage, 'waf.block', $decision->to_context(), (int) ( $config['block_status'] ?? 403 ) );
+			if ( $loyalsec_defer ) {
+				$loyalsec_handover( 'waf.block', $decision->to_context(), (int) ( $config['block_status'] ?? 403 ) );
+				return;
+			}
+			loyalsec_waf_block( $req, $storage, 'waf.block', $decision->to_context(), (int) ( $config['block_status'] ?? 403 ) );
 			return;
 		}
 
 		if ( $decision->blocked ) {
 			// Detection-only mode: log but allow.
-			( new \TotalSecurityWP\Waf\Logger( $storage ) )->record( 'waf.block', $req, array_merge( $decision->to_context(), array( 'detection_only' => true ) ) );
+			( new \LoyalSecurity\Waf\Logger( $storage ) )->record( 'waf.block', $req, array_merge( $decision->to_context(), array( 'detection_only' => true ) ) );
 		}
 	} catch ( \Throwable $e ) {
 		// Fail open on any unexpected error.
@@ -424,12 +505,12 @@ if ( ! function_exists( 'totalsecwp_waf_block' ) ) {
 	} finally {
 		// Restore autoloader precedence for the rest of this request — see this template
 		// class's docblock for why this matters whenever WordPress boots afterward in the same
-		// request (the normal case). Not reached if totalsecwp_waf_block() already exit()'d, but
+		// request (the normal case). Not reached if loyalsec_waf_block() already exit()'d, but
 		// that's fine: a blocked request never reaches a "later" WordPress boot phase to protect.
-		spl_autoload_unregister( $totalsecwp_loader );
+		spl_autoload_unregister( $loyalsec_loader );
 	}
 } )();
 
-TOTALSECWP_PREPEND_BOOTSTRAP;
+LOYALSEC_PREPEND_BOOTSTRAP;
 	}
 }

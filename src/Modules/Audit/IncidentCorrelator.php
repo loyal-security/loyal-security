@@ -2,10 +2,10 @@
 /**
  * Incident correlator — clusters audit events by attacker IP into scored incident groups.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Audit;
+namespace LoyalSecurity\Modules\Audit;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,7 +22,7 @@ class IncidentCorrelator {
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_events';
+		return $wpdb->prefix . 'loyalsec_events';
 	}
 
 	/**
@@ -158,7 +158,7 @@ class IncidentCorrelator {
 		 * @param int                               $score  Computed score.
 		 * @param array<int, array<string, mixed>>  $events Cluster rows.
 		 */
-		return (int) apply_filters( 'totalsecwp_incident_score', $score, $events );
+		return (int) apply_filters( 'loyalsec_incident_score', $score, $events );
 	}
 
 	/**

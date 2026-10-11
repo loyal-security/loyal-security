@@ -1,12 +1,12 @@
 /**
  * Nonce-aware REST client for the Loyal Security API.
  *
- * Reads configuration injected by PHP (`window.TotalSecurityWP`) and attaches the
+ * Reads configuration injected by PHP (`window.LoyalSecurity`) and attaches the
  * `X-WP-Nonce` header to every request so the WordPress REST cookie authentication
  * succeeds. All endpoints return the `{ success, data }` envelope; this unwraps `data`.
  */
 
-const cfg = window.TotalSecurityWP || { root: '', nonce: '' };
+const cfg = window.LoyalSecurity || { root: '', nonce: '' };
 
 async function request( path, { method = 'GET', body = null, params = null } = {} ) {
 	let url = cfg.root.replace( /\/$/, '' ) + path;
@@ -65,7 +65,7 @@ async function request( path, { method = 'GET', body = null, params = null } = {
 			`The server returned a non-JSON response (HTTP ${ res.status }). This usually means injected or stray output is corrupting responses — check recently modified core/plugin files. Leading output: "${ leak }"`
 		);
 		err.status = res.status;
-		err.code = 'totalsecwp_corrupt_response';
+		err.code = 'loyalsec_corrupt_response';
 		err.raw = raw;
 		throw err;
 	}

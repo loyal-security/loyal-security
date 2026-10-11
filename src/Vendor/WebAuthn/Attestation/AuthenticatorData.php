@@ -1,12 +1,12 @@
 <?php
 
-namespace TotalSecurityWP\Vendor\WebAuthn\Attestation;
+namespace LoyalSecurity\Vendor\WebAuthn\Attestation;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Vendor\WebAuthn\WebAuthnException;
-use TotalSecurityWP\Vendor\WebAuthn\CBOR\CborDecoder;
-use TotalSecurityWP\Vendor\WebAuthn\Binary\ByteBuffer;
+use LoyalSecurity\Vendor\WebAuthn\WebAuthnException;
+use LoyalSecurity\Vendor\WebAuthn\CBOR\CborDecoder;
+use LoyalSecurity\Vendor\WebAuthn\Binary\ByteBuffer;
 
 /**
  * @author Lukas Buchs

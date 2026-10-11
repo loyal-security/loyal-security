@@ -2,16 +2,16 @@
 /**
  * Module contract.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Contracts;
+namespace LoyalSecurity\Contracts;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Every security engine (WAF, Hardening, Scanner, …) implements this interface and
- * is instantiated by the central Module Factory in {@see \TotalSecurityWP\Plugin}.
+ * is instantiated by the central Module Factory in {@see \LoyalSecurity\Plugin}.
  */
 interface ModuleInterface {
 

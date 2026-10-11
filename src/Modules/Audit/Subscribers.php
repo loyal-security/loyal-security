@@ -2,14 +2,13 @@
 /**
  * Subscribes the audit logger to security-relevant WordPress events.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Audit;
+namespace LoyalSecurity\Modules\Audit;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Ip;
 
 /**
  * Attaches to core WordPress hooks and forwards meaningful events to the {@see Logger}.
@@ -238,16 +237,17 @@ class Subscribers {
 		$url   = (string) $comment->comment_author_url;
 
 		// Bulk-insert rate check: track count per email in a 5-min window transient.
-		$transient_key = 'totalsecwp_ci_' . md5( $email );
+		$transient_key = 'loyalsec_ci_' . md5( $email );
 		$count         = (int) get_transient( $transient_key );
 		$count++;
 		set_transient( $transient_key, $count, 5 * MINUTE_IN_SECONDS );
 
-		if ( $count > 5 ) {
+		// Once per window, when the count first crosses the line, not once per further comment.
+		if ( 6 === $count ) {
 			$this->logger->log(
 				EventCatalog::COMMENT_BULK_INSERT,
 				array( 'email' => $email, 'count_5min' => $count, 'comment_id' => (int) $comment_id ),
-				EventCatalog::SEV_WARNING
+				EventCatalog::SEV_NOTICE
 			);
 		}
 
@@ -284,7 +284,7 @@ class Subscribers {
 	 * @return array<string,mixed>
 	 */
 	public function mail_sent( array $atts ): array {
-		$transient_key = 'totalsecwp_mail_rate';
+		$transient_key = 'loyalsec_mail_rate';
 		$count         = (int) get_transient( $transient_key );
 		$count++;
 		set_transient( $transient_key, $count, MINUTE_IN_SECONDS );
@@ -292,11 +292,14 @@ class Subscribers {
 		$subject = (string) ( $atts['subject'] ?? '' );
 		$message = (string) ( $atts['message'] ?? '' );
 
-		if ( $count > 10 ) {
+		// Shops and newsletters legitimately send bursts, and this plugin's own alerts count
+		// too, so: a notice once per minute when 30 is first crossed, not a warning (an email)
+		// for every message past 10.
+		if ( 31 === $count ) {
 			$this->logger->log(
 				EventCatalog::MAIL_BULK_SEND,
 				array( 'count_per_min' => $count, 'to' => $atts['to'] ?? '' ),
-				EventCatalog::SEV_WARNING
+				EventCatalog::SEV_NOTICE
 			);
 		}
 
@@ -350,7 +353,7 @@ class Subscribers {
 	 */
 	private function option_written( string $option, $value, bool $created = false ): void {
 		// Guardrails: skip our own settings and transient namespace.
-		if ( 'totalsecwp_settings' === $option
+		if ( 'loyalsec_settings' === $option
 			|| 0 === strpos( $option, '_transient' )
 			|| 0 === strpos( $option, '_site_transient' ) ) {
 			return;
@@ -578,9 +581,9 @@ class Subscribers {
 		}
 
 		// Skip actions the admin has explicitly whitelisted as false positives.
-		$firewall_module = \TotalSecurityWP\Plugin::instance()->module( 'firewall' );
+		$firewall_module = \LoyalSecurity\Plugin::instance()->module( 'firewall' );
 		if ( $firewall_module ) {
-			$wl = (array) \TotalSecurityWP\Plugin::instance()->container()->make( 'settings' )->get( 'firewall', 'ajax_action_whitelist', array() );
+			$wl = (array) \LoyalSecurity\Plugin::instance()->container()->make( 'settings' )->get( 'firewall', 'ajax_action_whitelist', array() );
 			if ( in_array( $action, $wl, true ) ) {
 				return;
 			}
@@ -598,7 +601,7 @@ class Subscribers {
 		// endpoints against payload-based exploits.
 		// Admins can opt into logging registered calls via Audit → monitor_registered_nopriv_ajax.
 		if ( $registered ) {
-			$audit_module = \TotalSecurityWP\Plugin::instance()->module( 'audit' );
+			$audit_module = \LoyalSecurity\Plugin::instance()->module( 'audit' );
 			$monitor_all  = $audit_module && (bool) $audit_module->setting_public( 'monitor_registered_nopriv_ajax', false );
 			if ( ! $monitor_all ) {
 				return;
@@ -609,7 +612,7 @@ class Subscribers {
 			EventCatalog::NOPRIV_AJAX_CALL,
 			array(
 				'action'     => $action,
-				'ip'         => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ),
+				'ip'         => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip(),
 				'ua'         => substr( sanitize_text_field( wp_unslash( (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ) ) ), 0, 200 ),
 				'registered' => $registered,
 			),

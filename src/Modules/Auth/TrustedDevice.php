@@ -2,21 +2,21 @@
 /**
  * Trusted-device tokens — let users skip the 2FA challenge on a remembered device.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Crypto;
+use LoyalSecurity\Support\Crypto;
 
 /**
  * Issues and verifies "remember this device for 30 days" tokens used to skip the second
  * factor on a previously-trusted browser.
  *
  * Storage model: the raw token never touches the database. On issue we store only
- * `sha256(token)` in the user's `_totalsecwp_trusted_devices` usermeta (a list of device
+ * `sha256(token)` in the user's `_loyalsec_trusted_devices` usermeta (a list of device
  * records). The browser keeps the raw token in an HttpOnly cookie of the form
  * `base64url("{user_id}|{token}")`. On verify we re-hash the cookie token and look for a
  * matching, non-expired record for that user — so a leaked database cannot be replayed to
@@ -25,13 +25,13 @@ use TotalSecurityWP\Support\Crypto;
 class TrustedDevice {
 
 	/** Cookie that carries the trusted-device token. */
-	private const COOKIE_NAME = 'totalsecwp_td';
+	private const COOKIE_NAME = 'loyalsec_td';
 
 	/** Token lifetime (and cookie / record expiry). */
 	private const COOKIE_TTL = 30 * DAY_IN_SECONDS;
 
 	/** Usermeta key holding the per-user list of trusted-device records. */
-	private const META_KEY = '_totalsecwp_trusted_devices';
+	private const META_KEY = '_loyalsec_trusted_devices';
 
 	/**
 	 * Issue a fresh trusted-device token for a user: persist its hash in usermeta and set the
@@ -42,7 +42,7 @@ class TrustedDevice {
 			return;
 		}
 
-		$ttl = (int) apply_filters( 'totalsecwp_trusted_device_ttl', self::COOKIE_TTL, $user_id );
+		$ttl = (int) apply_filters( 'loyalsec_trusted_device_ttl', self::COOKIE_TTL, $user_id );
 		if ( $ttl <= 0 ) {
 			$ttl = self::COOKIE_TTL;
 		}

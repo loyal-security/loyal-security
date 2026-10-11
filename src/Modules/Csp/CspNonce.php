@@ -2,10 +2,10 @@
 /**
  * Per-request CSP nonce.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Csp;
+namespace LoyalSecurity\Modules\Csp;
 
 defined( 'ABSPATH' ) || exit;
 

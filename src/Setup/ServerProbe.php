@@ -2,10 +2,10 @@
 /**
  * Server + PHP SAPI detection for WAF deployment.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Setup;
+namespace LoyalSecurity\Setup;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -55,15 +55,15 @@ class ServerProbe {
 			'sapi'          => $sapi,
 			'strategy'      => $strategy,
 			'user_ini_name' => $user_ini_name,
-			'doc_root'      => \TotalSecurityWP\Support\RequestVars::text( 'DOCUMENT_ROOT' ),
-			'abspath'       => \TotalSecurityWP\Support\Paths::root(),
+			'doc_root'      => \LoyalSecurity\Support\RequestVars::text( 'DOCUMENT_ROOT' ),
+			'abspath'       => \LoyalSecurity\Support\Paths::root(),
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- read-only pre-flight check, not a write.
-			'htaccess_writable' => is_writable( \TotalSecurityWP\Support\Paths::root() . '.htaccess' ) || is_writable( \TotalSecurityWP\Support\Paths::root() ),
+			'htaccess_writable' => is_writable( \LoyalSecurity\Support\Paths::root() . '.htaccess' ) || is_writable( \LoyalSecurity\Support\Paths::root() ),
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- read-only pre-flight check, not a write.
-			'userini_writable'  => is_writable( \TotalSecurityWP\Support\Paths::root() . $user_ini_name ) || is_writable( \TotalSecurityWP\Support\Paths::root() ),
+			'userini_writable'  => is_writable( \LoyalSecurity\Support\Paths::root() . $user_ini_name ) || is_writable( \LoyalSecurity\Support\Paths::root() ),
 			// Deployed under the private uploads storage dir, never inside the plugin directory
 			// — see WafKernelBundler's docblock for why (WordPress.org Plugin Check compliance).
-			'prepend_path'  => trailingslashit( ( new WafKernelBundler() )->deploy_dir() ) . 'totalsecwp-waf.php',
+			'prepend_path'  => trailingslashit( ( new WafKernelBundler() )->deploy_dir() ) . 'loyalsec-waf.php',
 		);
 	}
 }

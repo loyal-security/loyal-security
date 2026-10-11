@@ -2,14 +2,14 @@
 /**
  * Standard-Mode rate limiter.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Waf\FileStore;
+use LoyalSecurity\Waf\FileStore;
 
 /**
  * Sliding-window rate limiter that reuses the same flat-file backend as the prepend, so

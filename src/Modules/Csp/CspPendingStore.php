@@ -9,17 +9,17 @@
  *
  * Storage: a single non-autoloaded WP option so it never bloats every page load.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Csp;
+namespace LoyalSecurity\Modules\Csp;
 
 defined( 'ABSPATH' ) || exit;
 
 class CspPendingStore {
 
 	/** Option key for the pending domain store. */
-	public const OPTION_KEY = 'totalsecwp_csp_pending';
+	public const OPTION_KEY = 'loyalsec_csp_pending';
 
 	/** Hard cap on stored entries to prevent unbounded growth. */
 	private const MAX_ENTRIES = 500;

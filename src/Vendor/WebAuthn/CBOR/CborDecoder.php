@@ -1,12 +1,12 @@
 <?php
 
 
-namespace TotalSecurityWP\Vendor\WebAuthn\CBOR;
+namespace LoyalSecurity\Vendor\WebAuthn\CBOR;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Vendor\WebAuthn\WebAuthnException;
-use TotalSecurityWP\Vendor\WebAuthn\Binary\ByteBuffer;
+use LoyalSecurity\Vendor\WebAuthn\WebAuthnException;
+use LoyalSecurity\Vendor\WebAuthn\Binary\ByteBuffer;
 
 /**
  * Modified version of https://github.com/madwizard-thomas/webauthn-server/blob/master/src/Format/CborDecoder.php

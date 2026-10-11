@@ -2,20 +2,20 @@
 /**
  * CSP Manager REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Modules\Csp\CspModule;
-use TotalSecurityWP\Modules\Csp\CspPolicy;
-use TotalSecurityWP\Modules\Csp\CspNonce;
-use TotalSecurityWP\Modules\Csp\CspPendingStore;
-use TotalSecurityWP\Modules\Csp\CspViolationStore;
-use TotalSecurityWP\Plugin;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Modules\Csp\CspModule;
+use LoyalSecurity\Modules\Csp\CspPolicy;
+use LoyalSecurity\Modules\Csp\CspNonce;
+use LoyalSecurity\Modules\Csp\CspPendingStore;
+use LoyalSecurity\Modules\Csp\CspViolationStore;
+use LoyalSecurity\Plugin;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -142,7 +142,7 @@ class CspController extends AbstractController {
 	/** Standalone option (not folded into the Settings blob — same reasoning as
 	 *  UnderAttackMode's options: cheap to read every request, and Settings has no
 	 *  built-in change-history for us to derive this from otherwise). */
-	private const MODE_CHANGED_AT_OPTION = 'totalsecwp_csp_mode_changed_at';
+	private const MODE_CHANGED_AT_OPTION = 'loyalsec_csp_mode_changed_at';
 
 	/** Days in Report-Only, with zero admin action required, before we suggest Enforce —
 	 *  matches Wordfence's default Learning Mode window. */
@@ -177,7 +177,7 @@ class CspController extends AbstractController {
 			'strict_eval'                => (bool) $settings->get( 'csp', 'strict_eval', false ),
 			'preview'                    => $module ? $module->build_policy() : '',
 			'presets_list'               => CspPolicy::presets_list(),
-			'report_uri'                 => rest_url( TOTALSECWP_REST_NAMESPACE . '/csp/report' ),
+			'report_uri'                 => rest_url( LOYALSEC_REST_NAMESPACE . '/csp/report' ),
 			'mode_changed_at'            => $changed_at ?: null,
 			'days_in_current_mode'       => $days_in_mode,
 			'violations_since_mode_change' => $violations_since,
@@ -583,7 +583,7 @@ class CspController extends AbstractController {
 			'strict_eval'          => false,
 			'preview'           => '',
 			'presets_list'      => CspPolicy::presets_list(),
-			'report_uri'        => rest_url( TOTALSECWP_REST_NAMESPACE . '/csp/report' ),
+			'report_uri'        => rest_url( LOYALSEC_REST_NAMESPACE . '/csp/report' ),
 		);
 	}
 }

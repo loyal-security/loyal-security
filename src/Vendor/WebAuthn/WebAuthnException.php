@@ -1,5 +1,5 @@
 <?php
-namespace TotalSecurityWP\Vendor\WebAuthn;
+namespace LoyalSecurity\Vendor\WebAuthn;
 
 defined( 'ABSPATH' ) || exit;
 

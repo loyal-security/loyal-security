@@ -2,15 +2,15 @@
 /**
  * Backup store for repair operations.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Firewall\BanStore;
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Modules\Firewall\BanStore;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * Every destructive repair (a plugin reinstall, a single-file fix) snapshots the original
@@ -21,8 +21,8 @@ use TotalSecurityWP\Support\Filesystem;
  */
 class RepairBackup {
 
-	private const MANIFEST = 'totalsecwp_repair_backups';
-	private const PENDING  = 'totalsecwp_pending_repairs';
+	private const MANIFEST = 'loyalsec_repair_backups';
+	private const PENDING  = 'loyalsec_pending_repairs';
 
 	/**
 	 * Hard ceiling on retained backups (a safety net beyond the per-target policy). These are
@@ -390,7 +390,7 @@ class RepairBackup {
 		 *
 		 * @param array<string,mixed> $entry The new manifest entry.
 		 */
-		do_action( 'totalsecwp_repair_backup_recorded', $entry );
+		do_action( 'loyalsec_repair_backup_recorded', $entry );
 	}
 
 	/**

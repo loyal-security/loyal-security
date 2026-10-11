@@ -2,17 +2,17 @@
 /**
  * Attack-surface / information-disclosure scanner.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Hardening;
+namespace LoyalSecurity\Modules\Hardening;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Modules\Firewall\BanStore;
-use TotalSecurityWP\Plugin;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
+use LoyalSecurity\Modules\Firewall\BanStore;
+use LoyalSecurity\Plugin;
 
 /**
  * Detects common WordPress recon/information-disclosure vectors (exposed backup files,
@@ -23,7 +23,7 @@ use TotalSecurityWP\Plugin;
  */
 class ExposureScanner {
 
-	private const OPT_CACHE = 'totalsecwp_exposure_findings';
+	private const OPT_CACHE = 'loyalsec_exposure_findings';
 
 	/** Backup/secret file patterns checked in the web root (non-recursive). */
 	private const BACKUP_PATTERNS = array(
@@ -158,7 +158,7 @@ class ExposureScanner {
 	private function check_backup_files(): array {
 		$items = array();
 		foreach ( self::BACKUP_PATTERNS as $rel ) {
-			$path = \TotalSecurityWP\Support\Paths::root() . $rel;
+			$path = \LoyalSecurity\Support\Paths::root() . $rel;
 			if ( ! is_file( $path ) ) {
 				continue;
 			}
@@ -183,8 +183,8 @@ class ExposureScanner {
 	 * @return array<string, mixed>
 	 */
 	private function check_readme_license(): array {
-		$readme  = is_file( \TotalSecurityWP\Support\Paths::root() . 'readme.html' );
-		$license = is_file( \TotalSecurityWP\Support\Paths::root() . 'license.txt' );
+		$readme  = is_file( \LoyalSecurity\Support\Paths::root() . 'readme.html' );
+		$license = is_file( \LoyalSecurity\Support\Paths::root() . 'license.txt' );
 		$applied = ( new ServerRules() )->is_applied();
 
 		if ( ( ! $readme && ! $license ) || $applied ) {
@@ -240,9 +240,9 @@ class ExposureScanner {
 		// Where PHP actually writes the log (WordPress points error_log at it when WP_DEBUG_LOG
 		// is on); falls back to WordPress's default location.
 		$ini_path     = (string) ini_get( 'error_log' );
-		$log_path     = '' !== $ini_path ? wp_normalize_path( $ini_path ) : \TotalSecurityWP\Support\Paths::content() . '/debug.log';
-		$under_root   = 0 === strpos( $log_path, wp_normalize_path( \TotalSecurityWP\Support\Paths::root() ) )
-			|| 0 === strpos( $log_path, wp_normalize_path( \TotalSecurityWP\Support\Paths::content() ) );
+		$log_path     = '' !== $ini_path ? wp_normalize_path( $ini_path ) : \LoyalSecurity\Support\Paths::content() . '/debug.log';
+		$under_root   = 0 === strpos( $log_path, wp_normalize_path( \LoyalSecurity\Support\Paths::root() ) )
+			|| 0 === strpos( $log_path, wp_normalize_path( \LoyalSecurity\Support\Paths::content() ) );
 		// The plugin's private storage folder (deny-all, see Activator) is where
 		// relocate_debug_log() moves the log.
 		$storage      = wp_normalize_path( BanStore::storage_dir() );
@@ -274,7 +274,7 @@ class ExposureScanner {
 			'detail'   => sprintf(
 				/* translators: %s: path of the log file, relative to the WordPress root. */
 				__( '%s exists and is web-reachable — it can contain DB errors, API keys, or other sensitive data printed during debugging. Relocate it to private storage.', 'loyal-security' ),
-				(string) ( \TotalSecurityWP\Support\Paths::display( $log_path ) ?? 'debug.log' )
+				(string) ( \LoyalSecurity\Support\Paths::display( $log_path ) ?? 'debug.log' )
 			),
 			'fix'      => array( 'id' => 'debug_log', 'label' => __( 'Relocate debug.log', 'loyal-security' ) ),
 		);
@@ -322,13 +322,13 @@ class ExposureScanner {
 	 * @return array{ok:bool,message:string}
 	 */
 	private function fix_backup_file( string $rel ): array {
-		$path = \TotalSecurityWP\Support\Paths::root() . $rel;
+		$path = \LoyalSecurity\Support\Paths::root() . $rel;
 		if ( ! is_file( $path ) ) {
 			return array( 'ok' => true, 'message' => __( 'File is already gone.', 'loyal-security' ) );
 		}
 
 		$incident = Plugin::instance()->module( 'incident' );
-		if ( ! $incident instanceof \TotalSecurityWP\Modules\Incident\IncidentModule ) {
+		if ( ! $incident instanceof \LoyalSecurity\Modules\Incident\IncidentModule ) {
 			return array( 'ok' => false, 'message' => __( 'The Incident module is unavailable, so the file cannot be quarantined automatically. Remove it manually via FTP/SSH.', 'loyal-security' ) );
 		}
 
@@ -367,7 +367,7 @@ class ExposureScanner {
 	 */
 	private function probe_reachable( string $rel ): ?bool {
 		$url = home_url( '/' . ltrim( $rel, '/' ) );
-		$res = wp_remote_get( $url, array( 'timeout' => 3, 'redirection' => 0, 'sslverify' => \TotalSecurityWP\Support\Http::local_sslverify() ) );
+		$res = wp_remote_get( $url, array( 'timeout' => 3, 'redirection' => 0, 'sslverify' => \LoyalSecurity\Support\Http::local_sslverify() ) );
 		if ( is_wp_error( $res ) ) {
 			return null;
 		}

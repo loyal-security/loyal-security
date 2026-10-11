@@ -2,15 +2,15 @@
 /**
  * Audit logging module.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Audit;
+namespace LoyalSecurity\Modules\Audit;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\AbstractModule;
-use TotalSecurityWP\Core\Cron;
+use LoyalSecurity\Core\AbstractModule;
+use LoyalSecurity\Core\Cron;
 
 /**
  * Wires the audit subscribers to WordPress events. The actual write path ({@see Logger})
@@ -55,7 +55,7 @@ class AuditModule extends AbstractModule {
 		// Retention window for the shared prune path (Cron::prune_logs reads this): exactly the
 		// retention the site owner configured.
 		add_filter(
-			'totalsecwp_log_retention_days',
+			'loyalsec_log_retention_days',
 			function () {
 				return max( 1, (int) $this->setting( 'log_retention_days', (int) $this->setting( 'retention_days', 90 ) ) );
 			}

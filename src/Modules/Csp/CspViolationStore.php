@@ -2,10 +2,10 @@
 /**
  * CSP violation report store.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Csp;
+namespace LoyalSecurity\Modules\Csp;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  * Repeat violations of the same (directive, blocked-uri) pair are grouped into a single row
  * with a `hits` counter and a `last_seen`/`last doc_uri` update, rather than one row per
  * report — a single noisy/repeated resource can otherwise generate unbounded rows. Age-based
- * retention on top of that is pruned daily by {@see \TotalSecurityWP\Core\Cron::prune_logs()}.
+ * retention on top of that is pruned daily by {@see \LoyalSecurity\Core\Cron::prune_logs()}.
  */
 class CspViolationStore {
 
@@ -24,7 +24,7 @@ class CspViolationStore {
 
 	private function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'totalsecwp_csp_violations';
+		return $wpdb->prefix . 'loyalsec_csp_violations';
 	}
 
 	/**

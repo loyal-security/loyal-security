@@ -2,14 +2,14 @@
 /**
  * Best-effort, reversible cleaning of a single infected file.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Incident;
+namespace LoyalSecurity\Modules\Incident;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Support\Filesystem;
+use LoyalSecurity\Support\Filesystem;
 
 /**
  * For code that cannot be re-fetched cleanly (premium/custom plugins, theme files), this
@@ -59,7 +59,7 @@ class FileFix {
 			return array( 'ok' => false, 'message' => __( 'File not found or unreadable.', 'loyal-security' ) );
 		}
 		// Never operate on our own plugin files.
-		if ( false !== strpos( $path, wp_normalize_path( TOTALSECWP_PATH ) ) ) {
+		if ( false !== strpos( $path, wp_normalize_path( LOYALSEC_PATH ) ) ) {
 			return array( 'ok' => false, 'message' => __( 'Refusing to modify Loyal Security\'s own files.', 'loyal-security' ) );
 		}
 		// Only attempt PHP — the executable surface that matters.

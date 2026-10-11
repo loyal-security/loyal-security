@@ -2,10 +2,10 @@
 /**
  * Theme integrity verification.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Integrity;
+namespace LoyalSecurity\Modules\Integrity;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -33,6 +33,21 @@ class ThemeChecksums {
 			$total += $this->baseline->snapshot( $source, $root );
 		}
 		return $total;
+	}
+
+	/**
+	 * Re-take a theme's baseline after WordPress itself updated it, if it has one.
+	 *
+	 * @param string $stylesheet Theme directory name.
+	 * @return int Files recorded (0 when the theme had no baseline).
+	 */
+	public function refresh_baseline( string $stylesheet ): int {
+		$roots  = $this->theme_roots();
+		$source = 'theme:' . $stylesheet;
+		if ( ! isset( $roots[ $source ] ) || ! $this->baseline->has( $source ) ) {
+			return 0;
+		}
+		return $this->baseline->snapshot( $source, $roots[ $source ] );
 	}
 
 	/**

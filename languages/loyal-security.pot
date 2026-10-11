@@ -1,14 +1,1522 @@
-# Copyright (C) 2026 Total Security WP
-# This file is distributed under the GPL-2.0-or-later license.
+# Copyright (C) 2026 Loyal Security
+# This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Loyal Security - Firewall & Malware Scanner 1.0.0\n"
-"Report-Msgid-Bugs-To: https://example.com/loyal-security\n"
+"Project-Id-Version: Loyal Security - Firewall & Malware Scanner 1.5.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/loyal-security\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-10-10T20:23:25+02:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: loyal-security\n"
 
-# Translatable strings are wrapped in __()/_e()/esc_html__() throughout src/.
-# Regenerate this catalog with: wp i18n make-pot . languages/loyal-security.pot
+#. Plugin Name of the plugin
+#: loyal-security.php
+msgid "Loyal Security - Firewall & Malware Scanner"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: loyal-security.php
+msgid "https://loyalsecuritywp.com"
+msgstr ""
+
+#. Description of the plugin
+#: loyal-security.php
+msgid "All-in-one WordPress security: dual-mode firewall (WAF), hardening, malware scanner and file integrity monitoring, incident response, two-factor login, backups and audit log."
+msgstr ""
+
+#. Author of the plugin
+#: loyal-security.php
+msgid "Loyal Security"
+msgstr ""
+
+#. translators: 1: required PHP version, 2: current PHP version
+#: loyal-security.php:78
+#, php-format
+msgid "Loyal Security requires PHP %1$s or higher. Your server is running PHP %2$s. The plugin has been halted."
+msgstr ""
+
+#. translators: %1$s: brand name, %2$s: letter grade, %3$d: numeric score.
+#: src/Admin/AdminBarScore.php:102
+#, php-format
+msgid "%1$s: grade %2$s (%3$d/100)"
+msgstr ""
+
+#. translators: %s: plugin name.
+#: src/Admin/DashboardPage.php:37
+#, php-format
+msgid "Loading %s…"
+msgstr ""
+
+#: src/Admin/DashboardPage.php:40
+msgid "Loyal Security requires JavaScript to be enabled."
+msgstr ""
+
+#: src/Admin/Notices.php:103
+msgid "Loyal Security: threat intelligence feed is out of date."
+msgstr ""
+
+#: src/Admin/Notices.php:104
+msgid "The plugin has not been able to fetch fresh firewall/malware/vulnerability rules recently, so it is running on the bundled baseline. Check your connection to the update service."
+msgstr ""
+
+#: src/Admin/Notices.php:106
+msgid "Open Threat Intelligence"
+msgstr ""
+
+#: src/Admin/Notices.php:108
+msgid "Dismiss for 24 hours"
+msgstr ""
+
+#: src/Admin/Notices.php:149
+msgid "Loyal Security: Trust Proxy is on but no trusted ranges are set."
+msgstr ""
+
+#: src/Admin/Notices.php:150
+msgid "For safety, forwarded IP headers (X-Forwarded-For, CF-Connecting-IP…) are being ignored — visitor IPs resolve to the direct connection. Add your proxy/CDN IP ranges (e.g. Cloudflare) in Firewall settings, or turn Trust Proxy off."
+msgstr ""
+
+#: src/Admin/Notices.php:152
+#: src/Admin/Notices.php:196
+msgid "Firewall Settings"
+msgstr ""
+
+#. translators: %s: the Cloudflare edge address the request came from.
+#: src/Admin/Notices.php:187
+#, php-format
+msgid "This site is behind Cloudflare (your request came from its address %s), but \"Trust Cloudflare\" is off, so every visitor looks like a Cloudflare address. Turn on \"Trust Cloudflare\" in Firewall settings."
+msgstr ""
+
+#. translators: %s: the proxy address the request came from.
+#: src/Admin/Notices.php:189
+#, php-format
+msgid "Your request reached WordPress through a proxy or load balancer at %s that is not in Trusted proxies, so every visitor looks like that address. Turn on \"Trust proxy\" and add it under Trusted proxies in Firewall settings."
+msgstr ""
+
+#: src/Admin/Notices.php:193
+msgid "Loyal Security: visitor addresses are not being detected."
+msgstr ""
+
+#: src/Admin/Notices.php:218
+msgid "Loyal Security: the optimized firewall config is out of date."
+msgstr ""
+
+#: src/Admin/Notices.php:219
+msgid "Changes you make (firewall settings, approved virtual patches) cannot be written to the pre-WordPress firewall because the file below is not writable. The firewall is still running, but on the previous configuration. Make the file (and its folder in wp-content/uploads) writable and save any firewall setting to refresh it, or re-run the Setup Wizard."
+msgstr ""
+
+#: src/Admin/Notices.php:222
+msgid "Open Setup Wizard"
+msgstr ""
+
+#: src/Admin/Notices.php:245
+msgid "Loyal Security: a repair was automatically rolled back."
+msgstr ""
+
+#: src/Admin/Notices.php:248
+msgid "A plugin reinstall or file fix caused a fatal error, so the previous working version was restored automatically. Your site is back online."
+msgstr ""
+
+#: src/Admin/Notices.php:249
+msgid "A plugin reinstall or file fix caused a fatal error and the automatic restore could not complete. Restore the backup manually from the Repair Center."
+msgstr ""
+
+#: src/Admin/Notices.php:253
+msgid "Open Repair Center"
+msgstr ""
+
+#: src/Admin/Notices.php:255
+#: src/Admin/Notices.php:309
+#: src/Modules/Csp/CspModule.php:261
+msgid "Dismiss"
+msgstr ""
+
+#: src/Admin/Notices.php:304
+#: src/Modules/Auth/BreachCheck.php:161
+msgid "Loyal Security:"
+msgstr ""
+
+#: src/Admin/Notices.php:305
+msgid "Finish setup to deploy the optimized firewall and harden your site."
+msgstr ""
+
+#: src/Admin/Notices.php:307
+msgid "Finish Setup"
+msgstr ""
+
+#. translators: 1: required PHP, 2: current PHP
+#: src/Core/Activator.php:28
+#, php-format
+msgid "Loyal Security requires PHP %1$s or higher. You are running %2$s."
+msgstr ""
+
+#: src/Core/Cron.php:60
+msgid "Once Weekly"
+msgstr ""
+
+#: src/Core/Cron.php:66
+msgid "Every 5 Minutes (Loyal Security)"
+msgstr ""
+
+#: src/Core/HealthScore.php:34
+msgid "Web Application Firewall enabled"
+msgstr ""
+
+#: src/Core/HealthScore.php:35
+msgid "Two-factor authentication available"
+msgstr ""
+
+#: src/Core/HealthScore.php:36
+msgid "System hardening enabled"
+msgstr ""
+
+#: src/Core/HealthScore.php:39
+msgid "Core integrity monitoring enabled"
+msgstr ""
+
+#: src/Core/HealthScore.php:40
+msgid "Backups configured"
+msgstr ""
+
+#: src/Core/HealthScore.php:164
+msgid "Malware scan run in the last 7 days"
+msgstr ""
+
+#: src/Core/HealthScore.php:189
+msgid "No unresolved critical findings"
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:31
+msgid "Enable the firewall"
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:32
+msgid "Turn on the Web Application Firewall to block malicious requests."
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:39
+msgid "Run your first malware scan"
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:40
+msgid "Scan your files for malware, backdoors, and suspicious code."
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:47
+msgid "Enable two-factor authentication"
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:48
+msgid "Protect logins with a second authentication factor."
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:55
+msgid "Set up notifications"
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:56
+msgid "Get alerted by email when security events occur."
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:63
+msgid "Apply system hardening"
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:64
+msgid "Lock down WordPress with recommended hardening measures."
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:71
+msgid "Configure backups"
+msgstr ""
+
+#: src/Core/OnboardingChecklist.php:72
+msgid "Schedule backups so you can recover after an incident."
+msgstr ""
+
+#: src/Core/SafeBrowsing.php:37
+msgid "API key not configured"
+msgstr ""
+
+#. translators: %d HTTP status code
+#: src/Core/SafeBrowsing.php:78
+#, php-format
+msgid "Safe Browsing API error (HTTP %d)."
+msgstr ""
+
+#: src/Modules/Audit/AuditModule.php:27
+msgid "Audit Logging"
+msgstr ""
+
+#: src/Modules/Auth/AuthModule.php:28
+msgid "Identity & Access"
+msgstr ""
+
+#. translators: %s: formatted number of breach appearances.
+#: src/Modules/Auth/BreachCheck.php:155
+#, php-format
+msgid "Your account password has appeared in %s known data breaches. It still works, but it is no longer secret. Please change it as soon as possible."
+msgstr ""
+
+#: src/Modules/Auth/BreachCheck.php:164
+msgid "Change your password"
+msgstr ""
+
+#: src/Modules/Auth/Captcha.php:156
+msgid "CAPTCHA verification failed. Please try again."
+msgstr ""
+
+#: src/Modules/Auth/LoginGuard.php:102
+msgid "Authentication code"
+msgstr ""
+
+#: src/Modules/Auth/LoginGuard.php:105
+msgid "6-digit code from your authenticator app"
+msgstr ""
+
+#: src/Modules/Auth/LoginGuard.php:111
+msgid "Trust this device for 30 days"
+msgstr ""
+
+#: src/Modules/Auth/LoginGuard.php:150
+msgid "If your account uses two-factor authentication, enter your password together with the code from your authenticator app."
+msgstr ""
+
+#: src/Modules/Auth/LoginGuard.php:183
+msgid "<strong>Two-factor required.</strong> Enter the code from your authenticator app."
+msgstr ""
+
+#: src/Modules/Auth/LoginGuard.php:187
+msgid "Invalid authentication code."
+msgstr ""
+
+#: src/Modules/Auth/LoginUrlInstaller.php:48
+msgid "A slug is required."
+msgstr ""
+
+#: src/Modules/Auth/LoginUrlInstaller.php:57
+msgid ".htaccess is not writable — add the rewrite manually using the Nginx/Apache snippet, or grant write access."
+msgstr ""
+
+#: src/Modules/Auth/LoginUrlInstaller.php:65
+msgid "Could not read the existing .htaccess — refusing to overwrite it blind."
+msgstr ""
+
+#: src/Modules/Auth/LoginUrlInstaller.php:82
+msgid "Could not write .htaccess."
+msgstr ""
+
+#: src/Modules/Auth/LoginUrlInstaller.php:90
+msgid "Self-test failed — automatically rolled back. "
+msgstr ""
+
+#: src/Modules/Auth/LoginUrlInstaller.php:94
+msgid "Custom login URL verified and active."
+msgstr ""
+
+#. translators: %d: HTTP status code
+#: src/Modules/Auth/LoginUrlInstaller.php:143
+#, php-format
+msgid "Expected the login form at the new URL but got HTTP %d."
+msgstr ""
+
+#: src/Modules/Auth/LoginUrlInstaller.php:146
+#: src/Modules/Hardening/ServerRules.php:162
+msgid "Verified."
+msgstr ""
+
+#: src/Modules/Auth/Passkey.php:159
+#: src/Modules/Auth/Passkey.php:173
+msgid "Passkey"
+msgstr ""
+
+#: src/Modules/Auth/Passkey.php:162
+msgid "iPhone/iPad passkey"
+msgstr ""
+
+#: src/Modules/Auth/Passkey.php:165
+msgid "Android passkey"
+msgstr ""
+
+#: src/Modules/Auth/Passkey.php:168
+msgid "Mac passkey"
+msgstr ""
+
+#: src/Modules/Auth/Passkey.php:171
+msgid "Windows passkey"
+msgstr ""
+
+#: src/Modules/Auth/PasskeyLogin.php:80
+msgid "Passkey sign-in failed. Please try again."
+msgstr ""
+
+#: src/Modules/Auth/PasskeyLogin.php:141
+msgid "🔑 Sign in with a passkey"
+msgstr ""
+
+#. translators: min length
+#: src/Modules/Auth/PasswordPolicy.php:45
+#, php-format
+msgid "Password must be at least %d characters."
+msgstr ""
+
+#: src/Modules/Auth/PasswordPolicy.php:48
+msgid "Password must include both upper and lower case letters."
+msgstr ""
+
+#: src/Modules/Auth/PasswordPolicy.php:51
+msgid "Password must include at least one number."
+msgstr ""
+
+#: src/Modules/Auth/PasswordPolicy.php:54
+msgid "Password must include at least one special character."
+msgstr ""
+
+#: src/Modules/Auth/PasswordPolicy.php:87
+msgid "The new password contains characters that cannot be used in a password."
+msgstr ""
+
+#: src/Modules/Auth/TwoFactor.php:100
+msgid "Begin enrollment first."
+msgstr ""
+
+#: src/Modules/Auth/TwoFactor.php:104
+msgid "Invalid code. Check your authenticator and try again."
+msgstr ""
+
+#: src/Modules/Auth/TwoFactor.php:122
+msgid "Could not save enrollment. Please try again."
+msgstr ""
+
+#: src/Modules/Auth/TwoFactorProfileSection.php:45
+msgid "Two-Factor Authentication"
+msgstr ""
+
+#: src/Modules/Auth/TwoFactorProfileSection.php:48
+msgid "Status"
+msgstr ""
+
+#: src/Modules/Auth/TwoFactorProfileSection.php:52
+msgid "Enabled"
+msgstr ""
+
+#: src/Modules/Auth/TwoFactorProfileSection.php:54
+msgid "Not enabled"
+msgstr ""
+
+#: src/Modules/Auth/TwoFactorProfileSection.php:59
+msgid "Manage two-factor authentication"
+msgstr ""
+
+#: src/Modules/Auth/TwoFactorProfileSection.php:60
+msgid "Set up two-factor authentication"
+msgstr ""
+
+#: src/Modules/Auth/WebAuthnCeremony.php:110
+#: src/Modules/Auth/WebAuthnCeremony.php:114
+msgid "Registration expired — try again."
+msgstr ""
+
+#: src/Modules/Auth/WebAuthnCeremony.php:177
+#: src/Modules/Auth/WebAuthnCeremony.php:181
+msgid "Login request expired — try again."
+msgstr ""
+
+#: src/Modules/Auth/WebAuthnCeremony.php:190
+msgid "Passkey not recognized."
+msgstr ""
+
+#: src/Modules/Auth/WebAuthnCeremony.php:233
+msgid "Could not verify the passkey response."
+msgstr ""
+
+#: src/Modules/Backup/BackupEngine.php:47
+msgid "The PHP Zip extension is required to create backups."
+msgstr ""
+
+#: src/Modules/Backup/BackupEngine.php:65
+msgid "Could not create the backup directory."
+msgstr ""
+
+#: src/Modules/Backup/BackupEngine.php:74
+msgid "Could not write the file archive."
+msgstr ""
+
+#: src/Modules/Backup/BackupModule.php:29
+msgid "Backup & Recovery"
+msgstr ""
+
+#: src/Modules/Backup/RecoveryAuth.php:145
+msgid "Could not hash the recovery token."
+msgstr ""
+
+#: src/Modules/Backup/RecoveryAuth.php:164
+msgid "Could not write the recovery state file (check that the uploads folder is writable)."
+msgstr ""
+
+#: src/Modules/Backup/RestoreEngine.php:36
+#: src/Modules/Incident/RepairBackup.php:145
+msgid "Backup not found."
+msgstr ""
+
+#: src/Modules/Backup/RestoreEngine.php:54
+msgid "The file archive is missing from this backup."
+msgstr ""
+
+#: src/Modules/Backup/RestoreEngine.php:58
+msgid "Could not extract the file archive."
+msgstr ""
+
+#: src/Modules/Backup/RestoreEngine.php:68
+msgid "The database dump does not match the checksum recorded when this backup was made, so it was not restored."
+msgstr ""
+
+#: src/Modules/Backup/RestoreEngine.php:77
+msgid "Restore complete."
+msgstr ""
+
+#: src/Modules/Csp/CspModule.php:250
+msgid "Loyal Security CSP Monitor:"
+msgstr ""
+
+#. translators: %d: number of external resource domains awaiting review.
+#: src/Modules/Csp/CspModule.php:254
+#, php-format
+msgid "%d external resource domain is pending review."
+msgid_plural "%d external resource domains are pending review."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Modules/Csp/CspModule.php:259
+msgid "Review and approve →"
+msgstr ""
+
+#: src/Modules/Firewall/BotVerifier.php:58
+msgid "Every 10 Minutes (Loyal Security bot verification)"
+msgstr ""
+
+#: src/Modules/Firewall/BruteForce.php:59
+#: src/Rest/Controllers/AuthController.php:504
+msgid "Access from your IP address has been temporarily blocked due to suspicious activity."
+msgstr ""
+
+#. translators: %d: minutes until sign-in is possible again.
+#: src/Modules/Firewall/BruteForce.php:69
+#, php-format
+msgid "Too many failed sign-in attempts. Please try again in %d minute, or reset your password."
+msgid_plural "Too many failed sign-in attempts. Please try again in %d minutes, or reset your password."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Modules/Firewall/FirewallModule.php:57
+msgid "Firewall & Network Defense"
+msgstr ""
+
+#: src/Modules/Firewall/FirewallModule.php:1252
+#: src/Modules/Firewall/FirewallModule.php:1256
+msgid "Request blocked"
+msgstr ""
+
+#: src/Modules/Firewall/FirewallModule.php:1253
+msgid "This request was blocked by the Loyal Security firewall."
+msgstr ""
+
+#: src/Modules/Firewall/FirewallModule.php:1255
+msgid "IP Geolocation by DB-IP"
+msgstr ""
+
+#. translators: %s: number of blocked attacks in the last 30 days, formatted with thousands separator.
+#: src/Modules/Firewall/TrustBadge.php:115
+#, php-format
+msgid "%s attacks blocked (30d)"
+msgstr ""
+
+#: src/Modules/Firewall/TrustBadge.php:118
+msgid "Actively monitored"
+msgstr ""
+
+#: src/Modules/Firewall/TrustBadge.php:127
+#: src/Modules/Firewall/TrustBadge.php:128
+msgid "Protected by Loyal Security"
+msgstr ""
+
+#: src/Modules/Hardening/ConfigHardener.php:66
+#: src/Modules/Hardening/ConfigHardener.php:109
+#: src/Modules/Hardening/ConfigHardener.php:147
+msgid "wp-config.php is not writable."
+msgstr ""
+
+#: src/Modules/Hardening/ConfigHardener.php:98
+#: src/Modules/Hardening/ConfigHardener.php:168
+msgid "Could not write wp-config.php."
+msgstr ""
+
+#: src/Modules/Hardening/ConfigHardener.php:100
+msgid "wp-config.php hardened."
+msgstr ""
+
+#: src/Modules/Hardening/ConfigHardener.php:114
+msgid "wp-config.php hardening removed."
+msgstr ""
+
+#: src/Modules/Hardening/ConfigHardener.php:170
+msgid "debug.log relocated to private storage."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:114
+#: src/Modules/Hardening/ExposureScanner.php:140
+msgid "Hardening module is unavailable."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:125
+msgid "Could not apply server rules."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:129
+msgid "Server rules applied."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:145
+msgid "Setting enabled — applies on the next page load."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:148
+msgid "Unknown finding id."
+msgstr ""
+
+#. translators: %s: file name
+#: src/Modules/Hardening/ExposureScanner.php:170
+#, php-format
+msgid "Exposed backup/secret file: %s"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:174
+msgid "This file exists in the web root and was confirmed publicly downloadable — it can leak database credentials or secret keys. Quarantine it now."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:175
+msgid "This file exists in the web root. Its public reachability could not be confirmed, but it should not be there — quarantine it now."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:176
+msgid "Quarantine file"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:193
+#: src/Modules/Hardening/ExposureScanner.php:205
+msgid "Version disclosure via readme.html / license.txt"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:197
+msgid "Server rules are applied and block direct access to these files."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:198
+msgid "readme.html and license.txt were not found."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:208
+msgid "readme.html/license.txt are present and directly reachable, revealing the exact WordPress version to attackers. Apply server rules to block them."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:209
+#: src/Modules/Hardening/ExposureScanner.php:231
+msgid "Apply server rules"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:225
+msgid "Installer scripts reachable (wp-admin/install.php, setup-config.php)"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:229
+msgid "Server rules block direct access to the installer scripts."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:230
+msgid "WordPress core normally refuses to re-run these once installed, but if the database connection ever drops they briefly become live. Apply server rules for defense-in-depth."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:257
+#: src/Modules/Hardening/ExposureScanner.php:271
+msgid "debug.log exposure"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:261
+msgid "debug.log has been relocated to private, non-web-served storage."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:263
+msgid "Server rules block direct access to .log files."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:264
+msgid "No web-reachable debug.log was found."
+msgstr ""
+
+#. translators: %s: path of the log file, relative to the WordPress root.
+#: src/Modules/Hardening/ExposureScanner.php:276
+#, php-format
+msgid "%s exists and is web-reachable — it can contain DB errors, API keys, or other sensitive data printed during debugging. Relocate it to private storage."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:279
+msgid "Relocate debug.log"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:290
+msgid "XML-RPC reachable"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:294
+msgid "XML-RPC is disabled."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:295
+msgid "xmlrpc.php is enabled and is a common brute-force amplification target (system.multicall)."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:296
+msgid "Disable XML-RPC"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:307
+msgid "Author/username enumeration"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:311
+msgid "Author enumeration (?author=N and the REST users endpoint) is blocked."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:312
+msgid "?author=N and the REST users endpoint can reveal valid usernames for credential-stuffing/brute-force targeting."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:313
+msgid "Block author enumeration"
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:327
+msgid "File is already gone."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:332
+msgid "The Incident module is unavailable, so the file cannot be quarantined automatically. Remove it manually via FTP/SSH."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:337
+msgid "Could not quarantine the file."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:339
+msgid "File quarantined."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:352
+msgid "Could not resolve private storage directory."
+msgstr ""
+
+#: src/Modules/Hardening/ExposureScanner.php:355
+msgid "Could not create the private storage directory."
+msgstr ""
+
+#: src/Modules/Hardening/HardeningModule.php:27
+msgid "System Hardening"
+msgstr ""
+
+#: src/Modules/Hardening/HardeningModule.php:238
+msgid "Incorrect username or password. Please try again."
+msgstr ""
+
+#: src/Modules/Hardening/HoneypotGuard.php:115
+msgid "Honeypot trap URL accessed"
+msgstr ""
+
+#: src/Modules/Hardening/HoneypotGuard.php:135
+#: src/Modules/Hardening/HoneypotGuard.php:136
+msgid "Forbidden"
+msgstr ""
+
+#: src/Modules/Hardening/RestApiGuard.php:100
+msgid "REST API access is restricted to authenticated users."
+msgstr ""
+
+#. translators: %d: HTTP status code
+#: src/Modules/Hardening/ServerRules.php:159
+#, php-format
+msgid "The site returned HTTP %d after applying server rules."
+msgstr ""
+
+#: src/Modules/Incident/CoreRepair.php:62
+msgid "Could not fetch the official core checksums; aborting (nothing changed)."
+msgstr ""
+
+#: src/Modules/Incident/CoreRepair.php:69
+msgid "Could not download the clean core package from WordPress.org; aborting (nothing changed)."
+msgstr ""
+
+#: src/Modules/Incident/CoreRepair.php:76
+msgid "Downloaded package looked malformed; aborting (nothing changed)."
+msgstr ""
+
+#: src/Modules/Incident/CoreRepair.php:123
+msgid "Core files were restored, but the post-repair health check failed. Review the site immediately."
+msgstr ""
+
+#. translators: 1: files restored, 2: files removed
+#: src/Modules/Incident/CoreRepair.php:131
+#, php-format
+msgid "Core repaired: %1$d file(s) restored, %2$d foreign file(s) removed."
+msgstr ""
+
+#: src/Modules/Incident/FileFix.php:59
+#: src/Modules/Incident/FileFix.php:145
+msgid "File not found or unreadable."
+msgstr ""
+
+#: src/Modules/Incident/FileFix.php:63
+msgid "Refusing to modify Loyal Security's own files."
+msgstr ""
+
+#: src/Modules/Incident/FileFix.php:68
+msgid "Automatic fixing is only available for PHP files."
+msgstr ""
+
+#: src/Modules/Incident/FileFix.php:73
+msgid "Could not read the file."
+msgstr ""
+
+#: src/Modules/Incident/FileFix.php:83
+msgid "No high-confidence injected code was found to remove safely. Reinstall this file/plugin manually."
+msgstr ""
+
+#: src/Modules/Incident/FileFix.php:91
+msgid "The cleaned file would not parse, so the change was not applied. Reinstall this file manually."
+msgstr ""
+
+#: src/Modules/Incident/FileFix.php:98
+msgid "Could not back up the file; aborting for safety."
+msgstr ""
+
+#: src/Modules/Incident/FileFix.php:104
+msgid "Could not write the cleaned file."
+msgstr ""
+
+#: src/Modules/Incident/FileFix.php:115
+msgid "The fix caused a site error and was automatically reverted. Reinstall this file manually."
+msgstr ""
+
+#. translators: number of removed code segments
+#: src/Modules/Incident/FileFix.php:127
+#, php-format
+msgid "Removed %d injected segment and verified the site loads."
+msgid_plural "Removed %d injected segments and verified the site loads."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Modules/Incident/IncidentModule.php:28
+msgid "Incident Response"
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:214
+msgid "This plugin can’t be verified against WordPress.org."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:219
+msgid "No official checksums available for this plugin/version (premium or custom code)."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:231
+msgid "The scanner module is unavailable."
+msgstr ""
+
+#. translators: 1: cleared count, 2: remaining count
+#: src/Modules/Incident/IncidentModule.php:259
+#, php-format
+msgid "Verified against WordPress.org: cleared %1$d false positive(s); %2$d file(s) still differ from the official copy and were kept for review."
+msgstr ""
+
+#. translators: %d: cleared count
+#: src/Modules/Incident/IncidentModule.php:265
+#, php-format
+msgid "Verified clean against WordPress.org — cleared %d false positive(s). This plugin matches the official copy exactly."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:301
+msgid "Automatic file fixing is disabled."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:334
+#: src/Modules/Incident/Quarantine.php:47
+msgid "File not found."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:338
+msgid "Refusing to delete Loyal Security's own files."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:341
+msgid "Refusing to delete wp-config.php."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:347
+msgid "Could not back up the file; aborting deletion for safety."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:351
+msgid "Could not delete the file (check permissions)."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:362
+msgid "Deleting this file broke the site, so it was automatically restored. Quarantine it instead."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:377
+msgid "File deleted. A backup was kept (restorable from the Repair Center) and the site verified healthy."
+msgstr ""
+
+#. translators: plugin slug
+#: src/Modules/Incident/IncidentModule.php:424
+#, php-format
+msgid "Preparing to reinstall “%s”…"
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:433
+msgid "Plugin reinstalled."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:435
+#: src/Rest/Controllers/RepairController.php:167
+msgid "Plugin repair failed."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:453
+msgid "Nothing to reinstall."
+msgstr ""
+
+#. translators: 1: index, 2: total, 3: slug
+#: src/Modules/Incident/IncidentModule.php:468
+#, php-format
+msgid "Reinstalling %1$d of %2$d: %3$s…"
+msgstr ""
+
+#. translators: 1: succeeded, 2: failed
+#: src/Modules/Incident/IncidentModule.php:492
+#, php-format
+msgid "Reinstall finished — %1$d succeeded, %2$d failed."
+msgstr ""
+
+#: src/Modules/Incident/IncidentModule.php:508
+msgid "Scanning saved backups…"
+msgstr ""
+
+#. translators: 1: count, 2: human-readable size
+#: src/Modules/Incident/IncidentModule.php:520
+#, php-format
+msgid "Cleared %1$d backup(s), freed %2$s."
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:69
+msgid "Single-file plugin — reinstall manually."
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:70
+msgid "Not on WordPress.org (premium/custom) — reinstall manually."
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:124
+msgid "This plugin must be reinstalled manually."
+msgstr ""
+
+#. translators: plugin name
+#: src/Modules/Incident/PluginRepair.php:127
+#, php-format
+msgid "Checking “%s” on WordPress.org…"
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:130
+msgid "This plugin is not on WordPress.org and must be reinstalled manually."
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:135
+msgid "Plugin directory not found."
+msgstr ""
+
+#. translators: %1$s: plugin name, %2$s: plugin version.
+#: src/Modules/Incident/PluginRepair.php:140
+#, php-format
+msgid "Downloading a clean copy of “%1$s” (v%2$s)…"
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:143
+msgid "Could not download the clean plugin from WordPress.org; nothing changed."
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:145
+msgid "Extracting the downloaded package…"
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:149
+msgid "Downloaded plugin package looked malformed; nothing changed."
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:155
+msgid "Backing up the current files so this can be undone…"
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:165
+msgid "Could not back up the current plugin; aborting for safety."
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:176
+msgid "Installing the clean files…"
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:185
+msgid "Failed to write clean plugin files; the original was restored from backup."
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:191
+msgid "Verifying the site still loads…"
+msgstr ""
+
+#: src/Modules/Incident/PluginRepair.php:199
+msgid "The reinstall caused a fatal error on the site, so the previous version was automatically restored from backup. Nothing was left broken."
+msgstr ""
+
+#. translators: plugin name
+#: src/Modules/Incident/PluginRepair.php:209
+#, php-format
+msgid "Reinstalled clean copy of “%s”."
+msgstr ""
+
+#. translators: plugin slug
+#: src/Modules/Incident/PluginRepair.php:213
+#, php-format
+msgid "Reinstalled clean copy of \"%s\"."
+msgstr ""
+
+#: src/Modules/Incident/Quarantine.php:51
+msgid "Refusing to quarantine plugin files."
+msgstr ""
+
+#: src/Modules/Incident/Quarantine.php:59
+msgid "Could not move the file (check permissions)."
+msgstr ""
+
+#: src/Modules/Incident/Quarantine.php:88
+#: src/Modules/Incident/Quarantine.php:111
+msgid "Quarantine entry not found."
+msgstr ""
+
+#: src/Modules/Incident/Quarantine.php:91
+#: src/Modules/Incident/RepairBackup.php:151
+msgid "Could not restore the file."
+msgstr ""
+
+#: src/Modules/Incident/Recovery.php:35
+msgid "Only core files can be recovered."
+msgstr ""
+
+#: src/Modules/Incident/Recovery.php:41
+msgid "Could not download the clean file from WordPress.org."
+msgstr ""
+
+#: src/Modules/Incident/Recovery.php:47
+msgid "Downloaded file failed checksum verification; aborting."
+msgstr ""
+
+#: src/Modules/Incident/Recovery.php:52
+msgid "Could not write the recovered file (check permissions)."
+msgstr ""
+
+#. translators: file path
+#: src/Modules/Incident/Recovery.php:55
+#, php-format
+msgid "Recovered %s from WordPress.org."
+msgstr ""
+
+#: src/Modules/Incident/RepairBackup.php:153
+msgid "File restored from backup."
+msgstr ""
+
+#: src/Modules/Incident/RepairBackup.php:163
+msgid "Could not restore the directory."
+msgstr ""
+
+#: src/Modules/Incident/RepairBackup.php:165
+msgid "Directory restored from backup."
+msgstr ""
+
+#. translators: 1: current item, 2: total items, 3: backup label
+#: src/Modules/Incident/RepairBackup.php:238
+#, php-format
+msgid "Deleting backup %1$d of %2$d: %3$s"
+msgstr ""
+
+#: src/Modules/Integrity/IntegrityModule.php:28
+msgid "File Integrity Monitoring"
+msgstr ""
+
+#: src/Modules/Notifications/NotificationsModule.php:29
+msgid "Notifications"
+msgstr ""
+
+#: src/Modules/Scanner/ScannerModule.php:31
+msgid "Malware Scanner"
+msgstr ""
+
+#: src/Modules/Telemetry/TelemetryModule.php:48
+msgid "Bypass Telemetry"
+msgstr ""
+
+#: src/Modules/ThreatIntel/ThreatIntelModule.php:31
+msgid "Threat Intelligence"
+msgstr ""
+
+#. translators: 1: vulnerability title, 2: CVE id.
+#: src/Modules/ThreatIntel/ThreatIntelModule.php:206
+#, php-format
+msgid "<strong>Loyal Security:</strong> A known security vulnerability affects this version — %1$s %2$s. Update or remove the plugin."
+msgstr ""
+
+#. translators: %s: CVE id.
+#: src/Modules/ThreatIntel/ThreatIntelModule.php:243
+#, php-format
+msgid "Security vulnerability (%s)"
+msgstr ""
+
+#: src/Modules/ThreatIntel/ThreatIntelModule.php:246
+msgid "Known security vulnerability"
+msgstr ""
+
+#: src/Modules/Traffic/TrafficModule.php:30
+msgid "Live Traffic"
+msgstr ""
+
+#: src/Rest/AbstractController.php:46
+msgid "You do not have permission to manage Loyal Security."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:169
+#: src/Rest/Controllers/AuthController.php:180
+#: src/Rest/Controllers/AuthController.php:194
+#: src/Rest/Controllers/AuthController.php:204
+#: src/Rest/Controllers/AuthController.php:213
+#: src/Rest/Controllers/AuthController.php:225
+#: src/Rest/Controllers/AuthController.php:237
+#: src/Rest/Controllers/AuthController.php:255
+#: src/Rest/Controllers/AuthController.php:267
+msgid "Auth module disabled."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:172
+msgid "Two-factor is already active. Disable it before starting a new enrollment."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:242
+#: src/Rest/Controllers/AuthController.php:276
+msgid "Trusted device not found."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:314
+msgid "Choose a slug of 3–64 letters, numbers, or hyphens."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:317
+msgid "That slug is reserved — choose another."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:320
+msgid "That slug is already used by a page/post on this site — choose another."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:349
+msgid "[Loyal Security] Your custom login URL"
+msgstr ""
+
+#. translators: 1: site name, 2: new login URL
+#: src/Rest/Controllers/AuthController.php:352
+#, php-format
+msgid ""
+"Loyal Security enabled a custom login URL on %1$s.\n"
+"\n"
+"New login page: %2$s\n"
+"\n"
+"The original /wp-login.php now returns a 404 for the plain login form. Keep this email — if the site becomes unreachable, an administrator with file access can add define('LOYALSEC_DISABLE_LOGIN_URL', true); to wp-config.php to restore the original URL immediately."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:409
+msgid "A user and a positive number of days are required."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:412
+#: src/Rest/Controllers/AuthController.php:432
+msgid "User not found."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:466
+msgid "Passkeys are not available on this server (missing OpenSSL support)."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:475
+msgid "Missing registration data."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:480
+msgid "Could not register passkey."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:491
+msgid "Passkey not found."
+msgstr ""
+
+#: src/Rest/Controllers/AuthController.php:509
+msgid "Passkey login is not available on this server."
+msgstr ""
+
+#: src/Rest/Controllers/BackupController.php:83
+#: src/Rest/Controllers/BackupController.php:108
+#: src/Rest/Controllers/BackupController.php:120
+#: src/Rest/Controllers/BackupController.php:145
+#: src/Rest/Controllers/BackupController.php:168
+msgid "The backup module is disabled."
+msgstr ""
+
+#: src/Rest/Controllers/BackupController.php:112
+#: src/Rest/Controllers/BackupController.php:124
+#: src/Rest/Controllers/RepairController.php:207
+#: src/Rest/Controllers/RepairController.php:354
+msgid "No backup specified."
+msgstr ""
+
+#: src/Rest/Controllers/BackupController.php:130
+#: src/Rest/Controllers/RepairController.php:358
+msgid "Restore failed."
+msgstr ""
+
+#: src/Rest/Controllers/BackupController.php:151
+msgid "Could not enable recovery."
+msgstr ""
+
+#: src/Rest/Controllers/BackupController.php:172
+msgid "Standalone recovery is not enabled."
+msgstr ""
+
+#: src/Rest/Controllers/CspController.php:251
+#: src/Rest/Controllers/CspController.php:560
+msgid "CSP module not loaded."
+msgstr ""
+
+#: src/Rest/Controllers/CspController.php:386
+msgid "id is required."
+msgstr ""
+
+#: src/Rest/Controllers/CspController.php:391
+msgid "Violation not found."
+msgstr ""
+
+#: src/Rest/Controllers/CspController.php:445
+msgid "This violation has no source that can be added automatically — use Custom Sources instead."
+msgstr ""
+
+#: src/Rest/Controllers/CspController.php:492
+#: src/Rest/Controllers/CspController.php:531
+msgid "domain is required."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:243
+#: src/Rest/Controllers/FirewallController.php:248
+msgid "Invalid IP address or CIDR range."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:254
+msgid "Could not add the ban."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:338
+#: src/Rest/Controllers/FirewallController.php:378
+msgid "The firewall module is disabled."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:373
+#: src/Rest/Controllers/FirewallController.php:401
+#: src/Rest/Controllers/FirewallController.php:549
+#: src/Rest/Controllers/FirewallController.php:580
+msgid "Missing rule id."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:387
+#: src/Rest/Controllers/FirewallController.php:405
+msgid "Virtual patch not found."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:477
+msgid "Missing signature."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:488
+msgid "requests and window must both be positive numbers."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:515
+msgid "A signature and a valid type (verified or blocked) are required."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:563
+msgid "Bot rule not found."
+msgstr ""
+
+#: src/Rest/Controllers/FirewallController.php:584
+msgid "Bot rule not found (builtin rules can be disabled but not removed)."
+msgstr ""
+
+#: src/Rest/Controllers/HardeningController.php:85
+msgid "A finding id is required."
+msgstr ""
+
+#: src/Rest/Controllers/HardeningController.php:99
+#: src/Rest/Controllers/HardeningController.php:105
+#: src/Rest/Controllers/HardeningController.php:114
+msgid "Hardening module disabled."
+msgstr ""
+
+#: src/Rest/Controllers/JobsController.php:43
+msgid "Job not found or expired."
+msgstr ""
+
+#: src/Rest/Controllers/NotificationsController.php:123
+msgid "Notifications module is not active."
+msgstr ""
+
+#: src/Rest/Controllers/NotificationsController.php:133
+msgid "wp_mail() returned false. Check your server mail configuration."
+msgstr ""
+
+#: src/Rest/Controllers/NotificationsController.php:257
+#: src/Rest/Controllers/NotificationsController.php:268
+#: src/Rest/Controllers/NotificationsController.php:485
+msgid "A valid event type is required."
+msgstr ""
+
+#: src/Rest/Controllers/NotificationsController.php:288
+msgid "event_type is required."
+msgstr ""
+
+#: src/Rest/Controllers/NotificationsController.php:324
+msgid "AJAX action name not found in context."
+msgstr ""
+
+#: src/Rest/Controllers/NotificationsController.php:335
+msgid "A valid IP address was not found in the event context."
+msgstr ""
+
+#. translators: event type
+#: src/Rest/Controllers/NotificationsController.php:347
+#, php-format
+msgid "Alerts of type \"%s\" are now muted. They will still be recorded in the audit log but will not send notifications."
+msgstr ""
+
+#. translators: AJAX action name
+#: src/Rest/Controllers/NotificationsController.php:373
+#, php-format
+msgid "AJAX action \"%s\" is now whitelisted — it will no longer generate alerts. The feature on your site still works normally."
+msgstr ""
+
+#. translators: IP address
+#: src/Rest/Controllers/NotificationsController.php:392
+#, php-format
+msgid "IP %s belongs to a proxy or CDN in front of your site (such as Cloudflare), so it was not allowlisted: that would let every visitor routed through it skip the firewall."
+msgstr ""
+
+#. translators: IP address
+#: src/Rest/Controllers/NotificationsController.php:408
+#, php-format
+msgid "IP %s has been added to the firewall whitelist. It will bypass all firewall checks on future requests."
+msgstr ""
+
+#: src/Rest/Controllers/QuarantineController.php:71
+#: src/Rest/Controllers/QuarantineController.php:113
+#: src/Rest/Controllers/QuarantineController.php:124
+#: src/Rest/Controllers/QuarantineController.php:136
+#: src/Rest/Controllers/QuarantineController.php:144
+#: src/Rest/Controllers/QuarantineController.php:152
+#: src/Rest/Controllers/RepairController.php:110
+#: src/Rest/Controllers/RepairController.php:157
+#: src/Rest/Controllers/RepairController.php:188
+#: src/Rest/Controllers/RepairController.php:203
+#: src/Rest/Controllers/RepairController.php:218
+#: src/Rest/Controllers/RepairController.php:244
+#: src/Rest/Controllers/RepairController.php:264
+#: src/Rest/Controllers/RepairController.php:284
+#: src/Rest/Controllers/RepairController.php:350
+msgid "The incident module is disabled."
+msgstr ""
+
+#: src/Rest/Controllers/QuarantineController.php:91
+#: src/Rest/Controllers/RepairController.php:252
+#: src/Rest/Controllers/RepairController.php:272
+#: src/Rest/Controllers/RepairController.php:292
+msgid "No file path provided."
+msgstr ""
+
+#: src/Rest/Controllers/QuarantineController.php:96
+msgid "Quarantine failed."
+msgstr ""
+
+#: src/Rest/Controllers/RepairController.php:114
+msgid "Core repair failed."
+msgstr ""
+
+#: src/Rest/Controllers/RepairController.php:161
+#: src/Rest/Controllers/RepairController.php:192
+msgid "No plugin specified."
+msgstr ""
+
+#: src/Rest/Controllers/RepairController.php:175
+#: src/Rest/Controllers/RepairController.php:229
+msgid "Queued…"
+msgstr ""
+
+#: src/Rest/Controllers/RepairController.php:196
+msgid "Verification failed."
+msgstr ""
+
+#: src/Rest/Controllers/RepairController.php:257
+msgid "File fix failed."
+msgstr ""
+
+#: src/Rest/Controllers/RepairController.php:277
+msgid "File deletion failed."
+msgstr ""
+
+#: src/Rest/Controllers/RepairController.php:297
+msgid "Could not inspect the file."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:84
+#: src/Rest/Controllers/ScannerController.php:93
+#: src/Rest/Controllers/ScannerController.php:121
+#: src/Rest/Controllers/ScannerController.php:141
+#: src/Rest/Controllers/ScannerController.php:175
+#: src/Rest/Controllers/ScannerController.php:191
+#: src/Rest/Controllers/ScannerController.php:421
+#: src/Rest/Controllers/ScannerController.php:441
+msgid "The scanner module is disabled."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:97
+msgid "Missing scan id."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:127
+msgid "Invalid status."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:145
+msgid "Invalid bulk action."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:197
+msgid "Invalid action."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:202
+msgid "Finding not found."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:206
+msgid "This finding has no suggested patch."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:268
+msgid "Anonymous data-sharing consent is required to submit to the cloud."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:426
+msgid "Nothing to whitelist."
+msgstr ""
+
+#: src/Rest/Controllers/ScannerController.php:463
+#: src/Rest/Controllers/ScannerController.php:471
+msgid "The integrity module is disabled."
+msgstr ""
+
+#: src/Rest/Controllers/SettingsController.php:263
+msgid "No settings provided."
+msgstr ""
+
+#: src/Rest/Controllers/SettingsController.php:288
+#: src/Rest/Controllers/SettingsController.php:320
+msgid "No recognised settings were provided."
+msgstr ""
+
+#. translators: module title
+#: src/Rest/Controllers/StatusController.php:267
+#, php-format
+msgid "The %s module is disabled — enable it for full protection."
+msgstr ""
+
+#: src/Rest/Controllers/StatusController.php:270
+msgid "Open settings"
+msgstr ""
+
+#: src/Rest/Controllers/StatusController.php:280
+msgid "Unresolved malware findings detected. Review and remediate them."
+msgstr ""
+
+#: src/Rest/Controllers/StatusController.php:281
+msgid "Review findings"
+msgstr ""
+
+#. translators: %d quarantined file count
+#: src/Rest/Controllers/StatusController.php:289
+#, php-format
+msgid "%d quarantined file is awaiting review."
+msgid_plural "%d quarantined files are awaiting review."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Rest/Controllers/StatusController.php:290
+msgid "Open quarantine"
+msgstr ""
+
+#: src/Rest/Controllers/StatusController.php:298
+msgid "Complete the setup wizard to deploy the optimized firewall."
+msgstr ""
+
+#: src/Rest/Controllers/StatusController.php:299
+msgid "Run setup wizard"
+msgstr ""
+
+#: src/Rest/Controllers/StatusController.php:312
+msgid "Enforce two-factor authentication for administrators."
+msgstr ""
+
+#: src/Rest/Controllers/StatusController.php:313
+msgid "Enforce 2FA"
+msgstr ""
+
+#: src/Rest/Controllers/ThreatIntelController.php:57
+#: src/Rest/Controllers/ThreatIntelController.php:65
+#: src/Rest/Controllers/ThreatIntelController.php:88
+msgid "ThreatIntel module is not active."
+msgstr ""
+
+#: src/Rest/Controllers/TrafficController.php:147
+#: src/Rest/Controllers/TrafficController.php:173
+msgid "IP address is required."
+msgstr ""
+
+#: src/Rest/Controllers/WizardController.php:69
+msgid "That address belongs to a proxy or CDN in front of your site (such as Cloudflare), so allowing it would let every visitor through. Turn on \"Trust Cloudflare\" or add the proxy under Trusted proxies so your own address is seen."
+msgstr ""
+
+#. translators: %s: file name of the other prepend script.
+#: src/Setup/PrependInstaller.php:65
+#, php-format
+msgid "Another program already runs before WordPress on this site (%s), for example another security plugin’s firewall. PHP allows only one, so Loyal Security stays in Standard Mode, which still inspects every request once WordPress starts. To use Optimized Mode, switch the other firewall off first."
+msgstr ""

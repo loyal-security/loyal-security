@@ -53,7 +53,7 @@
 	}
 
 	function setMessage( msg, isError ) {
-		var el = document.getElementById( 'totalsecwp-passkey-msg' );
+		var el = document.getElementById( 'loyalsec-passkey-msg' );
 		if ( ! el ) {
 			return;
 		}
@@ -63,7 +63,7 @@
 	}
 
 	function setField( name, value ) {
-		var el = document.getElementById( 'totalsecwp_passkey_' + name );
+		var el = document.getElementById( 'loyalsec_passkey_' + name );
 		if ( el ) {
 			el.value = value;
 		}
@@ -89,12 +89,12 @@
 			setMessage( 'This browser does not support passkeys.', true );
 			return;
 		}
-		if ( ! window.TotalSecWPPasskey || ! window.TotalSecWPPasskey.restBase ) {
+		if ( ! window.LoyalSecPasskey || ! window.LoyalSecPasskey.restBase ) {
 			setMessage( 'Passkey sign-in is not configured.', true );
 			return;
 		}
 
-		var restBase = window.TotalSecWPPasskey.restBase.replace( /\/$/, '' );
+		var restBase = window.LoyalSecPasskey.restBase.replace( /\/$/, '' );
 		setMessage( 'Requesting your passkey…', false );
 
 		try {
@@ -149,7 +149,7 @@
 	}
 
 	document.addEventListener( 'DOMContentLoaded', function () {
-		var btn = document.getElementById( 'totalsecwp-passkey-btn' );
+		var btn = document.getElementById( 'loyalsec-passkey-btn' );
 		if ( btn ) {
 			btn.addEventListener( 'click', signIn );
 		}

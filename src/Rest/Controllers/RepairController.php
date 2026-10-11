@@ -2,17 +2,17 @@
 /**
  * Repair Center REST controller.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Rest\Controllers;
+namespace LoyalSecurity\Rest\Controllers;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Rest\AbstractController;
-use TotalSecurityWP\Plugin;
-use TotalSecurityWP\Modules\Incident\IncidentModule;
-use TotalSecurityWP\Modules\Scanner\ScannerModule;
+use LoyalSecurity\Rest\AbstractController;
+use LoyalSecurity\Plugin;
+use LoyalSecurity\Modules\Incident\IncidentModule;
+use LoyalSecurity\Modules\Scanner\ScannerModule;
 use WP_REST_Request;
 
 /**
@@ -107,11 +107,11 @@ class RepairController extends AbstractController {
 	public function repair_core( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		$res = $incident->repair_core();
 		return empty( $res['ok'] )
-			? $this->fail( 'totalsecwp_core_repair_failed', $res['message'] ?? __( 'Core repair failed.', 'loyal-security' ), 500 )
+			? $this->fail( 'loyalsec_core_repair_failed', $res['message'] ?? __( 'Core repair failed.', 'loyal-security' ), 500 )
 			: $this->ok( $res );
 	}
 
@@ -154,17 +154,17 @@ class RepairController extends AbstractController {
 	public function repair_plugin( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		$slug = sanitize_text_field( (string) $request->get_param( 'slug' ) );
 		if ( '' === $slug ) {
-			return $this->fail( 'totalsecwp_no_slug', __( 'No plugin specified.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_slug', __( 'No plugin specified.', 'loyal-security' ), 422 );
 		}
 
 		if ( $this->wants_sync( $request ) ) {
 			$res = $incident->repair_plugin( $slug );
 			return empty( $res['ok'] )
-				? $this->fail( 'totalsecwp_plugin_repair_failed', $res['message'] ?? __( 'Plugin repair failed.', 'loyal-security' ), 500 )
+				? $this->fail( 'loyalsec_plugin_repair_failed', $res['message'] ?? __( 'Plugin repair failed.', 'loyal-security' ), 500 )
 				: $this->ok( $res );
 		}
 
@@ -185,26 +185,26 @@ class RepairController extends AbstractController {
 	public function verify_plugin( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		$slug = sanitize_text_field( (string) $request->get_param( 'slug' ) );
 		if ( '' === $slug ) {
-			return $this->fail( 'totalsecwp_no_slug', __( 'No plugin specified.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_slug', __( 'No plugin specified.', 'loyal-security' ), 422 );
 		}
 		$res = $incident->verify_plugin_findings( $slug );
 		return empty( $res['ok'] )
-			? $this->fail( 'totalsecwp_verify_failed', $res['message'] ?? __( 'Verification failed.', 'loyal-security' ), 422 )
+			? $this->fail( 'loyalsec_verify_failed', $res['message'] ?? __( 'Verification failed.', 'loyal-security' ), 422 )
 			: $this->ok( $res );
 	}
 
 	public function delete_backup( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		$id = sanitize_text_field( (string) $request->get_param( 'id' ) );
 		if ( '' === $id ) {
-			return $this->fail( 'totalsecwp_no_backup', __( 'No backup specified.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_backup', __( 'No backup specified.', 'loyal-security' ), 422 );
 		}
 		return $this->ok( array( 'deleted' => $incident->delete_backup( $id ) ) );
 	}
@@ -215,7 +215,7 @@ class RepairController extends AbstractController {
 	public function clear_backups( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 
 		if ( $this->wants_sync( $request ) ) {
@@ -241,7 +241,7 @@ class RepairController extends AbstractController {
 	public function fix_file( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 
 		$path       = (string) $request->get_param( 'path' );
@@ -249,19 +249,19 @@ class RepairController extends AbstractController {
 		$path       = $this->resolve_path_from_finding( $path, $finding_id );
 
 		if ( '' === $path ) {
-			return $this->fail( 'totalsecwp_no_path', __( 'No file path provided.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_path', __( 'No file path provided.', 'loyal-security' ), 422 );
 		}
 
 		$res = $incident->fix_file( $path, $finding_id ?: null );
 		return empty( $res['ok'] )
-			? $this->fail( 'totalsecwp_fix_failed', $res['message'] ?? __( 'File fix failed.', 'loyal-security' ), 422 )
+			? $this->fail( 'loyalsec_fix_failed', $res['message'] ?? __( 'File fix failed.', 'loyal-security' ), 422 )
 			: $this->ok( $res );
 	}
 
 	public function remove_file( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 
 		$path       = (string) $request->get_param( 'path' );
@@ -269,19 +269,19 @@ class RepairController extends AbstractController {
 		$path       = $this->resolve_path_from_finding( $path, $finding_id );
 
 		if ( '' === $path ) {
-			return $this->fail( 'totalsecwp_no_path', __( 'No file path provided.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_path', __( 'No file path provided.', 'loyal-security' ), 422 );
 		}
 
 		$res = $incident->remove_file( $path, $finding_id ?: null );
 		return empty( $res['ok'] )
-			? $this->fail( 'totalsecwp_remove_failed', $res['message'] ?? __( 'File deletion failed.', 'loyal-security' ), 422 )
+			? $this->fail( 'loyalsec_remove_failed', $res['message'] ?? __( 'File deletion failed.', 'loyal-security' ), 422 )
 			: $this->ok( $res );
 	}
 
 	public function inspect( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 
 		$path       = (string) $request->get_param( 'path' );
@@ -289,12 +289,12 @@ class RepairController extends AbstractController {
 		$path       = $this->resolve_path_from_finding( $path, $finding_id );
 
 		if ( '' === $path ) {
-			return $this->fail( 'totalsecwp_no_path', __( 'No file path provided.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_path', __( 'No file path provided.', 'loyal-security' ), 422 );
 		}
 
 		$res = $incident->preview_fix( $path );
 		return empty( $res['ok'] )
-			? $this->fail( 'totalsecwp_inspect_failed', $res['message'] ?? __( 'Could not inspect the file.', 'loyal-security' ), 422 )
+			? $this->fail( 'loyalsec_inspect_failed', $res['message'] ?? __( 'Could not inspect the file.', 'loyal-security' ), 422 )
 			: $this->ok( $res );
 	}
 
@@ -347,15 +347,15 @@ class RepairController extends AbstractController {
 	public function restore_backup( WP_REST_Request $request ) {
 		$incident = $this->incident();
 		if ( ! $incident ) {
-			return $this->fail( 'totalsecwp_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
+			return $this->fail( 'loyalsec_incident_off', __( 'The incident module is disabled.', 'loyal-security' ), 409 );
 		}
 		$id = sanitize_text_field( (string) $request->get_param( 'id' ) );
 		if ( '' === $id ) {
-			return $this->fail( 'totalsecwp_no_backup', __( 'No backup specified.', 'loyal-security' ), 422 );
+			return $this->fail( 'loyalsec_no_backup', __( 'No backup specified.', 'loyal-security' ), 422 );
 		}
 		$res = $incident->restore_backup( $id );
 		return empty( $res['ok'] )
-			? $this->fail( 'totalsecwp_restore_failed', $res['message'] ?? __( 'Restore failed.', 'loyal-security' ), 500 )
+			? $this->fail( 'loyalsec_restore_failed', $res['message'] ?? __( 'Restore failed.', 'loyal-security' ), 500 )
 			: $this->ok( $res );
 	}
 }

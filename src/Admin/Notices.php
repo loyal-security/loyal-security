@@ -2,10 +2,10 @@
 /**
  * Admin notices.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Admin;
+namespace LoyalSecurity\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -15,13 +15,13 @@ defined( 'ABSPATH' ) || exit;
 class Notices {
 
 	/** Option holding a "snooze until" timestamp for the feed-stale notice. */
-	private const FEED_STALE_DISMISS_OPTION = 'totalsecwp_feed_stale_dismissed_until';
+	private const FEED_STALE_DISMISS_OPTION = 'loyalsec_feed_stale_dismissed_until';
 
 	/** How long a manual dismiss silences the notice for, if the underlying problem persists. */
 	private const FEED_STALE_DISMISS_PERIOD = DAY_IN_SECONDS;
 
 	/** User meta flag: this user dismissed the "finish setup" notice. */
-	private const SETUP_DISMISS_META = 'totalsecwp_setup_notice_dismissed';
+	private const SETUP_DISMISS_META = 'loyalsec_setup_notice_dismissed';
 
 	public function register_hooks(): void {
 		add_action( 'admin_notices', array( $this, 'setup_notice' ) );
@@ -37,7 +37,7 @@ class Notices {
 
 	/**
 	 * One-time redirect to the guided onboarding flow, set by
-	 * {@see \TotalSecurityWP\Core\Activator::activate()}. Consumes (deletes) the transient
+	 * {@see \LoyalSecurity\Core\Activator::activate()}. Consumes (deletes) the transient
 	 * regardless of outcome so a skipped redirect never re-fires on a later request.
 	 *
 	 * Points at `#/onboarding` (site-type + protection-level walkthrough) rather than
@@ -47,20 +47,20 @@ class Notices {
 	 * concern it actually addresses.
 	 */
 	public function maybe_redirect_after_activation(): void {
-		if ( ! get_transient( 'totalsecwp_activation_redirect' ) ) {
+		if ( ! get_transient( 'loyalsec_activation_redirect' ) ) {
 			return;
 		}
-		delete_transient( 'totalsecwp_activation_redirect' );
+		delete_transient( 'loyalsec_activation_redirect' );
 
 		if ( wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
 			return;
 		}
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
 		// Already configured (e.g. deactivate/reactivate on a site that finished setup long
 		// ago) — don't force onboarding on someone who doesn't need it.
-		if ( get_option( 'totalsecwp_setup_complete', false ) ) {
+		if ( get_option( 'loyalsec_setup_complete', false ) ) {
 			return;
 		}
 
@@ -82,21 +82,21 @@ class Notices {
 	 * it" in the meantime.
 	 */
 	public function feed_stale_notice(): void {
-		if ( ! class_exists( '\TotalSecurityWP\Plugin' ) ) {
+		if ( ! class_exists( '\LoyalSecurity\Plugin' ) ) {
 			return;
 		}
-		$module = \TotalSecurityWP\Plugin::instance()->module( 'threatintel' );
+		$module = \LoyalSecurity\Plugin::instance()->module( 'threatintel' );
 		if ( ! $module || ! method_exists( $module, 'feed_is_stale' ) || ! $module->feed_is_stale() ) {
 			return;
 		}
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
 		if ( (int) get_option( self::FEED_STALE_DISMISS_OPTION, 0 ) > time() ) {
 			return;
 		}
 
-		$dismiss = wp_nonce_url( add_query_arg( 'totalsecwp_dismiss_feed_stale', '1' ), 'totalsecwp_dismiss_feed_stale' );
+		$dismiss = wp_nonce_url( add_query_arg( 'loyalsec_dismiss_feed_stale', '1' ), 'loyalsec_dismiss_feed_stale' );
 
 		printf(
 			'<div class="notice notice-warning"><p><strong>%1$s</strong> %2$s <a href="%3$s" class="button button-secondary">%4$s</a> <a href="%5$s" class="button-link">%6$s</a></p></div>',
@@ -114,13 +114,13 @@ class Notices {
 	 * same "Dismiss" link + admin_init handler pattern as maybe_dismiss_autorollback() above.
 	 */
 	public function maybe_dismiss_feed_stale(): void {
-		if ( empty( $_GET['totalsecwp_dismiss_feed_stale'] ) ) {
+		if ( empty( $_GET['loyalsec_dismiss_feed_stale'] ) ) {
 			return;
 		}
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
-		check_admin_referer( 'totalsecwp_dismiss_feed_stale' );
+		check_admin_referer( 'loyalsec_dismiss_feed_stale' );
 		update_option( self::FEED_STALE_DISMISS_OPTION, time() + self::FEED_STALE_DISMISS_PERIOD, false );
 	}
 
@@ -132,14 +132,15 @@ class Notices {
 	 * the operator must be told to fix it.
 	 */
 	public function proxy_misconfig_notice(): void {
-		$settings = get_option( TOTALSECWP_OPTION_SETTINGS, array() );
+		$settings = get_option( LOYALSEC_OPTION_SETTINGS, array() );
 		$fw       = is_array( $settings ) && isset( $settings['firewall'] ) && is_array( $settings['firewall'] ) ? $settings['firewall'] : array();
 		$trust    = ! empty( $fw['trust_proxy'] );
 		$ranges   = array_filter( array_map( 'trim', (array) ( $fw['trusted_proxies'] ?? array() ) ) );
-		if ( ! $trust || ! empty( $ranges ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! $trust || ! empty( $ranges ) ) {
+			$this->untrusted_proxy_notice( $fw );
 			return;
 		}
 
@@ -153,6 +154,50 @@ class Notices {
 	}
 
 	/**
+	 * On the plugin's own screen, tell the admin when this very request came through a proxy
+	 * whose visitor address is not being used: a Cloudflare edge while "Trust Cloudflare" is off,
+	 * or a private/loopback peer (a load balancer or local reverse proxy) that forwarded the
+	 * client address in a header but is not in Trusted proxies. In both cases every visitor
+	 * looks like the proxy, so bans and rate limits would hit everyone at once.
+	 *
+	 * @param array<string, mixed> $fw Stored firewall settings.
+	 */
+	private function untrusted_proxy_notice( array $fw ): void {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( ! $screen || false === strpos( (string) $screen->id, 'loyal-security' ) ) {
+			return;
+		}
+
+		$headers  = \LoyalSecurity\Support\RequestVars::ip_headers();
+		$peer     = (string) ( $headers['REMOTE_ADDR'] ?? '' );
+		$resolver = new \LoyalSecurity\Modules\Firewall\IpResolver( \LoyalSecurity\Plugin::instance()->container()->make( 'settings' ) );
+		if ( '' === $peer || $resolver->current() !== $peer ) {
+			return; // The visitor address is already being resolved through a trusted proxy.
+		}
+
+		$cloudflare = \LoyalSecurity\Support\Ip::is_cloudflare( $peer ) && ! empty( $headers['HTTP_CF_CONNECTING_IP'] );
+		$private    = false === filter_var( $peer, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE );
+		$forwarded  = ! empty( $headers['HTTP_X_FORWARDED_FOR'] ) || ! empty( $headers['HTTP_X_REAL_IP'] );
+		if ( ! $cloudflare && ! ( $private && $forwarded ) ) {
+			return;
+		}
+
+		$message = $cloudflare
+			/* translators: %s: the Cloudflare edge address the request came from. */
+			? sprintf( __( 'This site is behind Cloudflare (your request came from its address %s), but "Trust Cloudflare" is off, so every visitor looks like a Cloudflare address. Turn on "Trust Cloudflare" in Firewall settings.', 'loyal-security' ), $peer )
+			/* translators: %s: the proxy address the request came from. */
+			: sprintf( __( 'Your request reached WordPress through a proxy or load balancer at %s that is not in Trusted proxies, so every visitor looks like that address. Turn on "Trust proxy" and add it under Trusted proxies in Firewall settings.', 'loyal-security' ), $peer );
+
+		printf(
+			'<div class="notice notice-warning"><p><strong>%1$s</strong> %2$s <a href="%3$s" class="button button-secondary">%4$s</a></p></div>',
+			esc_html__( 'Loyal Security: visitor addresses are not being detected.', 'loyal-security' ),
+			esc_html( $message ),
+			esc_url( admin_url( 'admin.php?page=loyal-security#/settings?highlight=firewall.' . ( $cloudflare ? 'trust_cloudflare' : 'trusted_proxies' ) ) ),
+			esc_html__( 'Firewall Settings', 'loyal-security' )
+		);
+	}
+
+	/**
 	 * Warn when Optimized Mode is selected but the prepend config on disk could not be updated
 	 * (the plugin directory is not writable by the web user). In that state a newly-approved
 	 * virtual patch or changed firewall setting is applied in the dashboard but never reaches
@@ -160,11 +205,11 @@ class Notices {
 	 * The flag auto-clears the moment a write succeeds (see FirewallModule::write_waf_config()).
 	 */
 	public function waf_config_stale_notice(): void {
-		$info = get_option( \TotalSecurityWP\Modules\Firewall\FirewallModule::CONFIG_STALE_OPTION, false );
+		$info = get_option( \LoyalSecurity\Modules\Firewall\FirewallModule::CONFIG_STALE_OPTION, false );
 		if ( ! is_array( $info ) || empty( $info ) ) {
 			return;
 		}
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
 
@@ -183,16 +228,16 @@ class Notices {
 	 * broke the site. Shown on every admin page until dismissed.
 	 */
 	public function autorollback_notice(): void {
-		$info = get_option( \TotalSecurityWP\Modules\Incident\RepairGuard::NOTICE_OPTION, array() );
+		$info = get_option( \LoyalSecurity\Modules\Incident\RepairGuard::NOTICE_OPTION, array() );
 		if ( ! is_array( $info ) || empty( $info ) ) {
 			return;
 		}
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
 
 		$restored = ! empty( $info['restored'] );
-		$dismiss  = wp_nonce_url( add_query_arg( 'totalsecwp_dismiss_rollback', '1' ), 'totalsecwp_dismiss_rollback' );
+		$dismiss  = wp_nonce_url( add_query_arg( 'loyalsec_dismiss_rollback', '1' ), 'loyalsec_dismiss_rollback' );
 
 		printf(
 			'<div class="notice notice-%1$s"><p><strong>%2$s</strong> %3$s</p><p><code>%4$s</code></p><p><a href="%5$s" class="button button-secondary">%6$s</a> <a href="%7$s" class="button-link">%8$s</a></p></div>',
@@ -215,14 +260,14 @@ class Notices {
 	 * Clear the auto-rollback notice when the admin dismisses it.
 	 */
 	public function maybe_dismiss_autorollback(): void {
-		if ( empty( $_GET['totalsecwp_dismiss_rollback'] ) ) {
+		if ( empty( $_GET['loyalsec_dismiss_rollback'] ) ) {
 			return;
 		}
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
-		check_admin_referer( 'totalsecwp_dismiss_rollback' );
-		delete_option( \TotalSecurityWP\Modules\Incident\RepairGuard::NOTICE_OPTION );
+		check_admin_referer( 'loyalsec_dismiss_rollback' );
+		delete_option( \LoyalSecurity\Modules\Incident\RepairGuard::NOTICE_OPTION );
 	}
 
 	/**
@@ -239,10 +284,10 @@ class Notices {
 	 * and Plugins screens, and never again for a user who dismissed it.
 	 */
 	public function setup_notice(): void {
-		if ( get_option( 'totalsecwp_setup_complete', false ) ) {
+		if ( get_option( 'loyalsec_setup_complete', false ) ) {
 			return;
 		}
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
 		if ( ! self::on_overview_screen() ) {
@@ -253,7 +298,7 @@ class Notices {
 		}
 
 		$url     = admin_url( 'admin.php?page=loyal-security#/onboarding' );
-		$dismiss = wp_nonce_url( add_query_arg( 'totalsecwp_dismiss_setup', '1' ), 'totalsecwp_dismiss_setup' );
+		$dismiss = wp_nonce_url( add_query_arg( 'loyalsec_dismiss_setup', '1' ), 'loyalsec_dismiss_setup' );
 		printf(
 			'<div class="notice notice-info"><p><strong>%1$s</strong> %2$s <a href="%3$s" class="button button-primary">%4$s</a> <a href="%5$s" class="button-link">%6$s</a></p></div>',
 			esc_html__( 'Loyal Security:', 'loyal-security' ),
@@ -269,13 +314,13 @@ class Notices {
 	 * Remember that the current user dismissed the setup notice.
 	 */
 	public function maybe_dismiss_setup(): void {
-		if ( empty( $_GET['totalsecwp_dismiss_setup'] ) ) {
+		if ( empty( $_GET['loyalsec_dismiss_setup'] ) ) {
 			return;
 		}
-		if ( ! current_user_can( TOTALSECWP_CAP ) && ! current_user_can( 'manage_options' ) ) {
+		if ( ! \LoyalSecurity\Core\Capabilities::can_manage() ) {
 			return;
 		}
-		check_admin_referer( 'totalsecwp_dismiss_setup' );
+		check_admin_referer( 'loyalsec_dismiss_setup' );
 		update_user_meta( get_current_user_id(), self::SETUP_DISMISS_META, 1 );
 	}
 }

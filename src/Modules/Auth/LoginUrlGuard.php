@@ -2,16 +2,15 @@
 /**
  * Custom Login URL — runtime request guard.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Auth;
+namespace LoyalSecurity\Modules\Auth;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Modules\Audit\EventCatalog;
-use TotalSecurityWP\Modules\Audit\Logger;
-use TotalSecurityWP\Support\Ip;
+use LoyalSecurity\Modules\Audit\EventCatalog;
+use LoyalSecurity\Modules\Audit\Logger;
 
 /**
  * Hides the credential-entry surface of wp-login.php behind a custom slug. The `/<slug>`
@@ -120,7 +119,7 @@ class LoginUrlGuard {
 	 * only falls back to REQUEST_URI (the Apache-correct signal) when it's absent.
 	 */
 	public function intercept(): void {
-		if ( defined( 'TOTALSECWP_DISABLE_LOGIN_URL' ) && TOTALSECWP_DISABLE_LOGIN_URL ) {
+		if ( defined( 'LOYALSEC_DISABLE_LOGIN_URL' ) && LOYALSEC_DISABLE_LOGIN_URL ) {
 			return; // wp-config.php escape hatch — always available, zero new attack surface.
 		}
 
@@ -141,7 +140,7 @@ class LoginUrlGuard {
 
 		$this->logger->log(
 			EventCatalog::LOGIN_URL_PROBE_BLOCKED,
-			array( 'ip' => Ip::client_ip( \TotalSecurityWP\Support\RequestVars::ip_headers() ), 'action' => $action ?: 'login' ), // phpcs:ignore WordPress.Security.NonceVerification
+			array( 'ip' => \LoyalSecurity\Modules\Firewall\IpResolver::request_ip(), 'action' => $action ?: 'login' ), // phpcs:ignore WordPress.Security.NonceVerification
 			EventCatalog::SEV_WARNING
 		);
 
@@ -159,8 +158,8 @@ class LoginUrlGuard {
 		// alone isn't trustworthy on every Nginx vhost topology. Absent on Apache (and on Nginx
 		// vhosts that haven't added the header from nginx_snippet()), where REQUEST_URI is
 		// already correct.
-		$raw = isset( $_SERVER['HTTP_X_TOTALSECWP_ORIGINAL_URI'] )
-			? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_X_TOTALSECWP_ORIGINAL_URI'] ) )
+		$raw = isset( $_SERVER['HTTP_X_LOYALSEC_ORIGINAL_URI'] )
+			? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_X_LOYALSEC_ORIGINAL_URI'] ) )
 			: ( isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REQUEST_URI'] ) ) : '' );
 		$uri = (string) strtok( $raw, '?' );
 		$home_path = (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH );

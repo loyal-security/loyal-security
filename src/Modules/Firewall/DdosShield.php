@@ -2,14 +2,14 @@
 /**
  * Application-layer DDoS / burst shield.
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Firewall;
+namespace LoyalSecurity\Modules\Firewall;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Core\Settings;
+use LoyalSecurity\Core\Settings;
 
 /**
  * Detects abnormal request bursts from a single IP within a very short window (distinct

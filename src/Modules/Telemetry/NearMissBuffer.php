@@ -2,15 +2,15 @@
 /**
  * Near-miss buffer — records allowed-but-suspicious requests (already anonymized).
  *
- * @package TotalSecurityWP
+ * @package LoyalSecurity
  */
 
-namespace TotalSecurityWP\Modules\Telemetry;
+namespace LoyalSecurity\Modules\Telemetry;
 
 defined( 'ABSPATH' ) || exit;
 
-use TotalSecurityWP\Waf\RequestContext;
-use TotalSecurityWP\Waf\Decision;
+use LoyalSecurity\Waf\RequestContext;
+use LoyalSecurity\Waf\Decision;
 
 /**
  * A small circular JSON-Lines buffer of requests that scored above zero on the WAF but stayed
@@ -119,8 +119,14 @@ class NearMissBuffer {
 		if ( ! $fh ) {
 			return;
 		}
-		if ( flock( $fh, LOCK_EX | LOCK_NB ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions
+		// Skip only when another request holds the lock; a filesystem without locking (NFS,
+		// some shared hosts) fails flock() without $wouldblock and must still get the entry.
+		$wouldblock = 0;
+		$locked     = flock( $fh, LOCK_EX | LOCK_NB, $wouldblock ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( $locked || ! $wouldblock ) {
 			fwrite( $fh, $line ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		}
+		if ( $locked ) {
 			flock( $fh, LOCK_UN ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 		}
 		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions
@@ -187,7 +193,7 @@ class NearMissBuffer {
 	 * Buffer file inside the plugin's private storage directory ('' when uploads is unavailable).
 	 */
 	public static function path(): string {
-		$dir = \TotalSecurityWP\Modules\Firewall\BanStore::storage_dir();
+		$dir = \LoyalSecurity\Modules\Firewall\BanStore::storage_dir();
 		return '' === $dir ? '' : $dir . '/telemetry/near-miss.jsonl';
 	}
 
